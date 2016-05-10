@@ -165,6 +165,9 @@ def get_rotated_r_tables(r_table,rotations):
 def main():
     
     directory = os.path.expanduser('~') + r'/Images/Generalized_Hough_Transform/'
+    tortoise_images = os.listdir(directory)
+    print tortoise_images
+    return
     img_file_name = directory + 'tortoise3.jpg'
     ght_template_file_name = directory + 'ght_template.bmp'
     ght_template_edges_file_name = directory + 'ght_template_edges.bmp'
