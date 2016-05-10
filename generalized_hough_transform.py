@@ -164,65 +164,63 @@ def get_rotated_r_tables(r_table,rotations):
         
 def main():
     
-    directory = os.path.expanduser('~') + r'/Images/Generalized_Hough_Transform/'
-    tortoise_images = os.listdir(directory)
-    print tortoise_images
-    return
-    img_file_name = directory + 'tortoise3.jpg'
-    ght_template_file_name = directory + 'ght_template.bmp'
-    ght_template_edges_file_name = directory + 'ght_template_edges.bmp'
-    img = cv2.imread(img_file_name)
-    # M = cv2.getRotationMatrix2D((img.shape[1]/2,img.shape[0]/2),45,1)
-    # img = cv2.warpAffine(img,M,(0,0),borderMode=cv2.BORDER_TRANSPARENT)
-
-    ght_template = cv2.imread(ght_template_file_name)
-    ght_template_edges = cv2.imread(ght_template_edges_file_name)
-    resize_koef = 256.0/max(img.shape)
-    img = cv2.resize(img,(0,0),fx=resize_koef,fy=resize_koef)
-    img_edges = get_edges_combo(img)
-    
-    ght_template = ght_template[:,:,0]
-    ght_template_edges = ght_template_edges[:,:,0]
-    ref_point = tuple(np.argwhere(ght_template_edges == 127)[0])
-    ght_template_edges = cv2.threshold(ght_template_edges,
-                                       200,
-                                       255,
-                                       cv2.THRESH_BINARY)[1]
-    template_edges_orientations = get_edges_orientations(ght_template,
-                                                         ght_template_edges)
-    img_edges_orientations = get_edges_orientations(img,img_edges)
-    
-    r_table = get_r_table(template_edges_orientations,
-                          ref_point)
-
-    rotations = [angle for angle in xrange(0,360,45)]
-    print rotations
-    rotated_r_tables = get_rotated_r_tables(r_table,rotations)
-    accu_results = []
-    for rotation_idx, angle in enumerate(rotations):
-        print angle
-        accumulator = get_accumulator(rotated_r_tables[rotation_idx],
-                                      img_edges_orientations)
-        accumulator = accumulator*255/np.max(accumulator)
-        accumulator = accumulator.astype(np.uint8)
-        kernel_size = 17
-        kernel = np.ones((kernel_size,kernel_size))/(kernel_size*kernel_size)
-        accumulator_mask = cv2.threshold(accumulator,1,1,cv2.THRESH_BINARY)[1]
-        display_img(accumulator_mask)
-        accumulator = cv2.filter2D(accumulator,cv2.CV_64F,kernel)
-        accumulator_mask = cv2.filter2D(accumulator_mask,cv2.CV_64F,kernel)
-        accumulator *= accumulator_mask
-        min_val, max_val, min_coor, max_coor = cv2.minMaxLoc(accumulator)
-        accu_results.append((max_val,angle,max_coor))
-        print
-    print accu_results
-    accu_results = sorted(accu_results,reverse=True)
-    print accu_results
-    y_max = accu_results[0][2][1]
-    x_max = accu_results[0][2][1]
-    print 'angle', angle
-    img[y_max-5:y_max+5,x_max-5:x_max+5] = (0,0,255)
-    display_img(img)
+    directory_ght = os.path.expanduser('~') + r'/Images/Generalized_Hough_Transform/'
+    directory_images = os.path.expanduser('~') + r'/Images/Tortoises/'
+    tortoise_images = os.listdir(directory_images)
+    print tortoise_images, len(tortoise_images)
+    for img_name in tortoise_images[:1]:
+        img_file_name = directory_images + img_name
+        ght_template_file_name = directory_ght + 'ght_template.bmp'
+        ght_template_edges_file_name = directory_ght + 'ght_template_edges.bmp'
+        img = cv2.imread(img_file_name)
+        ght_template = cv2.imread(ght_template_file_name)
+        ght_template_edges = cv2.imread(ght_template_edges_file_name)
+        resize_koef = 256.0/max(img.shape)
+        img = cv2.resize(img,(0,0),fx=resize_koef,fy=resize_koef)
+        img_edges = get_edges_combo(img)
+        
+        ght_template = ght_template[:,:,0]
+        ght_template_edges = ght_template_edges[:,:,0]
+        ref_point = tuple(np.argwhere(ght_template_edges == 127)[0])
+        ght_template_edges = cv2.threshold(ght_template_edges,
+                                           200,
+                                           255,
+                                           cv2.THRESH_BINARY)[1]
+        template_edges_orientations = get_edges_orientations(ght_template,
+                                                             ght_template_edges)
+        img_edges_orientations = get_edges_orientations(img,img_edges)
+        
+        r_table = get_r_table(template_edges_orientations,
+                              ref_point)
+        
+        rotations = [angle for angle in xrange(0,360,45)]
+        print rotations
+        rotated_r_tables = get_rotated_r_tables(r_table,rotations)
+        accu_results = []
+        for rotation_idx, angle in enumerate(rotations):
+            print angle
+            accumulator = get_accumulator(rotated_r_tables[rotation_idx],
+                                          img_edges_orientations)
+            accumulator = accumulator*255/np.max(accumulator)
+            accumulator = accumulator.astype(np.uint8)
+            kernel_size = 17
+            kernel = np.ones((kernel_size,kernel_size))/(kernel_size*kernel_size)
+            accumulator_mask = cv2.threshold(accumulator,1,1,cv2.THRESH_BINARY)[1]
+            display_img(accumulator_mask)
+            accumulator = cv2.filter2D(accumulator,cv2.CV_64F,kernel)
+            accumulator_mask = cv2.filter2D(accumulator_mask,cv2.CV_64F,kernel)
+            accumulator *= accumulator_mask
+            min_val, max_val, min_coor, max_coor = cv2.minMaxLoc(accumulator)
+            accu_results.append((max_val,angle,max_coor))
+            print
+        print accu_results
+        accu_results = sorted(accu_results,reverse=True)
+        print accu_results
+        y_max = accu_results[0][2][1]
+        x_max = accu_results[0][2][1]
+        print 'angle', angle
+        img[y_max-5:y_max+5,x_max-5:x_max+5] = (0,0,255)
+        display_img(img)
 
 if __name__ == '__main__':
     main()
