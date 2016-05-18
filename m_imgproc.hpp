@@ -45,7 +45,7 @@ namespace my {
 	cv::transpose(kernel,kernel);
     std::cout << kernel << std::endl;
     cv::filter2D(src, dst_dx, CV_32F, kernel);
-    cv::transpose(kernel,kernel)
+    cv::transpose(kernel,kernel);
     
   }
 

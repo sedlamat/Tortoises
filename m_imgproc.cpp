@@ -18,7 +18,6 @@ int main()
   Mat img = imread("baboon.jpg",1);
   Mat dx, dy, img_GRAY;
   my::gradient_scharr(img, dx, dy);
-  //cvtColor(img,img_GRAY, cv::COLOR_BGR2GRAY);
   my::display(dx);
   return 1;
 }
