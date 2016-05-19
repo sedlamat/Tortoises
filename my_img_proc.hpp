@@ -8,7 +8,6 @@
     @version 0.0
 */
 
-
 #ifndef _MY_IMGPROC_HPP_
 #define _MY_IMGPROC_HPP_
 
@@ -19,7 +18,6 @@
 
 /* THIRD PARTY LIBRARIES */
 #include <opencv2/opencv.hpp>
-
 
 namespace my 
 {
@@ -65,7 +63,6 @@ namespace my
 		cv::namedWindow(window_name, cv::WINDOW_NORMAL);
 		cv::imshow(window_name, dst);
 		cv::waitKey(0);
-		cv::destroyAllWindows();
 	}  
  
 	/**
