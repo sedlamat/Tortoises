@@ -1,0 +1,8 @@
+# ignore all
+*
+# except cpp and hpp files, geany project file and .gitignore file
+!*.cpp
+!*.hpp
+!*.geany
+!.gitignore
+
