@@ -1,8 +1,8 @@
 # ignore all
 *
-# except cpp and hpp files, geany project file and .gitignore file
+# except files
 !*.cpp
 !*.hpp
 !*.geany
 !.gitignore
-
+!makefile
