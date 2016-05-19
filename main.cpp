@@ -1,8 +1,4 @@
-﻿#include "tortoise.h"
-
-
-
-/* STANDARD C/C++ LIBRARIES */
+﻿/* STANDARD C/C++ LIBRARIES */
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -13,14 +9,15 @@
 #include <opencv2/opencv.hpp>
 
 /* FIRST PARTY LIBRARIES */
-#include "m_imgproc.hpp"
-
+#include "my_img_proc.hpp"
+//#include "tortoise.h"
 
 using namespace std;
 using namespace cv;
 
 
 int main()
+
 {
 	string file_name = "Tg00301.pnm";
 	passwd* pw = getpwuid(getuid());
@@ -34,6 +31,7 @@ int main()
 	return 1;
 }
 
+/*
 void oneTortoiseRecognition(string imgDirectory, string tortoiseName, string processID)
 {
 	try
@@ -52,7 +50,6 @@ void oneTortoiseRecognition(string imgDirectory, string tortoiseName, string pro
 		cout << "Processing of " << tortoiseName << " ended with error!" << endl;
 	}
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -164,3 +161,4 @@ int main(int argc, char *argv[])
 
  return 1;
 }
+//*/
