@@ -11,7 +11,7 @@
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
-#include "my_general_hough.hpp"
+//#include "my_general_hough.hpp"
 //#include "tortoise.h"
 
 using namespace std;
@@ -20,19 +20,25 @@ using namespace cv;
 
 int main(int argc, char **argv)
 
-{
-  hell();
-  
-  string file_name = "Tg00301.pnm";
-  passwd* pw = getpwuid(getuid());
-  string path(pw->pw_dir);
-  path += "/Images/Tortoises/" + file_name;
-  Mat img = imread(path,1);
-  double resize_koef = 256.0/max(img.rows,img.cols);
-  resize(img, img, Size(0,0), resize_koef, resize_koef);
-  img = my::get_edges_color_based(img);
-  my::display(img);
-  return 1;
+{  
+  try
+  {
+    string file_name = "Tg00301.pnm";
+    passwd* pw = getpwuid(getuid());
+    string path(pw->pw_dir);
+    path += "/Images/Tortoises/" + file_name;
+    Mat img = imread(path,1);
+    double resize_koef = 256.0/max(img.rows,img.cols);
+    resize(img, img, Size(0,0), resize_koef, resize_koef);
+    img = my::get_edges_color_based(img);
+    my::display(img);
+  }
+  catch( cv::Exception& e )
+  {
+    const char * err_msg = e.what();
+    std::cout << "exception caught: " << err_msg << std::endl;
+  }
+    return 1;
   }
 
 /*

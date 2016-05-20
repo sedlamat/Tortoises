@@ -142,20 +142,20 @@ namespace my
   }
   
   /**
-    Getting a 3 channeled image by stacking a single channel image
+    Getting a 3-channel image by stacking a single channel image
     along the z-axis (channels).
 
-    @param src - An input single channeled image.
-    @return A stacked 3 channeled image.
+    @param src - An input single-channel image.
+    @return A stacked 3-channel image.
   */
-  cv::Mat get_3channeled(const cv::Mat& src) 
+  cv::Mat get_3channel(const cv::Mat& src) 
   {
     cv::Mat dst;
-    std::vector<cv::Mat> channeled;
-    channeled.push_back(src);
-    channeled.push_back(src);
-    channeled.push_back(src);
-    cv::merge(channeled, dst);
+    std::vector<cv::Mat> channels;
+    channels.push_back(src);
+    channels.push_back(src);
+    channels.push_back(src);
+    cv::merge(channels, dst);
     return dst;
   }  
   
@@ -172,7 +172,7 @@ namespace my
     cv::Mat dst;
     cv::GaussianBlur(src, dst, cv::Size(0,0), 1);
     cv::Mat BGR_minima = my::get_BGR_minima(dst);
-    BGR_minima = my::get_3channeled(BGR_minima);
+    BGR_minima = my::get_3channel(BGR_minima);
     cv::Mat color = dst - BGR_minima;
     cv::Mat color_grad_mag = my::get_gradient_magnitude(color);
     cv::Mat BGR_minima_grad_mag = 
