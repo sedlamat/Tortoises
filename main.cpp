@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <pwd.h>
 #include <unistd.h>
+#include <bitset>
 
 /* THIRD PARTY LIBRARIES */
 #include <opencv2/opencv.hpp>
@@ -16,20 +17,20 @@ using namespace std;
 using namespace cv;
 
 
-int main()
+int main(int argc, char **argv)
 
 {
-	string file_name = "Tg00301.pnm";
-	passwd* pw = getpwuid(getuid());
-	string path(pw->pw_dir);
-	path += "/Images/Tortoises/" + file_name;
-	Mat img = imread(path,1);
-	double resize_koef = 256.0/max(img.rows,img.cols);
-	resize(img, img, Size(0,0), resize_koef, resize_koef);
-	img = my::get_edges_color_based(img);
-	my::display(img);
-	return 1;
-}
+  string file_name = "Tg00301.pnm";
+  passwd* pw = getpwuid(getuid());
+  string path(pw->pw_dir);
+  path += "/Images/Tortoises/" + file_name;
+  Mat img = imread(path,1);
+  double resize_koef = 256.0/max(img.rows,img.cols);
+  resize(img, img, Size(0,0), resize_koef, resize_koef);
+  img = my::get_edges_color_based(img);
+  my::display(img);
+  return 1;
+  }
 
 /*
 void oneTortoiseRecognition(string imgDirectory, string tortoiseName, string processID)
