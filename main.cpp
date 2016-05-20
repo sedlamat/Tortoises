@@ -11,6 +11,7 @@
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
+#include "my_general_hough.hpp"
 //#include "tortoise.h"
 
 using namespace std;
@@ -20,6 +21,8 @@ using namespace cv;
 int main(int argc, char **argv)
 
 {
+  hell();
+  
   string file_name = "Tg00301.pnm";
   passwd* pw = getpwuid(getuid());
   string path(pw->pw_dir);

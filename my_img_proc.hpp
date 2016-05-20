@@ -184,6 +184,7 @@ namespace my
     cv::Mat edges;
     cv::Canny(BGR_minima, edges, 0, 50);
     cv::bitwise_and(edges, mag_edges, dst);
+    std::cout << "inside here" << std::endl;
     return dst;
   }
 	  
