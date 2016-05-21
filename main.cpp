@@ -23,6 +23,8 @@ int main(int argc, char **argv)
 {  
   try
   {
+    int t;
+    cout << (t = 5)<< endl;
     string file_name = "Tg00301.pnm";
     passwd* pw = getpwuid(getuid());
     string path(pw->pw_dir);
@@ -36,7 +38,6 @@ int main(int argc, char **argv)
     //cv::sort(img,img,CV_SORT_EVERY_ROW);
     //cout << img << endl;
     img = my::get_edges_color_based(img);
-    cout << img.type() << endl;
     my::display(orient);
   }
   catch( cv::Exception& e )
