@@ -35,10 +35,9 @@ int main(int argc, char **argv)
     cout << my::minMat(orient) << my::maxMat(orient) << endl;
     //cv::sort(img,img,CV_SORT_EVERY_ROW);
     //cout << img << endl;
-    //img = my::get_edges_color_based(img);
-    
-    
-    my::display(img);
+    img = my::get_edges_color_based(img);
+    cout << img.type() << endl;
+    my::display(orient);
   }
   catch( cv::Exception& e )
   {

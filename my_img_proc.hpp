@@ -109,7 +109,7 @@ namespace my
     applied on the image as it is displayed (in the same way for y as 
     for x), otherwise as the y coordinate of cv::Mat image goes from 
     top to bottom in an image, it would give results upside down (for
-    dy). */
+    dy). Counter-clockwise.*/
     cv::filter2D(src, dxdy[1], CV_32F, kernel);
     return dxdy;
   }

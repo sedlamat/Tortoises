@@ -24,10 +24,57 @@
 namespace my 
 {		
   
-  struct RTablePoint {
-    cv::Point_<int> diff;
+  struct HoughPoint {
+    cv::Point_<int> pt;
     double phi;
   }
+  
+  struct QuantHoughPoint {
+    cv::Point_<int> pt;
+    int quant_phi;
+  }  
+  
+  struct RTablePoint {
+    cv::Point_<int> diff;
+    int quant_phi;
+  }
+  
+   /**
+    Scales the values of an input image into the range [0...255] 
+    and casts it into CV_8U.    
+
+
+    @param src - An input image.
+    @return Scaled and casted image.
+  */
+  std::vector<my::HoughPoint> get_hough_points(const cv::Mat& src, 
+					       const cv::Mat& src_edges)
+  {
+    cv::Mat orient = my::get_gradient_orientation(src);
+    // orientations in [0, 360) => make [180, 360) to [0, 180), only
+    // direction needed (45deg is the same direction as 225deg)
+    // this prevents 45deg being 225deg with inverse intensity.
+    // inverse intesity changes orientation, do not want that.
+    // direction changes only if the edge changes.
+    orient += ( (orient >= 180)/255 ) * -180;
+    for(int ii = 0; ii < src_edges.rows; ii++) {
+      uchar * ptr_src_edges_ii = src_edges.ptr<uchar>(ii);
+      for(int jj = 0; jj < src_edges.cols; jj++) {
+	if (ptr_src_edges_ii[jj])
+      }
+      sum += std::max(Mi[j], 0.);
+    }	
+    
+    my::display(orient);
+    cv::Mat dst;
+    double min_val;
+    double max_val;
+    cv::minMaxLoc(src, &min_val, &max_val); 
+    double alpha = 255/(max_val-min_val);
+    double beta = -min_val*alpha;
+    src.convertTo(dst,CV_8U,alpha,beta);
+    return dst;
+  }  	 
   
   /**
     Scales the values of an input image into the range [0...255] 
@@ -46,7 +93,11 @@ namespace my
     double beta = -min_val*alpha;
     src.convertTo(dst,CV_8U,alpha,beta);
     return dst;
-  }  	
+  }
+  
+    	
+  
+
 	
 	  
 } /* namespace my */
