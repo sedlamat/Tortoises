@@ -20,7 +20,35 @@
 #include <opencv2/opencv.hpp>
 
 namespace my 
-{		
+{	
+  
+  
+  /**
+    Gets minimum value of cv::Mat. A short version for debugging.
+
+    @param src - An input image.
+    @return A min value of the input image.
+  */  
+  double minMat(const cv::Mat& src)
+  {
+    double min, max;
+    cv::minMaxLoc(src, &min, &max);
+    return min;
+  }
+ 
+  /**
+    Gets maximum value of cv::Mat. A short version for debugging.
+
+    @param src - An input image.
+    @return A max value of the input image.
+  */  
+  double maxMat(const cv::Mat& src)
+  {
+    double min, max;
+    cv::minMaxLoc(src, &min, &max);
+    return max;
+  }
+  
   /**
     Scales the values of an input image into the range [0...255] 
     and casts it into CV_8U.
@@ -55,9 +83,9 @@ namespace my
     // check if src is CV_8U, if not make it
     if ( src.type() != CV_8UC1 && src.type() != CV_8UC2 && 
 	 src.type() != CV_8UC3 && src.type() != CV_8UC4 ) {  
-	    dst = my::get_scaled_CV_U8(src);
+      dst = my::get_scaled_CV_U8(src);
     } else {
-	    dst = src;
+      dst = src;
     }
     cv::namedWindow(window_name, cv::WINDOW_NORMAL);
     cv::imshow(window_name, dst);
@@ -91,12 +119,12 @@ namespace my
   {
     cv::Mat dst;
     if (src.channels() == 3) {
-	    std::vector<cv::Mat> BGR(src.channels());
-	    cv::split(src, BGR);
-	    return cv::Mat(cv::max(BGR[0],cv::max(BGR[1],BGR[2])));
+      std::vector<cv::Mat> BGR(src.channels());
+      cv::split(src, BGR);
+      return cv::Mat(cv::max(BGR[0],cv::max(BGR[1],BGR[2])));
     } else {
-	    throw "In get_BGR_maxima( ) invalid num of channels.";
-	    return src;
+      throw "In get_BGR_maxima( ) invalid num of channels.";
+      return src;
     }
   }
   
@@ -110,12 +138,12 @@ namespace my
   {
     cv::Mat dst;
     if (src.channels() == 3) {
-	    std::vector<cv::Mat> BGR(src.channels());
-	    cv::split(src, BGR);
-	    return cv::Mat(cv::min(BGR[0],cv::min(BGR[1],BGR[2])));
+      std::vector<cv::Mat> BGR(src.channels());
+      cv::split(src, BGR);
+      return cv::Mat(cv::min(BGR[0],cv::min(BGR[1],BGR[2])));
     } else {
-	    throw "In get_BGR_minima( ) invalid num of channels.";
-	    return src;
+      throw "In get_BGR_minima( ) invalid num of channels.";
+      return src;
     }
   }
   
@@ -123,23 +151,44 @@ namespace my
     Getting magnitude of a gradient of an image. For a 
     multi-channel image, it first computes gradient for all 
     channels and then takes the maximum over the channels for 
-    magnitude computation.
+    the computation of gradient.
 
     @param src - An input image.
     @return A gradient magnitude of the input image.
   */
   cv::Mat get_gradient_magnitude(const cv::Mat& src) 
   {
+    cv::Mat grad_mag;
     std::vector<cv::Mat> dxdy = my::get_gradient_scharr(src);
-
     if (src.channels() > 1) {
-	    dxdy[0] = my::get_BGR_maxima(cv::abs(dxdy[0]));
-	    dxdy[1] = my::get_BGR_maxima(cv::abs(dxdy[1]));
+      dxdy[0] = my::get_BGR_maxima(cv::abs(dxdy[0]));
+      dxdy[1] = my::get_BGR_maxima(cv::abs(dxdy[1]));
     }
-    cv::Mat mag;
-    cv::magnitude(dxdy[0],dxdy[1],mag);
-    return mag;
+    cv::magnitude(dxdy[0], dxdy[1], grad_mag);
+    return grad_mag;
   }
+  
+  /**
+    Getting orientation of a gradient of an image. For a 
+    multi-channel image, it first computes gradient for all 
+    channels and then takes the maximum over the channels for 
+    the computation of the orientation.
+
+    @param src - An input image.
+    @return A gradient orientation of the input image.
+  */
+  cv::Mat get_gradient_orientation(const cv::Mat& src) 
+  {
+    cv::Mat grad_orient;
+    std::vector<cv::Mat> dxdy = my::get_gradient_scharr(src);
+    if (src.channels() > 1) {
+      dxdy[0] = my::get_BGR_maxima(cv::abs(dxdy[0]));
+      dxdy[1] = my::get_BGR_maxima(cv::abs(dxdy[1]));
+    }
+    std::cout << my::minMat(dxdy[0]) << " " << my::maxMat(dxdy[0]) << std::endl;
+    cv::phase(dxdy[0],dxdy[1],grad_orient,false);
+    return grad_orient;
+  } 
   
   /**
     Getting a 3-channel image by stacking a single channel image
@@ -169,22 +218,22 @@ namespace my
   */
   cv::Mat get_edges_color_based(const cv::Mat& src) 
   {
-    cv::Mat dst;
+    cv::Mat dst, BGR_minima, color, color_grad_mag;
+    cv::Mat BGR_minima_grad_mag, mag, mag_edges, edges;
+
     cv::GaussianBlur(src, dst, cv::Size(0,0), 1);
-    cv::Mat BGR_minima = my::get_BGR_minima(dst);
+    BGR_minima = my::get_BGR_minima(dst);
     BGR_minima = my::get_3channel(BGR_minima);
-    cv::Mat color = dst - BGR_minima;
-    cv::Mat color_grad_mag = my::get_gradient_magnitude(color);
-    cv::Mat BGR_minima_grad_mag = 
-			      my::get_gradient_magnitude(BGR_minima);
-    cv::Mat mag(color_grad_mag.mul(BGR_minima_grad_mag));
-    cv::Mat mag_edges;
+    color = dst - BGR_minima;
+    
+    color_grad_mag = my::get_gradient_magnitude(color);
+    BGR_minima_grad_mag = my::get_gradient_magnitude(BGR_minima);
+    mag = color_grad_mag.mul(BGR_minima_grad_mag);
+
     cv::threshold(mag, mag_edges, 25000, 255, cv::THRESH_BINARY);
     mag_edges = my::get_scaled_CV_U8(mag_edges);
-    cv::Mat edges;
     cv::Canny(BGR_minima, edges, 0, 50);
     cv::bitwise_and(edges, mag_edges, dst);
-    std::cout << "inside here" << std::endl;
     return dst;
   }
 	  

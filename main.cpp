@@ -30,7 +30,12 @@ int main(int argc, char **argv)
     Mat img = imread(path,1);
     double resize_koef = 256.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
-    img = my::get_edges_color_based(img);
+    img = my::get_gradient_orientation(img);
+    //cv::sort(img,img,CV_SORT_EVERY_ROW);
+    //cout << img << endl;
+    //img = my::get_edges_color_based(img);
+    
+    
     my::display(img);
   }
   catch( cv::Exception& e )
