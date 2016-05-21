@@ -93,7 +93,7 @@ namespace my
   }  
 
   /**
-    Getting gradient of an image using Scharr masks.
+    Gets gradient of an image using Scharr masks.
 
     @param src - An input image.
     @return A vector of [dx,dy] derivatives.
@@ -101,32 +101,66 @@ namespace my
   std::vector<cv::Mat> get_gradient_scharr(const cv::Mat& src) 
   {	
     std::vector<cv::Mat> dxdy(2);  
-    cv::Mat kernel = (cv::Mat_<int>(3,3) << -3, 0, 3, -10, 0, 
-					    10, -3, 0, 3);
+    cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3, 10, 0, 
+					   -10, 3, 0, -3);
     cv::filter2D(src, dxdy[0], CV_32F, kernel);
     cv::transpose(kernel, kernel);
+    cv::flip(kernel,kernel,0); /* Flip it if the kernel mask is to be
+    applied on the image as it is displayed (in the same way for y as 
+    for x), otherwise as the y coordinate of cv::Mat image goes from 
+    top to bottom in an image, it would give results upside down (for
+    dy). */
     cv::filter2D(src, dxdy[1], CV_32F, kernel);
     return dxdy;
   }
+  
+  /**
+    Gets values that in the absolute value are the maximum of 
+    the BGR values. 
+    
+    I(x,y) = B/G/R(x,y) 
+    if ( abs(B/G/R(x,y)) >= abs(G/R/B(x,y)) && 
+         abs(B/G/R(x,y)) >= abs(R/B/G(x,y)) )
+
+    @param src - An input BGR color image.
+    @return An image with B/G/R values of max abs B/G/R.
+  */ 
+  cv::Mat get_BGR_max_of_abs(const cv::Mat& src)
+  {
+    CV_Assert(src.channels() == 3);
+    
+    cv::Mat src_abs, BgeG, BgeR, GgeR, dst, Bg, Gg, Rg;
+    std::vector<cv::Mat> BGR_abs(3), BGR(3);
+    
+    src_abs = cv::abs(src);
+    cv::split(src_abs, BGR_abs);
+    cv::split(src, BGR);
+    
+    BgeG = BGR_abs[0] >= BGR_abs[1];
+    BgeR = BGR_abs[0] >= BGR_abs[2];
+    GgeR = BGR_abs[1] >= BGR_abs[2];
+    cv::Mat(((BgeG & BgeR)/255)).convertTo(Bg, CV_32F);
+    cv::Mat(((GgeR & ~BgeG)/255)).convertTo(Gg, CV_32F);
+    cv::Mat(((~GgeR & ~BgeR)/255)).convertTo(Rg, CV_32F);
+    dst = BGR[0].mul(Bg) + BGR[1].mul(Gg) + BGR[2].mul(Rg);
+    return  dst;
+  }
 
   /**
-    Getting maxima values of BGR values of an image.
+    Gets maxima values of BGR values of an image.
 
     @param src - An input BGR color image.
     @return An image with maxima from input image BGR values.
   */ 
   cv::Mat get_BGR_maxima(const cv::Mat& src)
   {
+    CV_Assert(src.channels() == 3);
     cv::Mat dst;
-    if (src.channels() == 3) {
-      std::vector<cv::Mat> BGR(src.channels());
-      cv::split(src, BGR);
-      return cv::Mat(cv::max(BGR[0],cv::max(BGR[1],BGR[2])));
-    } else {
-      throw "In get_BGR_maxima( ) invalid num of channels.";
-      return src;
-    }
+    std::vector<cv::Mat> BGR(src.channels());
+    cv::split(src, BGR);
+    return cv::Mat(cv::max(BGR[0],cv::max(BGR[1],BGR[2])));
   }
+ 
   
   /**
     Getting minima values of BGR values of an image.
@@ -136,19 +170,15 @@ namespace my
   */ 
   cv::Mat get_BGR_minima(const cv::Mat& src)
   {
+    CV_Assert(src.channels() == 3);
     cv::Mat dst;
-    if (src.channels() == 3) {
-      std::vector<cv::Mat> BGR(src.channels());
-      cv::split(src, BGR);
-      return cv::Mat(cv::min(BGR[0],cv::min(BGR[1],BGR[2])));
-    } else {
-      throw "In get_BGR_minima( ) invalid num of channels.";
-      return src;
-    }
+    std::vector<cv::Mat> BGR(src.channels());
+    cv::split(src, BGR);
+    return cv::Mat(cv::min(BGR[0],cv::min(BGR[1],BGR[2])));
   }
   
   /**
-    Getting magnitude of a gradient of an image. For a 
+    Gets magnitude of a gradient of an image. For a 
     multi-channel image, it first computes gradient for all 
     channels and then takes the maximum over the channels for 
     the computation of gradient.
@@ -169,7 +199,7 @@ namespace my
   }
   
   /**
-    Getting orientation of a gradient of an image. For a 
+    Gets orientation of a gradient of an image. For a 
     multi-channel image, it first computes gradient for all 
     channels and then takes the maximum over the channels for 
     the computation of the orientation.
@@ -182,16 +212,15 @@ namespace my
     cv::Mat grad_orient;
     std::vector<cv::Mat> dxdy = my::get_gradient_scharr(src);
     if (src.channels() > 1) {
-      dxdy[0] = my::get_BGR_maxima(cv::abs(dxdy[0]));
-      dxdy[1] = my::get_BGR_maxima(cv::abs(dxdy[1]));
+      dxdy[0] = my::get_BGR_max_of_abs(dxdy[0]);
+      dxdy[1] = my::get_BGR_max_of_abs(dxdy[1]);
     }
-    std::cout << my::minMat(dxdy[0]) << " " << my::maxMat(dxdy[0]) << std::endl;
-    cv::phase(dxdy[0],dxdy[1],grad_orient,false);
+    cv::phase(dxdy[0], dxdy[1], grad_orient, true);
     return grad_orient;
   } 
   
   /**
-    Getting a 3-channel image by stacking a single channel image
+    Gets a 3-channel image by stacking a single channel image
     along the z-axis (channels).
 
     @param src - An input single-channel image.
@@ -210,7 +239,7 @@ namespace my
   
   
   /**
-    Getting image edges based on the gradient magnitude in both 
+    Gets image edges based on the gradient magnitude in both 
     the intensity and the color of the image.
 
     @param src - An input image.
