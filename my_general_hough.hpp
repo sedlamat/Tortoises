@@ -16,7 +16,8 @@
 #include <string>
 
 /* THIRD PARTY LIBRARIES */
-#include <opencv2/opencv.hpp>
+#include "opencv2/core/core.hpp"
+#include "opencv2/highgui/highgui.hpp"
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"

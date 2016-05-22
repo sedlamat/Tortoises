@@ -17,7 +17,8 @@
 #include <exception>
 
 /* THIRD PARTY LIBRARIES */
-#include <opencv2/opencv.hpp>
+#include "opencv2/core/core.hpp"
+#include "opencv2/highgui/highgui.hpp"
 
 namespace my 
 {	
@@ -90,6 +91,7 @@ namespace my
     cv::namedWindow(window_name, cv::WINDOW_NORMAL);
     cv::imshow(window_name, dst);
     cv::waitKey(0);
+    cv::waitKey(
   }  
 
   /**
