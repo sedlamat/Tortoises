@@ -26,16 +26,11 @@ namespace my
   
   struct HoughPoint {
     cv::Point_<int> pt;
-    float phi;
-  };
-  
-  struct QuantHoughPoint {
-    cv::Point_<int> pt;
     int quant_phi;
   };
   
   struct RTablePoint {
-    cv::Point_<int> diff;
+    cv::Point_<int> pt_diff;
     int quant_phi;
   };
   
@@ -63,14 +58,18 @@ namespace my
     cv::Mat orient_adjust = (orient >= 180)/255;
     orient_adjust.convertTo(orient_adjust,orient.depth());
     orient += orient_adjust * -180;
-    
+    // and quant it from [0,180) to {1,2,3,4} by 45
     for(int yy = 0; yy < src_edges.rows; yy++) {
       const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
       for(int xx = 0; xx < src_edges.cols; xx++) {
 	if (ptr_src_edges_irow[xx]) {
 	  my::HoughPoint h_pt;
 	  h_pt.pt = cv::Point_<int>(xx, yy);
-	  h_pt.phi = orient.at<float>(h_pt.pt);
+	  float phi = orient.at<float>(h_pt.pt);
+	  if (phi >= 157.5 || phi < 22.5) h_pt.quant_phi = 1;
+	  else if (phi >= 22.5 && phi < 67.5) h_pt.quant_phi = 2;
+	  else if (phi >= 67.5 && phi < 112.5) h_pt.quant_phi = 3;
+	  else if (phi >= 112.5 && phi < 157.5) h_pt.quant_phi = 4;
 	  hough_points.push_back(h_pt);
 	}
       }
@@ -87,36 +86,6 @@ namespace my
     @param src_edges -  An edge image of the color image.
     @return Vector of HoughPoints generated from src and src_edges.
   */
-
-  std::vector<my::QuantHoughPoint> get_quant_hough_points(
-					      const cv::Mat& src, 
-					      const cv::Mat& src_edges)
-  {
-    cv::Mat orient = my::get_gradient_orientation(src);
-    std::vector<my::HoughPoint> hough_points;
-    // orientations in [0, 360) => make [180, 360) to [0, 180), only
-    // direction needed (45deg is the same direction as 225deg)
-    // this prevents 45deg being 225deg with inverse intensity.
-    // inverse intesity changes orientation, do not want that.
-    // direction changes only if the edge changes.
-    
-    cv::Mat orient_adjust = (orient >= 180)/255;
-    orient_adjust.convertTo(orient_adjust,orient.depth());
-    orient += orient_adjust * -180;
-    
-    for(int yy = 0; yy < src_edges.rows; yy++) {
-      const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
-      for(int xx = 0; xx < src_edges.cols; xx++) {
-	if (ptr_src_edges_irow[xx]) {
-	  my::HoughPoint h_pt;
-	  h_pt.pt = cv::Point_<int>(xx, yy);
-	  h_pt.phi = orient.at<float>(h_pt.pt);
-	  hough_points.push_back(h_pt);
-	}
-      }
-    }
-    return hough_points;
-  } 
 	  
 } /* namespace my */
 

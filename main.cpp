@@ -20,6 +20,8 @@ using namespace cv;
 int main(int argc, char **argv)
 
 {  
+  const char *s = "hi";
+  cout << s << endl;
   try
   {
     string file_name = "Tg00301.pnm";
