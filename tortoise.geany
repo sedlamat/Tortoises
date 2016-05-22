@@ -23,9 +23,11 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=0
-FILE_NAME_0=387;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;2
-FILE_NAME_1=347;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmain.cpp;0;2
+current_page=1
+FILE_NAME_0=2823;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;2
+FILE_NAME_1=420;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmain.cpp;0;2
+FILE_NAME_2=1598;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_general_hough.hpp;0;2
+FILE_NAME_3=101471;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fbits%2Fbasic_string.h;0;2
 
 [build-menu]
 EX_00_LB=_Execute

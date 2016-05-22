@@ -11,20 +11,17 @@
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
-//#include "my_general_hough.hpp"
+#include "my_general_hough.hpp"
 //#include "tortoise.h"
 
 using namespace std;
 using namespace cv;
-
 
 int main(int argc, char **argv)
 
 {  
   try
   {
-    int t;
-    cout << (t = 5)<< endl;
     string file_name = "Tg00301.pnm";
     passwd* pw = getpwuid(getuid());
     string path(pw->pw_dir);
@@ -32,13 +29,11 @@ int main(int argc, char **argv)
     Mat img = imread(path,1);
     double resize_koef = 256.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
+    
+    Mat edges = my::get_edges_color_based(img);
+    cout << "here" << endl;
+    my::get_hough_points(img, edges);
     my::display(img);
-    Mat orient = my::get_gradient_orientation(img);
-    cout << my::minMat(orient) << my::maxMat(orient) << endl;
-    //cv::sort(img,img,CV_SORT_EVERY_ROW);
-    //cout << img << endl;
-    img = my::get_edges_color_based(img);
-    my::display(orient);
   }
   catch( cv::Exception& e )
   {
