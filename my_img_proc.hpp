@@ -264,9 +264,20 @@ namespace my
 
     cv::threshold(mag, mag_edges, 25000, 255, cv::THRESH_BINARY);
     mag_edges = my::get_scaled_CV_U8(mag_edges);
-    cv::Canny(BGR_minima, edges, 0, 50);
+    cv::Canny(BGR_minima, edges, 0, 150);
     cv::bitwise_and(edges, mag_edges, dst);
     return dst;
+  }
+  
+  // COMMENT TODO
+  void visualize_points(std::vector<cv::Point_<int> > points, 
+			cv::Size_<int> size)
+  {
+    cv::Mat dst(size, CV_8UC1, cv::Scalar_<uchar>(0));
+    for(auto const& pt : points) {
+      dst.at<uchar>(pt) = 255;
+    }
+    my::display(dst);
   }
 	  
 } /* namespace my */

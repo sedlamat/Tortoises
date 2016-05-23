@@ -55,7 +55,7 @@ namespace my
     cv::Mat orient_adjust = (orient >= 180)/255;
     orient_adjust.convertTo(orient_adjust,orient.depth());
     orient += orient_adjust * -180;
-    
+    my::display(orient);
     // points are quantized from [0,180) into 0,1,2,3 indices
     for(int yy = 0; yy < src_edges.rows; yy++) {
       const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
@@ -95,6 +95,7 @@ namespace my
 	  r_table = get_hough_points(src_templ, src_templ_edges);
         
     for(auto & points : r_table) {
+      my::visualize_points(points, src_templ_edges.size());
       for(auto & point : points) {
 	point = ref_point - point;
       }
@@ -118,6 +119,7 @@ namespace my
   {
     cv::Mat accum_layer(size, CV_32FC1, cv::Scalar_<float>(0.0));
     for(auto const& ref_pt : ref_points) {
+      //std::cout << ref_pt << " " << src_pt << std::endl;
       cv::Point_<double> pt1, pt2;
       double a, b;
       if (src_pt.x == ref_pt.x) {
@@ -167,18 +169,21 @@ namespace my
   {
     cv::Mat accum(size, CV_32FC1, cv::Scalar_<float>(0.0));
     for(auto const& quant_idx : {0,1,2,3}) {
+      my::visualize_points(src_hough_points[quant_idx], size);
       for(auto & src_pt : src_hough_points[quant_idx]) {
 	std::vector<cv::Point_<int> > ref_pts;
 	for(auto & pt_diff : r_table[quant_idx]) {
 	  ref_pts.push_back(pt_diff + src_pt);
 	}
 	cv::Mat accum_layer = my::get_accum_layer(ref_pts, src_pt,
-						  size);
+						  size);	
 	//std::cout << my::maxMat(accum_layer) << std::endl;
 	accum += accum_layer;
       }
       //return accum;
     }
+    cv::Mat kernel(5, 5, CV_32F, cv::Scalar_<float>(1));
+    cv::filter2D(accum, accum, CV_32F, kernel);
     return accum;
   }
   
@@ -211,6 +216,9 @@ namespace my
 					      size);
     my::display(accumulator);
     my::display(src);
+    my::display(src_edges);
+    my::display(src_templ);
+    my::display(src_templ_edges);
   }
 				      
   
