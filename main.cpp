@@ -38,15 +38,15 @@ int main(int argc, char **argv)
     Point ref_point(ref_point_loc.at<int>(0,0),
 		    ref_point_loc.at<int>(0,1));
 		        
-    string file_name = "Tg53600.pnm";
+    string file_name = "Tg00301.pnm";
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
     Mat img = imread(img_path,1);
-    double resize_koef = 256.0/max(img.rows,img.cols);
+    double resize_koef = 512.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     Mat edges = my::get_edges_color_based(img);
     
-    my::general_hough(templ, templ_edges, ref_point, templ, templ_edges);
+    my::general_hough(templ, templ_edges, ref_point, img, edges);
     
   }
   catch( cv::Exception& e )
