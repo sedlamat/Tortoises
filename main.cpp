@@ -9,6 +9,7 @@
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
@@ -20,16 +21,30 @@ using namespace cv;
 
 int main(int argc, char **argv)
 
-{  o
-  const char *s = "hi";
-  cout << s << endl;
+{ 
   try
   {
-    string file_name = "Tg00301.pnm";
     passwd* pw = getpwuid(getuid());
     string path(pw->pw_dir);
-    path += "/Images/Tortoises/" + file_name;
-    Mat img = imread(path,1);
+    
+    string ght_path = path + "/Images/Generalized_Hough_Transform/";
+    string templ_path = ght_path + "ght_template.bmp";
+    string templ_edges_path = ght_path + "ght_template_edges.bmp";
+    Mat templ = imread(templ_path, 0);
+    Mat templ_edges = imread(templ_edges_path, 0);
+    Mat ref_point_loc;
+    findNonZero(templ_edges==127,ref_point_loc);
+    Point ref_point(ref_point_loc.at<int>(0,0),
+		    ref_point_loc.at<int>(0,1));
+		    
+    cout << ref_point<< endl;
+    my::display(templ);
+    my::display(templ_edges);
+    
+    string file_name = "Tg00301.pnm";
+    string imgs_path = path + "/Images/Tortoises/";
+    string img_path = imgs_path + file_name;
+    Mat img = imread(img_path,1);
     double resize_koef = 256.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     
@@ -44,7 +59,8 @@ int main(int argc, char **argv)
     std::cout << "exception caught: " << err_msg << std::endl;
   }
     return 1;
-  }
+}
+
 
 /*
 void oneTortoiseRecognition(string imgDirectory, string tortoiseName, string processID)

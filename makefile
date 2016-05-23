@@ -5,6 +5,6 @@ SRC = main.cpp
 DEPS = my_img_proc.hpp my_general_hough.hpp
 
 $(TARGET) : $(SRC) $(DEPS)
-	g++ -Wall $(SRC) -o $(TARGET) $(CFLAGS) 
+	g++ -Wall -std=c++11 $(SRC) -o $(TARGET) $(CFLAGS) 
 
 

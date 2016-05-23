@@ -14,42 +14,37 @@
 /* STANDARD C++ LIBRARIES */
 #include <iostream>
 #include <string>
+#include <vector>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
 
 namespace my 
 {		
-  
-  struct HoughPoint {
-    cv::Point_<int> pt;
-    int quant_phi;
-  };
-  
-  struct RTablePoint {
-    cv::Point_<int> pt_diff;
-    int quant_phi;
-  };
-  
+
    /**
-    Gets a vector a HoughPoints, i.e., coordinates of edges and 
-    orientation of their gradient.    
+    Gets the hough points, i.e., a vector (indexed by quantized 
+    gradient orientations - 0 to 3) of vector of points (the 
+    coordinates of edges).    
 
 
     @param src - A color image.
     @param src_edges -  An edge image of the color image.
-    @return Vector of HoughPoints generated from src and src_edges.
+    @return Vector of vector of points generated from src and src_edges.
   */
 
-  std::vector<my::HoughPoint> get_hough_points(const cv::Mat& src, 
+  std::vector<std::vector<cv::Point_<int> > >  get_hough_points(
+					       const cv::Mat& src, 
 					       const cv::Mat& src_edges)
   {
     cv::Mat orient = my::get_gradient_orientation(src);
-    std::vector<my::HoughPoint> hough_points;
+    std::vector<std::vector<cv::Point_<int> > > hough_points(4);
+
     // orientations in [0, 360) => make [180, 360) to [0, 180), only
     // direction needed (45deg is the same direction as 225deg)
     // this prevents 45deg being 225deg with inverse intensity.
@@ -59,34 +54,81 @@ namespace my
     cv::Mat orient_adjust = (orient >= 180)/255;
     orient_adjust.convertTo(orient_adjust,orient.depth());
     orient += orient_adjust * -180;
-    // and quant it from [0,180) to {1,2,3,4} by 45
+    
+    // points are quantized from [0,180) into 0,1,2,3 indices
     for(int yy = 0; yy < src_edges.rows; yy++) {
       const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
       for(int xx = 0; xx < src_edges.cols; xx++) {
 	if (ptr_src_edges_irow[xx]) {
-	  my::HoughPoint h_pt;
-	  h_pt.pt = cv::Point_<int>(xx, yy);
-	  float phi = orient.at<float>(h_pt.pt);
-	  if (phi >= 157.5 || phi < 22.5) h_pt.quant_phi = 1;
-	  else if (phi >= 22.5 && phi < 67.5) h_pt.quant_phi = 2;
-	  else if (phi >= 67.5 && phi < 112.5) h_pt.quant_phi = 3;
-	  else if (phi >= 112.5 && phi < 157.5) h_pt.quant_phi = 4;
-	  hough_points.push_back(h_pt);
+	  cv::Point_<int> pt(xx, yy);
+	  float phi = orient.at<float>(pt);
+	  int orient_quant_index;
+	  if (phi >= 157.5 || phi < 22.5) orient_quant_index = 0;
+	  else if (phi >= 22.5 && phi < 67.5) orient_quant_index = 1;
+	  else if (phi >= 67.5 && phi < 112.5) orient_quant_index = 2;
+	  else if (phi >= 112.5 && phi < 157.5) orient_quant_index = 3;
+	  else CV_Assert( !"Undefined orientation" );
+	  hough_points[orient_quant_index].push_back(pt);
 	}
       }
     }
     return hough_points;
-  }  	
+  }  
   
-   /**
-    Gets a vector a HoughPoints, i.e., coordinates of edges and 
-    orientation of their gradient.    
+  /**
+    Gets the hough r-table, i.e., the hough points minus reference 
+    point of the template.    
 
-
-    @param src - A color image.
-    @param src_edges -  An edge image of the color image.
-    @return Vector of HoughPoints generated from src and src_edges.
+    @param src_templ - A template image for the hough tranform.
+    @param src_edges - An edge image of the template image.
+    @param ref_point - Reference point of the template.
+    @return The r-table (vector of vector of [points - ref_point]).
   */
+
+  std::vector<std::vector<cv::Point_<int> > >  get_r_table(
+				      const cv::Mat& src_templ, 
+				      const cv::Mat& src_templ_edges,
+				      const cv::Point_<int>& ref_point)
+  {
+    std::vector<std::vector<cv::Point_<int> > >  
+	  r_table = get_hough_points(src_templ, src_templ_edges);
+        
+    for(auto & points : r_table) {
+      for(auto & point : points) {
+	point = ref_point - point;
+	std::cout << point << std::endl;
+      }
+    }
+    return r_table;
+  }
+  
+  /**
+    Gets the hough r-table, i.e., the hough points minus reference 
+    point of the template.    
+
+    @param src_templ - A template image for the hough tranform.
+    @param src_edges - An edge image of the template image.
+    @param ref_point - Reference point of the template.
+    @return The r-table (vector of vector of [points - ref_point]).
+  */
+
+  cv::Mat get_accumulator(
+	std::vector<std::vector<cv::Point_<int> > > r_table,
+	std::vector<std::vector<cv::Point_<int> > > src_hough_points)
+  {
+    std::vector<std::vector<cv::Point_<int> > >  
+	  r_table = get_hough_points(src_templ, src_templ_edges);
+        
+    for(auto const& quant_idx : {0,1,2,3}) {
+      for(auto & src_pt : src_hough_points) {
+	for(auto & pt_diff : r_table[quant_idx]) {
+	  cv::Point_<int> ref_pt = pt_diff + src_pt;
+	  std::cout << point << std::endl;
+      }
+    }
+    return r_table;
+  }
+  
 	  
 } /* namespace my */
 
