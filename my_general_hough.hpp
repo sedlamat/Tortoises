@@ -101,6 +101,30 @@ namespace my
     }
     return r_table;
   }
+ 
+
+   /**
+    Gets the hough r-table, i.e., the hough points minus reference 
+    point of the template.    
+
+    @param src_templ - A template image for the hough tranform.
+    @param src_edges - An edge image of the template image.
+    @param ref_point - Reference point of the template.
+    @return The r-table (vector of vector of [points - ref_point]).
+  */
+
+  cv::Mat get_accum_layer(std::vector<cv::Point_<int> > ref_points,
+			  cv::Point_<int> src_point,
+			  cv::Size_<int> size)
+  {
+    cv::Mat accum_layer(size, CV_32FC1, 0);
+    std::cout << accum_layer << std::endl;
+    for(auto const& ref_pt : ref_points) {
+      //cv::line(
+    }
+    return accum_layer;
+  } 
+  
   
   /**
     Gets the hough r-table, i.e., the hough points minus reference 
@@ -114,20 +138,45 @@ namespace my
 
   cv::Mat get_accumulator(
 	std::vector<std::vector<cv::Point_<int> > > r_table,
-	std::vector<std::vector<cv::Point_<int> > > src_hough_points)
+	std::vector<std::vector<cv::Point_<int> > > src_hough_points,
+	cv::Size_<int> size)
   {
-    std::vector<std::vector<cv::Point_<int> > >  
-	  r_table = get_hough_points(src_templ, src_templ_edges);
-        
+    cv::Mat accum(size, CV_32FC1, cv::Scalar_<float>(0.0));
     for(auto const& quant_idx : {0,1,2,3}) {
-      for(auto & src_pt : src_hough_points) {
+      for(auto & src_pt : src_hough_points[quant_idx]) {
+	std::vector<cv::Point_<int> > ref_pts;
 	for(auto & pt_diff : r_table[quant_idx]) {
-	  cv::Point_<int> ref_pt = pt_diff + src_pt;
-	  std::cout << point << std::endl;
+	  ref_pts.push_back(pt_diff + src_pt);
+	}
+	cv::Mat accum_layer = my::get_accum_layer(ref_pts, src_pt,
+						  size);
+	accum += accum_layer;
+	return accum;
       }
     }
-    return r_table;
+    return accum;
   }
+  
+  void general_hough(const cv::Mat& src_templ, 
+		     const cv::Mat& src_templ_edges,
+		     const cv::Point_<int>& ref_point,
+		     const cv::Mat& src, 
+		     const cv::Mat& src_edges)
+  {
+    
+    std::vector<std::vector<cv::Point_<int> > > r_table = 
+		my::get_r_table(src_templ, src_templ_edges, ref_point);
+	      
+    std::vector<std::vector<cv::Point_<int> > > src_hough_points = 
+		my::get_hough_points(src, src_edges);
+		
+    cv::Size_<int> size = src.size();
+    
+    cv::Mat accumulator = my::get_accumulator(r_table, src_hough_points, 
+					      size);
+    my::display(accumulator);
+  }
+				      
   
 	  
 } /* namespace my */

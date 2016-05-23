@@ -5,6 +5,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <bitset>
+#include <unordered_set>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -36,22 +37,17 @@ int main(int argc, char **argv)
     findNonZero(templ_edges==127,ref_point_loc);
     Point ref_point(ref_point_loc.at<int>(0,0),
 		    ref_point_loc.at<int>(0,1));
-		    
-    cout << ref_point<< endl;
-    my::display(templ);
-    my::display(templ_edges);
-    
+		        
     string file_name = "Tg00301.pnm";
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
     Mat img = imread(img_path,1);
     double resize_koef = 256.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
-    
     Mat edges = my::get_edges_color_based(img);
-    cout << "here" << endl;
-    my::get_hough_points(img, edges);
-    my::display(img);
+    
+    my::general_hough(templ, templ_edges, ref_point, img, edges);
+    
   }
   catch( cv::Exception& e )
   {
