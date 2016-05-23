@@ -15,6 +15,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -114,14 +115,39 @@ namespace my
   */
 
   cv::Mat get_accum_layer(std::vector<cv::Point_<int> > ref_points,
-			  cv::Point_<int> src_point,
+			  cv::Point_<int> src_pt,
 			  cv::Size_<int> size)
   {
-    cv::Mat accum_layer(size, CV_32FC1, 0);
+    cv::Mat accum_layer(size, CV_32FC1, cv::Scalar_<float>(0.0));
     std::cout << accum_layer << std::endl;
     for(auto const& ref_pt : ref_points) {
-      //cv::line(
+      cv::Point_<double> pt1, pt2;
+      double a, b;
+      if (src_pt.x == ref_pt.x) {
+	pt1.x = pt2.x = src_pt.x;
+	pt1.y = 0;
+	pt2.y = size.height;
+      }
+      else {
+	a = (src_pt.y - ref_pt.y)/(src_pt.x - ref_pt.x);
+	b = (ref_pt.y*src_pt.x - src_pt.y*ref_pt.x)/
+						(src_pt.x - ref_pt.x);
+	if (std::abs(a) < 1) { // then use y = a*x + b
+	  pt1.x = 0;
+	  pt1.y = a*pt1.x + b;
+	  pt2.x = size.width;
+	  pt2.y = a*pt2.x + b;
+	}
+	else { // then use x = (y-b)/a
+	  pt1.y = 0;
+	  pt1.x = (pt1.y - b) / a;
+	  pt2.y = size.height;
+	  pt2.x = (pt2.y - b) / a;
+	}	 
+      } 
+      cv::line(accum_layer, pt1, pt2, cv::Scalar_<float>(255.0), 1);
     }
+    my::display(accum_layer);
     return accum_layer;
   } 
   
@@ -150,7 +176,7 @@ namespace my
 	}
 	cv::Mat accum_layer = my::get_accum_layer(ref_pts, src_pt,
 						  size);
-	accum += accum_layer;
+	//accum += accum_layer;
 	return accum;
       }
     }
