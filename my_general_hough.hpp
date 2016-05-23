@@ -97,7 +97,6 @@ namespace my
     for(auto & points : r_table) {
       for(auto & point : points) {
 	point = ref_point - point;
-	std::cout << point << std::endl;
       }
     }
     return r_table;
@@ -105,13 +104,12 @@ namespace my
  
 
    /**
-    Gets the hough r-table, i.e., the hough points minus reference 
-    point of the template.    
+    Gets a filled accumulator for one point. 
 
-    @param src_templ - A template image for the hough tranform.
-    @param src_edges - An edge image of the template image.
-    @param ref_point - Reference point of the template.
-    @return The r-table (vector of vector of [points - ref_point]).
+    @param ref_points - Possible reference points for a given src_pt.
+    @param src_pt - One feature point in the src_image.
+    @param size - Size of the src_image/accumulator.
+    @return One-layer accumulator for ref_points and src_pt.
   */
 
   cv::Mat get_accum_layer(std::vector<cv::Point_<int> > ref_points,
@@ -119,7 +117,6 @@ namespace my
 			  cv::Size_<int> size)
   {
     cv::Mat accum_layer(size, CV_32FC1, cv::Scalar_<float>(0.0));
-    std::cout << accum_layer << std::endl;
     for(auto const& ref_pt : ref_points) {
       cv::Point_<double> pt1, pt2;
       double a, b;
@@ -145,20 +142,21 @@ namespace my
 	  pt2.x = (pt2.y - b) / a;
 	}	 
       } 
-      cv::line(accum_layer, pt1, pt2, cv::Scalar_<float>(255.0), 1);
+      cv::line(accum_layer, pt1, pt2, cv::Scalar_<float>(1.0), 1);
     }
-    my::display(accum_layer);
     return accum_layer;
   } 
   
   
   /**
-    Gets the hough r-table, i.e., the hough points minus reference 
-    point of the template.    
+    Gets the hough accumulator source feature points and reference
+    points from the hough r-table.    
 
-    @param src_templ - A template image for the hough tranform.
-    @param src_edges - An edge image of the template image.
-    @param ref_point - Reference point of the template.
+    @param r_table - Reference point shifts grouped by their gradient
+		     orientations.
+    @param src_hough_points - Feature points grouped by their gradient
+			      orientations.
+    @param size - Size of the accumulator/source_image.
     @return The r-table (vector of vector of [points - ref_point]).
   */
 
@@ -176,13 +174,24 @@ namespace my
 	}
 	cv::Mat accum_layer = my::get_accum_layer(ref_pts, src_pt,
 						  size);
-	//accum += accum_layer;
-	return accum;
+	//std::cout << my::maxMat(accum_layer) << std::endl;
+	accum += accum_layer;
       }
+      //return accum;
     }
     return accum;
   }
   
+  /**
+    General Hough transform.    
+
+    @param src_templ - A template image for the hough tranform.
+    @param src_templ_edges - Edges for the template image.
+    @param ref_point - Reference point of the template.
+    @param src - Source image.
+    @param src_edges - Edges of the source image.
+    @return SO FAR: Displays the hough accumulator.
+  */
   void general_hough(const cv::Mat& src_templ, 
 		     const cv::Mat& src_templ_edges,
 		     const cv::Point_<int>& ref_point,
@@ -201,6 +210,7 @@ namespace my
     cv::Mat accumulator = my::get_accumulator(r_table, src_hough_points, 
 					      size);
     my::display(accumulator);
+    my::display(src);
   }
 				      
   
