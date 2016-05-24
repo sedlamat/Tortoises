@@ -278,7 +278,7 @@ namespace my
     mag_edges = my::get_scaled_CV_U8(mag_edges);
     std::cout << mag.type() << " " << mag_edges.type() << std::endl;
     //cv::GaussianBlur(BGR_minima, BGR_minima, cv::Size_<int>(0,0), 1);
-    cv::Canny(BGR_minima, edges, 0, 50);
+    cv::Canny(BGR_minima, edges, 0, 0);
     my::display(BGR_minima);
     cv::bitwise_and(edges, mag_edges, dst);
     //LOCAL THRESHOLDING !!!!
