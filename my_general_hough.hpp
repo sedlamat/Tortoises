@@ -1,8 +1,8 @@
 /**
   my_general_hough.hpp
 
-  Implementation of the generalized Hough transform, using OpenCV 
-  library.    
+  Implementation of the generalized Hough transform, using OpenCV
+  library.
 
   @author Matej Sedlacek
   @version 0.0
@@ -25,60 +25,79 @@
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
 
-namespace my 
-{		
+namespace my
+{
+    const int NUM_OF_QUANT_DIRECTIONS = 64;
 
-   /**
-    Gets the hough points, i.e., a vector (indexed by quantized 
-    gradient orientations - 0 to 3) of vector of points (the 
-    coordinates of edges).    
+    /**
+	Gets the hough points, i.e., a vector (indexed by quantized
+	gradient orientations - 0 to 3) of vector of points (the
+	coordinates of edges).
 
 
-    @param src - A color image.
-    @param src_edges -  An edge image of the color image.
-    @return Vector of vector of points generated from src and src_edges.
-  */
+	@param src - A color image.
+	@param src_edges -  An edge image of the color image.
+	@return Vector of vector of points generated from src and
+		src_edges.
+    */
 
-  std::vector<std::vector<cv::Point_<int> > >  get_hough_points(
-					       const cv::Mat& src, 
+    std::vector<std::vector<cv::Point_<int> > >  get_hough_points(
+					       const cv::Mat& src,
 					       const cv::Mat& src_edges)
-  {
-    cv::Mat orient = my::get_gradient_orientation(src);
-    std::vector<std::vector<cv::Point_<int> > > hough_points(4);
+    {
+	cv::Mat orient = my::get_gradient_orientation(src);
+	std::vector<std::vector<cv::Point_<int> > > hough_points(
+					    NUM_OF_QUANT_DIRECTIONS);
 
-    // orientations in [0, 360) => make [180, 360) to [0, 180), only
-    // direction needed (45deg is the same direction as 225deg)
-    // this prevents 45deg being 225deg with inverse intensity.
-    // inverse intesity changes orientation, do not want that.
-    // direction changes only if the edge changes.
-    
-    cv::Mat orient_adjust = (orient >= 180)/255;
-    orient_adjust.convertTo(orient_adjust,orient.depth());
-    orient += orient_adjust * -180;
-    my::display(orient);
-    // points are quantized from [0,180) into 0,1,2,3 indices
-    for(int yy = 0; yy < src_edges.rows; yy++) {
-      const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
-      for(int xx = 0; xx < src_edges.cols; xx++) {
-	if (ptr_src_edges_irow[xx]) {
-	  cv::Point_<int> pt(xx, yy);
-	  float phi = orient.at<float>(pt);
-	  int orient_quant_index;
-	  if (phi >= 157.5 || phi < 22.5) orient_quant_index = 0;
-	  else if (phi >= 22.5 && phi < 67.5) orient_quant_index = 1;
-	  else if (phi >= 67.5 && phi < 112.5) orient_quant_index = 2;
-	  else if (phi >= 112.5 && phi < 157.5) orient_quant_index = 3;
-	  else CV_Assert( !"Undefined orientation" );
-	  hough_points[orient_quant_index].push_back(pt);
+	// orientations in [0, 360) => make [180, 360) to [0, 180), only
+	// direction needed (45deg is the same direction as 225deg)
+	// this prevents 45deg being 225deg with inverse intensity.
+	// inverse intesity changes orientation, do not want that.
+	// direction changes only if the edge changes.
+
+	cv::Mat orient_adjust = (orient >= 180)/255;
+	orient_adjust.convertTo(orient_adjust,orient.depth());
+	orient += orient_adjust * -180;
+	//my::display(orient);
+	int max = 0;
+	float quant_width = 180.0 / NUM_OF_QUANT_DIRECTIONS;
+	// points are quantized from [0,180) into 0,1,2,3 indices
+	for (int yy = 0; yy < src_edges.rows; yy++) {
+	    const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
+	    for (int xx = 0; xx < src_edges.cols; xx++) {
+		if (ptr_src_edges_irow[xx]) {
+		    cv::Point_<int> pt(xx, yy);
+		    float phi = orient.at<float>(pt);
+		    int quant_idx = -1;
+		    if (phi >= 180 - quant_width/2 ||
+			phi < quant_width/2)
+			quant_idx = 0;
+		    else {
+			int idx = 1;
+			for (float quant_low_bound = quant_width/2;
+			     quant_low_bound < 180 - quant_width;
+			     quant_low_bound += quant_width) {
+			    if (phi >= quant_low_bound &&
+				phi < quant_low_bound + quant_width) {
+				quant_idx = idx;
+				break;
+			    }
+			    ++idx;
+			}
+		    }
+		    CV_Assert(quant_idx != -1&&"Undefined orientation");
+		    if (quant_idx > max) max = quant_idx;
+		    hough_points[quant_idx].push_back(pt);
+		}
+	    }
 	}
-      }
+	std::cout << max << std::endl;
+	return hough_points;
     }
-    return hough_points;
-  }  
-  
+
   /**
-    Gets the hough r-table, i.e., the hough points minus reference 
-    point of the template.    
+    Gets the hough r-table, i.e., the hough points minus reference
+    point of the template.
 
     @param src_templ - A template image for the hough tranform.
     @param src_edges - An edge image of the template image.
@@ -87,108 +106,123 @@ namespace my
   */
 
   std::vector<std::vector<cv::Point_<int> > >  get_r_table(
-				      const cv::Mat& src_templ, 
+				      const cv::Mat& src_templ,
 				      const cv::Mat& src_templ_edges,
 				      const cv::Point_<int>& ref_point)
   {
-    std::vector<std::vector<cv::Point_<int> > >  
+    std::vector<std::vector<cv::Point_<int> > >
 	  r_table = get_hough_points(src_templ, src_templ_edges);
-        
+
     for(auto & points : r_table) {
-      my::visualize_points(points, src_templ_edges.size());
+      //my::visualize_points(points, src_templ_edges.size());
       for(auto & point : points) {
 	point = ref_point - point;
       }
     }
     return r_table;
   }
- 
 
-   /**
-    Gets a filled accumulator for one point. 
 
-    @param ref_points - Possible reference points for a given src_pt.
-    @param src_pt - One feature point in the src_image.
-    @param size - Size of the src_image/accumulator.
-    @return One-layer accumulator for ref_points and src_pt.
-  */
+    /**
+	Gets a filled accumulator for one point.
 
-  cv::Mat get_accum_layer(std::vector<cv::Point_<int> > ref_points,
+	@param ref_points - Possible reference points for a given src_pt.
+	@param src_pt - One feature point in the src_image.
+	@param size - Size of the src_image/accumulator.
+	@return One-layer accumulator for ref_points and src_pt.
+    */
+
+    cv::Mat get_accum_layer(std::vector<cv::Point_<int> > ref_points,
 			  cv::Point_<int> src_pt,
 			  cv::Size_<int> size)
-  {
-    cv::Mat accum_layer(size, CV_32FC1, cv::Scalar_<float>(0.0));
-    for(auto const& ref_pt : ref_points) {
-      //std::cout << ref_pt << " " << src_pt << std::endl;
-      cv::Point_<double> pt1, pt2;
-      double a, b;
-      if (src_pt.x == ref_pt.x) {
-	pt1.x = pt2.x = src_pt.x;
-	pt1.y = 0;
-	pt2.y = size.height;
-      }
-      else {
-	a = (src_pt.y - ref_pt.y)/(src_pt.x - ref_pt.x);
-	b = (ref_pt.y*src_pt.x - src_pt.y*ref_pt.x)/
-						(src_pt.x - ref_pt.x);
-	if (std::abs(a) < 1) { // then use y = a*x + b
-	  pt1.x = 0;
-	  pt1.y = a*pt1.x + b;
-	  pt2.x = size.width;
-	  pt2.y = a*pt2.x + b;
+    {
+	cv::Mat accum_layer(size, CV_32FC1, cv::Scalar_<float>(0.0));
+	for(auto const& ref_pt : ref_points) {
+	    //std::cout << ref_pt << " " << src_pt << std::endl;
+	    cv::Point_<double> pt1, pt2;
+	    double a, b;
+	    if (src_pt.x == ref_pt.x) {
+		pt1.x = pt2.x = src_pt.x;
+		pt1.y = 0;
+		pt2.y = size.height;
+	    } else {
+		a = (src_pt.y - ref_pt.y)*1.0/(src_pt.x - ref_pt.x);
+		b = (ref_pt.y*src_pt.x - src_pt.y*ref_pt.x)*1.0/
+							(src_pt.x - ref_pt.x);
+		if (a == 0) {
+		    pt1.y = pt2.y = src_pt.y;
+		    pt1.x = 0;
+		    pt2.x = size.width;
+		} else if (std::abs(a) < 1) { // then use y = a*x + b
+		    //continue;
+		    pt1.x = 0;
+		    pt1.y = a*pt1.x + b;
+		    pt2.x = size.width;
+		    pt2.y = a*pt2.x + b;
+		} else { // then use x = (y-b)/a
+		    //continue;
+		    pt1.y = 0;
+		    pt1.x = (pt1.y - b) / a;
+		    pt2.y = size.height;
+		    pt2.x = (pt2.y - b) / a;
+		}
+	    }
+	    cv::line(accum_layer, pt1, pt2, cv::Scalar_<float>(1.0), 1);
 	}
-	else { // then use x = (y-b)/a
-	  pt1.y = 0;
-	  pt1.x = (pt1.y - b) / a;
-	  pt2.y = size.height;
-	  pt2.x = (pt2.y - b) / a;
-	}	 
-      } 
-      cv::line(accum_layer, pt1, pt2, cv::Scalar_<float>(1.0), 1);
+	return accum_layer;
     }
-    return accum_layer;
-  } 
-  
-  
-  /**
-    Gets the hough accumulator source feature points and reference
-    points from the hough r-table.    
 
-    @param r_table - Reference point shifts grouped by their gradient
-		     orientations.
-    @param src_hough_points - Feature points grouped by their gradient
+
+    /**
+	Gets the hough accumulator source feature points and reference
+	points from the hough r-table.
+
+	@param r_table - Reference point shifts grouped by their gradient
+			 orientations.
+	@param src_hough_points - Feature points grouped by their gradient
 			      orientations.
-    @param size - Size of the accumulator/source_image.
-    @return The r-table (vector of vector of [points - ref_point]).
-  */
+	@param size - Size of the accumulator/source_image.
+	@return The r-table (vector of vector of [points - ref_point]).
+    */
 
-  cv::Mat get_accumulator(
+    cv::Mat get_accumulator(
 	std::vector<std::vector<cv::Point_<int> > > r_table,
 	std::vector<std::vector<cv::Point_<int> > > src_hough_points,
 	cv::Size_<int> size)
-  {
-    cv::Mat accum(size, CV_32FC1, cv::Scalar_<float>(0.0));
-    for(auto const& quant_idx : {0,1,2,3}) {
-      my::visualize_points(src_hough_points[quant_idx], size);
-      for(auto & src_pt : src_hough_points[quant_idx]) {
-	std::vector<cv::Point_<int> > ref_pts;
-	for(auto & pt_diff : r_table[quant_idx]) {
-	  ref_pts.push_back(pt_diff + src_pt);
+    {
+	cv::Mat accum(size, CV_32FC1, cv::Scalar_<float>(0.0));
+	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
+	for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
+	    my::visualize_points(src_hough_points[quant_idx], size);
+	    cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
+	    for(auto & src_pt : src_hough_points[quant_idx]) {
+		std::vector<cv::Point_<int> > ref_pts;
+		for(auto & pt_diff : r_table[quant_idx]) {
+		    // OPTIONAL - ref_point of the template inside img
+		    if (src_rect.contains(pt_diff + src_pt))
+			ref_pts.push_back(pt_diff + src_pt);
+		}
+		cv::Mat accum_single = my::get_accum_layer(ref_pts, src_pt,
+							  size);
+		//std::cout << my::maxMat(accum_layer) << std::endl;
+		//my::display(accum_single);
+		//exit(1);
+		//my::display(accum_quant);
+		//cv::bitwise_or(accum_quant,accum_single,accum_quant);
+		accum_quant += accum_single;
+		//my::display(accum_quant);
+	    }
+	    //cv::threshold(accum_quant, accum_quant, 1, 1, cv::THRESH_BINARY);
+	    //return accum;
+	    accum += accum_quant;
 	}
-	cv::Mat accum_layer = my::get_accum_layer(ref_pts, src_pt,
-						  size);	
-	//std::cout << my::maxMat(accum_layer) << std::endl;
-	accum += accum_layer;
-      }
-      //return accum;
+	cv::Mat kernel(5, 5, CV_32F, cv::Scalar_<float>(1));
+	cv::filter2D(accum, accum, CV_32F, kernel);
+	return accum;
     }
-    cv::Mat kernel(5, 5, CV_32F, cv::Scalar_<float>(1));
-    cv::filter2D(accum, accum, CV_32F, kernel);
-    return accum;
-  }
-  
+
   /**
-    General Hough transform.    
+    General Hough transform.
 
     @param src_templ - A template image for the hough tranform.
     @param src_templ_edges - Edges for the template image.
@@ -197,22 +231,22 @@ namespace my
     @param src_edges - Edges of the source image.
     @return SO FAR: Displays the hough accumulator.
   */
-  void general_hough(const cv::Mat& src_templ, 
+  void general_hough(const cv::Mat& src_templ,
 		     const cv::Mat& src_templ_edges,
 		     const cv::Point_<int>& ref_point,
-		     const cv::Mat& src, 
+		     const cv::Mat& src,
 		     const cv::Mat& src_edges)
   {
-    
-    std::vector<std::vector<cv::Point_<int> > > r_table = 
+
+    std::vector<std::vector<cv::Point_<int> > > r_table =
 		my::get_r_table(src_templ, src_templ_edges, ref_point);
-	      
-    std::vector<std::vector<cv::Point_<int> > > src_hough_points = 
+
+    std::vector<std::vector<cv::Point_<int> > > src_hough_points =
 		my::get_hough_points(src, src_edges);
-		
+
     cv::Size_<int> size = src.size();
-    
-    cv::Mat accumulator = my::get_accumulator(r_table, src_hough_points, 
+
+    cv::Mat accumulator = my::get_accumulator(r_table, src_hough_points,
 					      size);
     my::display(accumulator);
     my::display(src);
@@ -220,29 +254,29 @@ namespace my
     my::display(src_templ);
     my::display(src_templ_edges);
   }
-				      
-  
-	  
+
+
+
 } /* namespace my */
 
 
 #endif /* _MY_GENERAL_HOUGH_HPP_ */
 
-//~ 
+//~
 //~ struct Rpoint
-//~ { 
+//~ {
 	//~ int dx;
 	//~ int dy;
 	//~ float phi;
 //~ };
-//~ 
+//~
 //~ struct Rpoint2
 //~ {
 	//~ float x;
 	//~ float y;
 	//~ int phiindex;
 //~ };
-//~ 
+//~
 //~ class generalHough
 //~ {
 //~ private:
@@ -275,13 +309,13 @@ namespace my
 	//~ // dimension in pixels of squares in image
 	//~ int m_nRangeXY;
 	//~ // interval to increase scale
-	//~ int m_nRangeS;	
+	//~ int m_nRangeS;
   //~ // accumulator limiting conditions
   //~ float m_fLeftAccumBndryXCoor;
   //~ float m_fRightAccumBndryXCoor;
-//~ 
+//~
 //~ public:
-//~ 
+//~
   //~ void Init(int nTmplWidthMin, int nTmplWidthMax, int nRangeS, int nRangeXY, int nIntervals, float fLeftAccumBndryXCoor, float fRightAccumBndryXCoor)
   //~ {
     //~ m_nTmplWidthMin = nTmplWidthMin;
@@ -293,7 +327,7 @@ namespace my
     //~ m_fRightAccumBndryXCoor = (fRightAccumBndryXCoor/(m_nRangeXY))+1;
     //~ m_fWidthOfAPhiInterval = 180.0f/m_nIntervals;
   //~ }
-//~ 
+//~
 	//~ GenHoughTrnf(string strTmplContourFileName, string strTmplImgFileName, string strEdgeImgFileName, string strImgFileName)
   //~ {
     //~ m_strTmplContourFileName = strTmplContourFileName;
@@ -302,7 +336,7 @@ namespace my
     //~ m_strEdgeImgFileName     = strEdgeImgFileName;
     //~ Init(150,300,5,4,16,-1.0f,INT_MAX*1.0f);
 	//~ }
-//~ 
+//~
 	//~ // show the best candidate detected on image
   //~ CImg<int> bestCandidate(point2dCoor &sAccumMax, int &nRotationAngleMax, float &fWidthRatioMax, int &nTemplateWidth)
   //~ {
@@ -319,7 +353,7 @@ namespace my
     //~ maxval = m_accum.max();
     //~ //m_accum.get_channel(ch).display();
 		//~ int nl= edges.height();
-		//~ int nc= edges.width(); 
+		//~ int nc= edges.width();
 		//~ Vec2i referenceP = Vec2i(id_max[0]*m_nRangeXY+(m_nRangeXY+1)/2, id_max[1]*m_nRangeXY+(m_nRangeXY+1)/2);
 		//~ // rotate and scale points all at once. Then impress them on image
 		//~ std::vector<std::vector<Vec2i>> Rtablerotatedscaled(m_nIntervals);
@@ -350,18 +384,18 @@ namespace my
 					      //~ edges(x+i,y+j,2) = 0;
             //~ }
           //~ }
-//~ 
+//~
 				//~ }
 			//~ }
     //~ }
     //~ //edges.display();
     //~ return edges;
 	//~ }
-//~ 
+//~
   	//~ // show the best candidate detected on image
   //~ CImg<int> bestCandidateFromGivenPoints(point2dCoor &sAccumMax, int &nRotationAngleMax,
     //~ float &fWidthRatioMax, int &nTemplateWidth, const CImg<int> &imgPossibleJunctionPreciseLocations)
-  //~ {    
+  //~ {
     //~ int nNumOfPossibleJunctions = imgPossibleJunctionPreciseLocations.height();
     //~ CImg<int> selectedPointsAccum(m_accum.width(),nNumOfPossibleJunctions,1,m_accum.spectrum(),0);
     //~ cout << nNumOfPossibleJunctions << endl;
@@ -381,7 +415,7 @@ namespace my
     //~ CImg<unsigned char> edges(m_strImgFileName.c_str());
 		//~ double maxval;
     //~ int S = static_cast<int>( ceil(static_cast<float>(m_nTmplWidthMax-m_nTmplWidthMin)/m_nRangeS+1.0f) );
-    //~ //get coordinates of the accum minimum 
+    //~ //get coordinates of the accum minimum
     //~ int ch = static_cast<int>( m_accum.get_stats()(11) );
     //~ int nMaxXCoor = static_cast<int>(selectedPointsAccum.get_stats()(8));
     //~ int nMaxYCoor = imgPossibleJunctionPreciseLocations(static_cast<int>(selectedPointsAccum.get_stats()(9)));
@@ -392,7 +426,7 @@ namespace my
     //~ maxval = m_accum.max();
     //~ //m_accum.get_channel(ch).display();
 		//~ int nl= edges.height();
-		//~ int nc= edges.width(); 
+		//~ int nc= edges.width();
 		//~ Vec2i referenceP = Vec2i(id_max[0]*m_nRangeXY+(m_nRangeXY+1)/2, id_max[1]);
 		//~ // rotate and scale points all at once. Then impress them on image
 		//~ std::vector<std::vector<Vec2i>> Rtablerotatedscaled(m_nIntervals);
@@ -423,22 +457,22 @@ namespace my
 					      //~ edges(x+i,y+j,2) = 0;
             //~ }
           //~ }
-//~ 
+//~
 				//~ }
 			//~ }
     //~ }
     //~ //edges.display();
     //~ return edges;
 	//~ }
-//~ 
+//~
   //~ void runGHT(bool bMoreAngles)
   //~ {
 		//~ createRtable();
 		//~ accumulate(bMoreAngles);
   //~ }
-//~ 
+//~
 //~ private:
-  //~ 
+  //~
   //~ void createRtable()
   //~ {
 		//~ // code can be improved reading a pre-saved Rtable
@@ -446,11 +480,11 @@ namespace my
 		//~ readRtable();
     //~ //visuRtable();
 	//~ }
-//~ 
+//~
 	//~ // fill accumulator matrix
 	//~ void accumulate(bool bMoreAngles)
   //~ {
-    //~ //cout <<    m_nTmplWidthMin  << " " <<  m_nTmplWidthMax << " " <<  m_nRangeS << " " <<  m_nRangeXY  << " " <<   m_nIntervals  << " " 
+    //~ //cout <<    m_nTmplWidthMin  << " " <<  m_nTmplWidthMax << " " <<  m_nRangeS << " " <<  m_nRangeXY  << " " <<   m_nIntervals  << " "
     //~ //  <<   m_fLeftAccumBndryXCoor << " " <<   m_fRightAccumBndryXCoor << " " << m_fWidthOfAPhiInterval << endl;
     //~ //m_nTmplWidthMin = wtemplate;
     //~ Mat input_img = imread(m_strImgFileName.c_str(), 1);
@@ -460,7 +494,7 @@ namespace my
 		//~ // transform image to grayscale:
 		//~ Mat src_gray;
 		//~ src_gray.create( Size(input_img.cols, input_img.rows), CV_8UC1);
-		//~ cvtColor(input_img, src_gray, CV_BGR2GRAY); 
+		//~ cvtColor(input_img, src_gray, CV_BGR2GRAY);
 		//~ // get Scharr matrices from image to obtain contour gradients
 		//~ Mat dx;
 		//~ dx.create( Size(input_img.cols, input_img.rows), CV_16SC1);
@@ -476,7 +510,7 @@ namespace my
 		//~ float inv_m_nRangeXY = (float)1/m_nRangeXY;
 		//~ std::vector<Rpoint2> pts2;
 		//~ for (int j=0; j<nl; ++j) {
-			//~ for (int i=0; i<nc; ++i) {  		
+			//~ for (int i=0; i<nc; ++i) {
         //~ if ( edges(i,j) == 255  ) // consider only white points (contour)
 				//~ {
 					//~ short vx = dx.at<short>(j,i);
@@ -485,8 +519,8 @@ namespace my
 					//~ rpt.x = i*inv_m_nRangeXY;
 					//~ rpt.y = j*inv_m_nRangeXY;
 					//~ float a = static_cast<float>(atan2((float)vy, (float)vx)*180.0f/PI);
-					//~ float phi = ((a > 0) ? a : a + 180.0f );    
-					//~ int angleindex = (int)(phi/m_fWidthOfAPhiInterval); 
+					//~ float phi = ((a > 0) ? a : a + 180.0f );
+					//~ int angleindex = (int)(phi/m_fWidthOfAPhiInterval);
 					//~ if (angleindex == m_nIntervals) angleindex=m_nIntervals-1;
 					//~ rpt.phiindex = angleindex;
 					//~ pts2.push_back( rpt );
@@ -512,7 +546,7 @@ namespace my
 		//~ float inv_wtemplate_m_nRangeXY = (float)1/(wtemplate*m_nRangeXY);
 		//~ // rotate RTable from minimum to maximum angle
     //~ int sliceNum = 0;
-		//~ for (int r=0; r<R; ++r) 
+		//~ for (int r=0; r<R; ++r)
     //~ {  // rotation
       //~ //cout << r << endl;
 			//~ std::vector<std::vector<Vec2f>> Rtablerotated(m_nIntervals);
@@ -530,30 +564,30 @@ namespace my
 				  //~ }
 			  //~ }
 			  //~ // scale the rotated RTable from minimum to maximum scale
-			  //~ for (int s=0; s<S; ++s) 
+			  //~ for (int s=0; s<S; ++s)
         //~ {  // scale
           //~ //cout << s << endl;
           //~ CImg<int> accumSlice(X,Y,1,1, 0);
 				  //~ std::vector<std::vector<Vec2f>> Rtablescaled(m_nIntervals);
 				  //~ int w = m_nTmplWidthMin + s*m_nRangeS;
-          //~ int h = static_cast<int>(htemplate*(1.0*w/wtemplate)/m_nRangeXY);  
+          //~ int h = static_cast<int>(htemplate*(1.0*w/wtemplate)/m_nRangeXY);
           //~ //cout << h << " " <<  nl << endl;
-				  //~ float wratio = (float)w*inv_wtemplate_m_nRangeXY;	
+				  //~ float wratio = (float)w*inv_wtemplate_m_nRangeXY;
           //~ //cout << "sliceNum " << sliceNum << " wratio " <<  wratio <<" angleInDegrees " <<angleInDegrees<< endl;
 				  //~ for (std::vector<std::vector<Vec2f>>::size_type ii = 0; ii < Rtablerotated.size(); ++ii){
 					  //~ for (std::vector<Vec2f>::size_type jj= 0; jj < Rtablerotated[ii].size(); ++jj){
-						  //~ Rtablescaled[ii].push_back(Vec2f(wratio*Rtablerotated[ii][jj][0], wratio*Rtablerotated[ii][jj][1]));	
+						  //~ Rtablescaled[ii].push_back(Vec2f(wratio*Rtablerotated[ii][jj][0], wratio*Rtablerotated[ii][jj][1]));
 					  //~ }
 				  //~ }
 				  //~ // iterate through each point of edges and hit corresponding cells from rotated and scaled Rtable
 				  //~ for (vector<Rpoint2>::size_type t = 0; t < pts2.size(); ++t)
-          //~ { // XY plane		
+          //~ { // XY plane
 					  //~ int angleindex = pts2[t].phiindex;
 					  //~ for (std::vector<Vec2f>::size_type index = 0; index < Rtablescaled[angleindex].size(); ++index){
 						  //~ float deltax = Rtablescaled[angleindex][index][0];
 						  //~ //float deltax = Rtable[angleindex][index][0];
-						  //~ float deltay = Rtablescaled[angleindex][index][1];							
-						  //~ //float deltay = Rtable[angleindex][index][1];							
+						  //~ float deltay = Rtablescaled[angleindex][index][1];
+						  //~ //float deltay = Rtable[angleindex][index][1];
 						  //~ int xcell = (int)(pts2[t].x + deltax);
 						  //~ int ycell = (int)(pts2[t].y + deltay);
               //~ if(bMoreAngles)
@@ -592,11 +626,11 @@ namespace my
     //~ CImg<unsigned char> template_img (m_strTmplContourFileName.c_str());
 		//~ // find reference point inside contour image and save it in variable refPoint
 		//~ int nl= template_img.height();
-		//~ int nc= template_img.width(); 
-		//~ for (int j=0; j<nl; ++j) 
+		//~ int nc= template_img.width();
+		//~ for (int j=0; j<nl; ++j)
     //~ {
-			//~ for (int i=0; i<nc; ++i) 
-      //~ {  		
+			//~ for (int i=0; i<nc; ++i)
+      //~ {
 				//~ if ( template_img(i,j) == 127 )
         //~ {
 					//~ refPointX = i;
@@ -609,7 +643,7 @@ namespace my
     //~ Mat original_img = imread(m_strTmplImgFileName.c_str(), 1);
 		//~ Mat input_img_gray;
 		//~ input_img_gray.create( Size(original_img.cols, original_img.rows), CV_8UC1);
-		//~ cvtColor(original_img, input_img_gray, CV_BGR2GRAY); 
+		//~ cvtColor(original_img, input_img_gray, CV_BGR2GRAY);
 		//~ Mat dx;
 		//~ dx.create( Size(original_img.cols, original_img.rows), CV_16SC1);
 		//~ Sobel(input_img_gray, dx, CV_16S, 1, 0, CV_SCHARR);
@@ -621,12 +655,12 @@ namespace my
 		//~ int mindx = INT_MAX;
 		//~ int maxdx = INT_MIN;
     //~ int mindy = INT_MAX;
-    //~ int maxdy = INT_MIN; 
-		//~ for (int j=0; j<nl; ++j) 
+    //~ int maxdy = INT_MIN;
+		//~ for (int j=0; j<nl; ++j)
     //~ {
 			//~ for (int i=0; i<nc; ++i)
-      //~ {  		
-				//~ if ( template_img(i,j) == 255  ) 
+      //~ {
+				//~ if ( template_img(i,j) == 255  )
 				//~ {
 					//~ short vx = dx.at<short>(j,i);
 					//~ short vy = dy.at<short>(j,i);
@@ -648,29 +682,29 @@ namespace my
     //~ htemplate = maxdy-mindy+1;
 		//~ wtemplate = maxdx-mindx+1;
 	//~ }
-//~ 
+//~
 	//~ // create Rtable from contour points
 	//~ void readRtable()
   //~ {
 		//~ Rtable.clear();
 		//~ Rtable.resize(m_nIntervals);
-		//~ // put points in the right interval, according to discretized angle and range size 
+		//~ // put points in the right interval, according to discretized angle and range size
 		//~ for (vector<Rpoint>::size_type t = 0; t < pts.size(); ++t)
     //~ {
       //~ // an interval is assigned to the phi angles
-			//~ int angleindex = (int)(pts[t].phi/m_fWidthOfAPhiInterval); 
+			//~ int angleindex = (int)(pts[t].phi/m_fWidthOfAPhiInterval);
       //~ // if angleindex == m_nIntervals, than phi==180 would form a separate interval, can joint the the m_nIntervals-1
 			//~ if (angleindex == m_nIntervals) angleindex=m_nIntervals-1;
 			//~ Rtable[angleindex].push_back( Vec2i(pts[t].dx, pts[t].dy) );
 		//~ }
 	//~ }
-//~ 
+//~
 	//~ // create Rtable from contour points
 	//~ void visuRtable()
   //~ {
     //~ CImg<int> contour(m_strTmplContourFileName.c_str()),RTabelRes(contour.width(),contour.height(),1,1, 0);
     //~ int nl= contour.height();
-	  //~ int nc= contour.width();  
+	  //~ int nc= contour.width();
 		//~ for (std::vector<std::vector<Vec2i>>::size_type ii = 0; ii < Rtable.size(); ++ii)
     //~ {
 			//~ for (std::vector<Vec2i>::size_type jj= 0; jj < Rtable[ii].size(); ++jj)
@@ -687,11 +721,11 @@ namespace my
 		//~ }
     //~ (RTabelRes, contour).display("RTable & contour");
 	//~ }
-//~ 
+//~
 	//~ inline int roundToInt(double num) {
 		//~ return (num > 0.0) ? (int)(num + 0.5) : (int)(num - 0.5);
 	//~ }
-//~ 
+//~
   //~ bool isGoodAngle(int angle)
   //~ {
     //~ if( (angle >= 355 || angle < 5) && !(angle%2)) return 1;

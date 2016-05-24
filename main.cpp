@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <bitset>
 #include <unordered_set>
+#include <stdio.h>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -22,22 +23,22 @@ using namespace cv;
 
 int main(int argc, char **argv)
 
-{ 
+{
   try
   {
     passwd* pw = getpwuid(getuid());
     string path(pw->pw_dir);
-    
+
     string ght_path = path + "/Images/Generalized_Hough_Transform/";
     string templ_path = ght_path + "ght_template.bmp";
-    string templ_edges_path = ght_path + "ght_template_edges.bmp";
+    string templ_edges_path = ght_path + "ght_template_edges2.bmp";
     Mat templ = imread(templ_path, 0);
     Mat templ_edges = imread(templ_edges_path, 0);
     Mat ref_point_loc;
     findNonZero(templ_edges==127,ref_point_loc);
     Point ref_point(ref_point_loc.at<int>(0,0),
 		    ref_point_loc.at<int>(0,1));
-		        
+
     string file_name = "Tg00301.pnm";
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
@@ -45,9 +46,9 @@ int main(int argc, char **argv)
     double resize_koef = 512.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     Mat edges = my::get_edges_color_based(img);
-    
+
     my::general_hough(templ, templ_edges, ref_point, img, edges);
-    
+
   }
   catch( cv::Exception& e )
   {
@@ -67,7 +68,7 @@ void oneTortoiseRecognition(string imgDirectory, string tortoiseName, string pro
 
 		cout << tortoiseName << " ... STARTS." << endl;
 
-    testudoGraeca.Recognition();	
+    testudoGraeca.Recognition();
     //testudoGraeca.Classification();
 
 		cout << tortoiseName << " ... DONE." << endl;
@@ -93,7 +94,7 @@ int main(int argc, char *argv[])
     {
       imgDirectory.assign("C:\\Users\\Matej\\Documents\\Zelvy\\ZelvyFotky\\TestudoGraecaBenderCizp1304pnmOnlyGood\\");
     }
-	  
+
     Classification();
     return 1;
     //kNNclassifier();
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
        //char tortoiseName[10] = {'T' , 'g' , 1+48,  9+48, 0+48, 0+48 , 6+48 };
        //char tortoiseName[10] = {'T' , 'g' , 5+48,  9+48, 6+48, 0+48 , 0+48 };
 			 //char tortoiseName[10] = {'T' , 'g' , 3+48, 6+48,7+48, 0+48 , 0+48 };
-			 char tortoiseName[10] = {'T' , 'g' , 0+48, 2+48, 7+48, 0+48 ,1+48 }; 
+			 char tortoiseName[10] = {'T' , 'g' , 0+48, 2+48, 7+48, 0+48 ,1+48 };
         oneTortoiseRecognition(imgDirectory, tortoiseName,processID);
 		  }
 		  else if (DoMore)

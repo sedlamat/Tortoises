@@ -1,11 +1,11 @@
 [file_prefs]
 final_new_line=true
 ensure_convert_new_lines=false
-strip_trailing_spaces=false
+strip_trailing_spaces=true
 replace_tabs=false
 
 [indentation]
-indent_width=2
+indent_width=4
 indent_type=2
 indent_hard_tab_width=8
 detect_indent=false
@@ -24,9 +24,12 @@ long_line_column=72
 
 [files]
 current_page=2
-FILE_NAME_0=2154;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;2
-FILE_NAME_1=255;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmain.cpp;0;2
-FILE_NAME_2=2763;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_general_hough.hpp;0;2
+FILE_NAME_0=7507;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;2
+FILE_NAME_1=818;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmain.cpp;0;2
+FILE_NAME_2=1503;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FProjects%2FTortoises%2Fmy_general_hough.hpp;0;2
+FILE_NAME_3=3839;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fimgproc%2Fimgproc.hpp;0;2
+FILE_NAME_4=104226;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fcore.hpp;0;2
+FILE_NAME_5=657;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fhighgui%2Fhighgui.hpp;0;2
 
 [build-menu]
 EX_00_LB=_Execute
