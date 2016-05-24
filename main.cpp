@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
     string ght_path = path + "/Images/Generalized_Hough_Transform/";
     string templ_path = ght_path + "ght_template.bmp";
-    string templ_edges_path = ght_path + "ght_template_edges2.bmp";
+    string templ_edges_path = ght_path + "ght_template_edges1.bmp";
     Mat templ = imread(templ_path, 0);
     Mat templ_edges = imread(templ_edges_path, 0);
     Mat ref_point_loc;
@@ -39,14 +39,14 @@ int main(int argc, char **argv)
     Point ref_point(ref_point_loc.at<int>(0,0),
 		    ref_point_loc.at<int>(0,1));
 
-    string file_name = "Tg00301.pnm";
+    string file_name = "Tg38900.pnm";
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
     Mat img = imread(img_path,1);
     double resize_koef = 512.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     Mat edges = my::get_edges_color_based(img);
-
+    my::display(edges);
     my::general_hough(templ, templ_edges, ref_point, img, edges);
 
   }
