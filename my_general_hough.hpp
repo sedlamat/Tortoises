@@ -27,7 +27,8 @@
 
 namespace my
 {
-    const int NUM_OF_QUANT_DIRECTIONS = 4;
+    const int NUM_OF_QUANT_DIRECTIONS = 8;
+    const int NUM_OF_SCALES = 100;
 
     /**
 	Gets the hough points, i.e., a vector (indexed by quantized
@@ -195,37 +196,71 @@ namespace my
 	cv::Mat ref_pt_mask)
     {
 	CV_Assert(ref_pt_mask.size() == size);
-	cv::Mat accum(size, CV_32FC1, cv::Scalar_<float>(0.0));
+	const int sizes[3] = {size.height, size.width, NUM_OF_SCALES};
+	cv::Mat accum(3, sizes, CV_32F, cv::Scalar_<float>(0.0));
+	std::cout << accum.channels() << std::endl;
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
-	for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
-	    //my::visualize_points(src_hough_points[quant_idx], size);
-	    cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
-	    for(auto & src_pt : src_hough_points[quant_idx]) {
-		std::vector<cv::Point_<int> > ref_pts;
-		for(auto & pt_diff : r_table[quant_idx]) {
-		    // OPTIONAL - ref_point of the template inside img
-		    cv::Point_<int> ref_pt(pt_diff + src_pt);
-		    if (src_rect.contains(ref_pt) &&
-			ref_pt_mask.at<int>(ref_pt))
-			ref_pts.push_back(ref_pt);
+	float scale = 1.0/NUM_OF_SCALES;
+	int ii = 0;
+	for (float s = scale; s < 1 + scale; s += scale, ii++) {
+
+	    //std::cout << s << std::endl;
+	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
+
+		std::cout << quant_idx << std::endl;
+		//my::visualize_points(src_hough_points[quant_idx], size);
+		//cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
+		for(auto & src_pt : src_hough_points[quant_idx]) {
+		    //std::vector<cv::Point_<int> > ref_pts;
+		    for(auto & pt_diff : r_table[quant_idx]) {
+
+			// OPTIONAL - ref_point of the template inside img
+			cv::Point_<int> ref_pt(pt_diff*s + src_pt);
+			//std::cout << pt_diff*s << std::endl;
+			float multiplier = 1.0;
+			if (src_rect.contains(ref_pt) &&
+			    ref_pt_mask.at<int>(ref_pt)) {
+			    //std::cout << ii << std::endl;
+			    accum.at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
+			    //std::cout << accum.at<float>(ref_pt.y, ref_pt.x) << std::endl;//+= 1.0;
+			}
+			//std::cout << pt_diff*s << std::endl;
+			    //ref_pts.push_back(ref_pt);
+		    }
+		    //cv::Mat accum_single = my::get_accum_layer(ref_pts, src_pt,
+							    //  size);
+		    //std::cout << my::maxMat(accum_layer) << std::endl;
+		    //my::display(accum_single);
+		    //exit(1);
+		    //my::display(accum_quant);
+		    //cv::bitwise_or(accum_quant,accum_single,accum_quant);
+		    //accum_quant += accum_single;
+		    //my::display(accum_quant);
 		}
-		cv::Mat accum_single = my::get_accum_layer(ref_pts, src_pt,
-							  size);
-		//std::cout << my::maxMat(accum_layer) << std::endl;
-		//my::display(accum_single);
-		//exit(1);
+		//cv::threshold(accum_quant, accum_quant, 1, 1, cv::THRESH_BINARY);
+		//return accum;
 		//my::display(accum_quant);
-		//cv::bitwise_or(accum_quant,accum_single,accum_quant);
-		accum_quant += accum_single;
-		//my::display(accum_quant);
+		//accum += accum_quant;
+
 	    }
-	    //cv::threshold(accum_quant, accum_quant, 1, 1, cv::THRESH_BINARY);
-	    //return accum;
-	    //my::display(accum_quant);
-	    accum += accum_quant;
 	}
-	cv::Mat kernel(3, 3, CV_32F, cv::Scalar_<float>(1));
-	cv::filter2D(accum, accum, CV_32F, kernel);
+	cv::Mat dst;
+
+
+	for (int ii = 0; ii < NUM_OF_SCALES; ++ii) {
+	    cv::Mat channel(size, CV_32FC1);
+	    for (int xx = 0; xx < size.width; ++xx) {
+		for (int yy = 0; yy < size.height; ++yy) {
+		    channel.at<float>(yy, xx) = accum.at<float>(yy, xx, ii);
+
+		}
+	    }
+	    cv::Mat kernel(50,50, CV_32F, cv::Scalar_<float>(-1.0));
+	    cv::rectangle(kernel,cv::Point_<int>(20,20),cv::Point_<int>(30,30), cv::Scalar_<float>(1.0), cv::CV_FILLED);
+	    cv::filter2D(channel, channel, CV_32F, kernel);
+	    std::cout << my::maxMat(channel) << std::endl;
+	    my::display(channel);
+	}
 	return accum;
     }
 
@@ -261,21 +296,32 @@ namespace my
     cv::Mat accumulator = my::get_accumulator(r_table, src_hough_points,
 					      size, ref_pt_mask);
 
-    my::display(accumulator);
+    //my::display(accumulator);
 
-    cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
-		  255, cv::THRESH_BINARY);
+    //cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
+	//	  255, cv::THRESH_BINARY);
     //my::display(ref_pt_mask);
 
+    //~ for(int ii = 0; ii < 10; ii++) {
+	//~ accumulator = my::get_accumulator(r_table, src_hough_points,
+				      //~ size, ref_pt_mask);
+	//~ cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
+		  //~ 255, cv::THRESH_BINARY);
+	//~ my::display(accumulator);
+    //~ }
+ /*   cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
+		  255, cv::THRESH_BINARY);
+    my::display(ref_pt_mask);
+
     accumulator = my::get_accumulator(r_table, src_hough_points,
-					      size, ref_pt_mask);
-
-    my::display(accumulator);
-
-    my::display(src);
-    my::display(src_edges);
-    my::display(src_templ);
-    my::display(src_templ_edges);
+				      size, ref_pt_mask);
+*/
+    //~ my::display(accumulator);
+//~
+    //~ my::display(src);
+    //~ my::display(src_edges);
+    //~ my::display(src_templ);
+    //~ my::display(src_templ_edges);
   }
 
 
