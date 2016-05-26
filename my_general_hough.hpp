@@ -27,7 +27,7 @@
 
 namespace my
 {
-    const int NUM_OF_QUANT_DIRECTIONS = 8;
+    const int NUM_OF_QUANT_DIRECTIONS = 4;
     const int NUM_OF_SCALES = 100;
 
     /**
@@ -197,12 +197,15 @@ namespace my
     {
 	CV_Assert(ref_pt_mask.size() == size);
 	const int sizes[3] = {size.height, size.width, NUM_OF_SCALES};
-	cv::Mat accum(3, sizes, CV_32F, cv::Scalar_<float>(0.0));
-	std::cout << accum.channels() << std::endl;
+	cv::Mat accum[NUM_OF_QUANT_DIRECTIONS];
+	for (int ii = 0; ii < NUM_OF_QUANT_DIRECTIONS; ++ii) {
+	    accum[ii] = cv::Mat(3, sizes, CV_32F, cv::Scalar_<float>(0.0));
+	}
+
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
 	float scale = 1.0/NUM_OF_SCALES;
 	int ii = 0;
-	for (float s = scale; s < 1 + scale; s += scale, ii++) {
+	for (float s = 0.3; s < 1 + scale; s += scale, ii++) {
 
 	    //std::cout << s << std::endl;
 	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
@@ -210,18 +213,21 @@ namespace my
 		std::cout << quant_idx << std::endl;
 		//my::visualize_points(src_hough_points[quant_idx], size);
 		//cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
-		for(auto & src_pt : src_hough_points[quant_idx]) {
+		float quant_num = r_table[quant_idx].size();
+		std::cout << quant_num << std::endl;
+		for(auto & pt_diff : r_table[quant_idx]) {
 		    //std::vector<cv::Point_<int> > ref_pts;
-		    for(auto & pt_diff : r_table[quant_idx]) {
+
+		    for(auto & src_pt : src_hough_points[quant_idx]) {
 
 			// OPTIONAL - ref_point of the template inside img
 			cv::Point_<int> ref_pt(pt_diff*s + src_pt);
 			//std::cout << pt_diff*s << std::endl;
-			float multiplier = 1.0;
 			if (src_rect.contains(ref_pt) &&
 			    ref_pt_mask.at<int>(ref_pt)) {
 			    //std::cout << ii << std::endl;
-			    accum.at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
+			    if (accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) < quant_num)
+				accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
 			    //std::cout << accum.at<float>(ref_pt.y, ref_pt.x) << std::endl;//+= 1.0;
 			}
 			//std::cout << pt_diff*s << std::endl;
@@ -248,20 +254,21 @@ namespace my
 
 
 	for (int ii = 0; ii < NUM_OF_SCALES; ++ii) {
-	    cv::Mat channel(size, CV_32FC1);
+	    cv::Mat channel(size, CV_32FC1, cv::Scalar_<float>(1.0));
 	    for (int xx = 0; xx < size.width; ++xx) {
 		for (int yy = 0; yy < size.height; ++yy) {
-		    channel.at<float>(yy, xx) = accum.at<float>(yy, xx, ii);
-
+		    for (int quant_ii = 0; quant_ii < NUM_OF_QUANT_DIRECTIONS; ++quant_ii) {
+			channel.at<float>(yy, xx) += accum[quant_ii].at<float>(yy, xx, ii)*1.0/r_table[quant_ii].size();
+		    }
 		}
 	    }
-	    cv::Mat kernel(50,50, CV_32F, cv::Scalar_<float>(-1.0));
-	    cv::rectangle(kernel,cv::Point_<int>(20,20),cv::Point_<int>(30,30), cv::Scalar_<float>(1.0), cv::CV_FILLED);
+	    cv::Mat kernel(2,2, CV_32F, cv::Scalar_<float>(1.0));
+	    //cv::rectangle(kernel,cv::Point_<int>(24,24),cv::Point_<int>(28,28), cv::Scalar_<float>(1.0), CV_FILLED);
 	    cv::filter2D(channel, channel, CV_32F, kernel);
 	    std::cout << my::maxMat(channel) << std::endl;
 	    my::display(channel);
 	}
-	return accum;
+	return accum[0];
     }
 
   /**
