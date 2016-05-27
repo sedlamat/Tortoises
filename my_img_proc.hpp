@@ -289,11 +289,13 @@ namespace my
 
   // COMMENT TODO
   void visualize_points(std::vector<cv::Point_<int> > points,
-			cv::Size_<int> size)
+			cv::Size_<int> size, cv::Point_<int> shift)
   {
     cv::Mat dst(size, CV_8UC1, cv::Scalar_<uchar>(0));
+    cv::Rect_<int> area(cv::Point(0,0),size);
     for(auto const& pt : points) {
-      dst.at<uchar>(pt) = 255;
+	if ( (pt-shift).inside(area))
+	    dst.at<uchar>(pt-shift) = 255;
     }
     my::display(dst);
   }

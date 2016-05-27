@@ -22,6 +22,8 @@ using namespace cv;
 
 int main(int argc, char **argv)
 {
+
+    cout << -34%5 << endl;
     passwd *pw = getpwuid(getuid());
     string path(pw->pw_dir);
 
@@ -35,7 +37,7 @@ int main(int argc, char **argv)
     Point ref_point(ref_point_loc.at<int>(0,0),
 		    ref_point_loc.at<int>(0,1));
 
-    string file_name = "Tg36800.pnm";
+    string file_name = "Tg49700.pnm";
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
     Mat img = imread(img_path,1);
@@ -46,6 +48,11 @@ int main(int argc, char **argv)
     my::general_hough(templ, templ_edges, ref_point, img, edges);
 
     return 1;
+}
+
+void say(int r = 6)
+{
+    cout << r << endl;
 }
 
 

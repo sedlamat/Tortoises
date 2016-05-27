@@ -27,6 +27,10 @@
 
 namespace my
 {
+    // cv::Point is alias (typedef) for cv::Point_<int>
+    typedef std::vector<cv::Point> RTableQuant;
+    typedef std::vector<RTableQuant> RTable;
+
     const int NUM_OF_QUANT_DIRECTIONS = 4;
     const int NUM_OF_SCALES = 100;
 
@@ -123,6 +127,40 @@ namespace my
     return r_table;
   }
 
+  /**
+    Rotates r-table.
+
+    @param p - Something.
+    @param src_edges - An sdfaassssssssthe template image.
+    @param ref_point - Referessssssssssss template.
+    @return The sssssssssssssssssssss).
+  */
+
+    RTable get_rotated_r_table(const RTable &r_table, double angle_rad,
+			       int num_table_shift, cv::Size_<int> size, cv::Point ref_point)
+  {
+    RTable rotated_r_table = r_table;
+    // shift the table
+    for (int shift = 0; shift < num_table_shift; ++shift) {
+	RTableQuant table_quant = rotated_r_table.back();
+	rotated_r_table.pop_back();
+	RTable::iterator it = rotated_r_table.begin();
+	rotated_r_table.insert(it, table_quant);
+    }
+    my::visualize_points(r_table[0], size, ref_point);
+    my::visualize_points(rotated_r_table[0], size, -cv::Point(100,100));
+    // rotate the points
+    double cs = std::cos(angle_rad);
+    double sn = std::sin(angle_rad);
+    for(auto & table_quant : rotated_r_table) {
+	for(auto & pt : table_quant) {
+	    pt.x = cs*pt.x - sn*pt.y;
+	    pt.y = sn*pt.x + cs*pt.y;
+	}
+    }
+    return rotated_r_table;
+  }
+
 
     /**
 	Gets a filled accumulator for one point.
@@ -210,11 +248,11 @@ namespace my
 	    //std::cout << s << std::endl;
 	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
 
-		std::cout << quant_idx << std::endl;
+		//std::cout << quant_idx << std::endl;
 		//my::visualize_points(src_hough_points[quant_idx], size);
 		//cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
 		float quant_num = r_table[quant_idx].size();
-		std::cout << quant_num << std::endl;
+		//std::cout << quant_num << std::endl;
 		for(auto & pt_diff : r_table[quant_idx]) {
 		    //std::vector<cv::Point_<int> > ref_pts;
 
@@ -296,12 +334,22 @@ namespace my
 
     cv::Size_<int> size = src.size();
 
-    cv::Mat ref_pt_mask(size, CV_8UC1, cv::Scalar_<uchar>(255));
+    const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
+    const double rot_step_rad = 2 * M_PI / num_of_rot;
+    for (int rot_idx = 6; rot_idx < 7; ++rot_idx) {
+	double angle_rad = - rot_idx * rot_step_rad;
+	std::cout << angle_rad << std::endl;
+	RTable rotated_r_table;
+	rotated_r_table = get_rotated_r_table(r_table, angle_rad, rot_idx, size, ref_point);
+
+	cv::Mat ref_pt_mask(size, CV_8UC1, cv::Scalar_<uchar>(255));
 
     //my::display(ref_pt_mask);
 
-    cv::Mat accumulator = my::get_accumulator(r_table, src_hough_points,
-					      size, ref_pt_mask);
+	cv::Mat accumulator = my::get_accumulator(rotated_r_table,
+						src_hough_points,
+						size, ref_pt_mask);
+    }
 
     //my::display(accumulator);
 
