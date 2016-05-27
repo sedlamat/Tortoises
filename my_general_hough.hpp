@@ -147,17 +147,25 @@ namespace my
 	RTable::iterator it = rotated_r_table.begin();
 	rotated_r_table.insert(it, table_quant);
     }
-    my::visualize_points(r_table[0], size, ref_point);
-    my::visualize_points(rotated_r_table[0], size, -cv::Point(100,100));
+    my::visualize_points(r_table[0], cv::Size(1000,1000), -cv::Point(400,400));
+    my::visualize_points(rotated_r_table[1], cv::Size(1000,1000), -cv::Point(400,400));
     // rotate the points
+    //angle_rad = 1.0*M_PI/2;
+
     double cs = std::cos(angle_rad);
     double sn = std::sin(angle_rad);
+    std::cout << cs << " " << sn << std::endl;
+    //rotated_r_table[1][0] = cv::Point(10,10);
     for(auto & table_quant : rotated_r_table) {
 	for(auto & pt : table_quant) {
-	    pt.x = cs*pt.x - sn*pt.y;
-	    pt.y = sn*pt.x + cs*pt.y;
+	    int x = pt.x;
+	    pt.x = (int) (cs*pt.x - sn*pt.y);
+	    pt.y = (int) (sn*x + cs*pt.y);
 	}
     }
+    std::cout << rotated_r_table[1][0] << std::endl;
+    my::visualize_points(r_table[0], cv::Size(1000,1000), -cv::Point(400,400));
+    my::visualize_points(rotated_r_table[1], cv::Size(1000,1000), -cv::Point(400,400));
     return rotated_r_table;
   }
 
@@ -336,8 +344,8 @@ namespace my
 
     const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
     const double rot_step_rad = 2 * M_PI / num_of_rot;
-    for (int rot_idx = 6; rot_idx < 7; ++rot_idx) {
-	double angle_rad = - rot_idx * rot_step_rad;
+    for (int rot_idx = 2; rot_idx < 3; ++rot_idx) {
+	double angle_rad = -rot_idx * rot_step_rad;
 	std::cout << angle_rad << std::endl;
 	RTable rotated_r_table;
 	rotated_r_table = get_rotated_r_table(r_table, angle_rad, rot_idx, size, ref_point);
