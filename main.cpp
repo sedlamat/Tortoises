@@ -20,10 +20,21 @@
 using namespace std;
 using namespace cv;
 
+class mi {
+
+public:
+    int x;
+    mi(int s) {x=s;}
+    mi operator ()(int s) { x = 1; return *this; }
+};
+
 int main(int argc, char **argv)
 {
+    mi mm(7);
+    mm(7);
+    cout << mm.x << endl;
 
-    cout << -34%5 << endl;
+    exit(0);
     passwd *pw = getpwuid(getuid());
     string path(pw->pw_dir);
 
@@ -47,7 +58,7 @@ int main(int argc, char **argv)
     //my::display(edges);
     my::general_hough(templ, templ_edges, ref_point, img, edges);
 
-    return 1;
+    return 0;
 }
 
 void say(int r = 6)
