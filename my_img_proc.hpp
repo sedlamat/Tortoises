@@ -25,9 +25,19 @@
 namespace my
 {
 
+    /**
+	Print message to console. Short version for debugging.
+
+	@param msg - Message to be printed.
+	@return void
+    */
+    template <typename T> void prt(T msg)
+    {
+	std::cout << msg << std::endl;
+    }
 
   /**
-    Gets minimum value of cv::Mat. A short version for debugging.
+    Gets minimum value of cv::Mat. Short version for debugging.
 
     @param src - An input image.
     @return A min value of the input image.
@@ -40,7 +50,7 @@ namespace my
   }
 
   /**
-    Gets maximum value of cv::Mat. A short version for debugging.
+    Gets maximum value of cv::Mat. Short version for debugging.
 
     @param src - An input image.
     @return A max value of the input image.

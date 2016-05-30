@@ -23,10 +23,10 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=2
-FILE_NAME_0=233;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
-FILE_NAME_1=540;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
-FILE_NAME_2=4102;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_general_hough.hpp;0;4
+current_page=1
+FILE_NAME_0=8591;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
+FILE_NAME_1=657;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
+FILE_NAME_2=11726;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_general_hough.hpp;0;4
 FILE_NAME_3=3839;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fimgproc%2Fimgproc.hpp;0;4
 FILE_NAME_4=82251;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fcore.hpp;0;4
 FILE_NAME_5=816;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fhighgui%2Fhighgui.hpp;0;4
