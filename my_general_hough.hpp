@@ -54,7 +54,7 @@ namespace my
     {
 	HoughTable hough_points(NUM_OF_QUANT_DIRECTIONS);
 
-	// changing gradient orientations to gradient directions
+	// changes gradient orientations to gradient directions
 	cv::Mat orient, orient_adjust, directions;
 	orient = my::get_gradient_orientation(src);
 	orient_adjust = (orient >= 180)/255;
@@ -62,13 +62,13 @@ namespace my
 	directions = orient + orient_adjust * -180;
 
 	float quant_width = 180.0 / NUM_OF_QUANT_DIRECTIONS;
-	// going through all edge pixels
+	// goes through all edge pixels
 	for (int yy = 0; yy < src_edges.rows; yy++) {
 	    const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
 	    for (int xx = 0; xx < src_edges.cols; xx++) {
 		if (ptr_src_edges_irow[xx]) {
 		    cv::Point_<int> pt(xx, yy);
-		    // quantizing the edge direction
+		    // quantizes the edge direction
 		    float phi = directions.at<float>(pt);
 		    int quant_idx = -1;
 		    int idx = 0;
@@ -88,9 +88,9 @@ namespace my
 			    ++idx;
 			}
 		    }
-		    // check if quant for a given direction was found
+		    // checks if quant for a given direction was found
 		    CV_Assert(quant_idx != -1);
-		    // fill the HoughTable
+		    // fills the HoughTable
 		    hough_points[quant_idx].push_back(pt);
 		}
 	    }
@@ -98,32 +98,35 @@ namespace my
 	return hough_points;
     }
 
-  /**
-    Gets the hough r-table, i.e., the hough points minus reference
-    point of the template.
+    /**
+	Gets Hough R-Table, i.e., HoughTable containing coordinates of
+	edges of a predefined template shifted by a given reference
+	point on the template and grouped by quantized gradient
+	directions of the edges.
 
-    @param src_templ - A template image for the hough tranform.
-    @param src_edges - An edge image of the template image.
-    @param ref_point - Reference point of the template.
-    @return The r-table (vector of vector of [points - ref_point]).
-  */
+	The R-Table holds diffences of edges points from the reference
+	point, grouped by directions of the edge points.
 
-  std::vector<std::vector<cv::Point_<int> > >  get_r_table(
-				      const cv::Mat& src_templ,
-				      const cv::Mat& src_templ_edges,
-				      const cv::Point_<int>& ref_point)
-  {
-    std::vector<std::vector<cv::Point_<int> > >
-	  r_table = get_hough_points(src_templ, src_templ_edges);
+	@param src_templ - Template image for the hough tranform.
+	@param src_edges - Edge image of the template image.
+	@param ref_point - Reference point of the template.
+	@return HoughTable of a template shifted by a reference point.
+    */
+    HoughTable get_r_table(const cv::Mat &src_templ,
+			   const cv::Mat &src_templ_edges,
+			   const cv::Point_<int> &ref_point)
+    {
+	HoughTable r_table;
+	r_table = get_hough_points(src_templ, src_templ_edges);
 
-    for(auto & points : r_table) {
-      //my::visualize_points(points, src_templ_edges.size());
-      for(auto & point : points) {
-	point = ref_point - point;
-      }
+	// shifts all points in HoughTable from the reference point
+	for(auto & points : r_table) {
+	    for(auto & point : points) {
+		point = ref_point - point;
+	    }
+	}
+	return r_table;
     }
-    return r_table;
-  }
 
   /**
     Rotates r-table.
