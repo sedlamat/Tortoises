@@ -1,11 +1,11 @@
 /**
-  my_img_proc.hpp
+    my_img_proc.hpp
 
-  Higher level procedures and functions for image processing, using
-  OpenCV library.
+    Higher level procedures and functions for image processing, using
+    OpenCV library.
 
-  @author Matej Sedlacek
-  @version 0.0
+    @author Matej Sedlacek
+    @version 0.0
 */
 
 #ifndef _MY_IMGPROC_HPP_
@@ -105,27 +105,29 @@ namespace my
 	cv::waitKey(0);
     }
 
-  /**
-    Gets gradient of an image using Scharr masks.
+    /**
+	Gets gradient of an image using Scharr masks.
 
-    @param src - An input image.
-    @return A vector of [dx,dy] derivatives.
-  */
-  std::vector<cv::Mat> get_gradient_scharr(const cv::Mat& src)
-  {
-    std::vector<cv::Mat> dxdy(2);
-    cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3, 10, 0,
-					   -10, 3, 0, -3);
-    cv::filter2D(src, dxdy[0], CV_32F, kernel);
-    cv::transpose(kernel, kernel);
-    cv::flip(kernel,kernel,0); /* Flip it if the kernel mask is to be
-    applied on the image as it is displayed (in the same way for y as
-    for x), otherwise as the y coordinate of cv::Mat image goes from
-    top to bottom in an image, it would give results upside down (for
-    dy). Counter-clockwise.*/
-    cv::filter2D(src, dxdy[1], CV_32F, kernel);
-    return dxdy;
-  }
+	@param src - Input image.
+	@return A vector of [dx,dy] derivatives.
+    */
+    std::vector<cv::Mat> get_gradient_scharr(const cv::Mat &src)
+    {
+	std::vector<cv::Mat> dxdy(2);
+	cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3,
+					       10, 0,-10,
+					        3, 0, -3);
+	cv::filter2D(src, dxdy[0], CV_32F, kernel);
+	cv::transpose(kernel, kernel);
+	//cv::flip(kernel,kernel,0);
+	/* Flip it if the kernel mask is to be
+	applied on the image as it is displayed (in the same way for y as
+	for x), otherwise as the y coordinate of cv::Mat image goes from
+	top to bottom in an image, it would give results upside down (for
+	dy). Counter-clockwise.*/
+	cv::filter2D(src, dxdy[1], CV_32F, kernel);
+	return dxdy;
+    }
 
   /**
     Gets values that in the absolute value are the maximum of

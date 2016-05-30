@@ -40,6 +40,8 @@ int main(int argc, char **argv)
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
     Mat img = imread(img_path,1);
+    my::display(img);
+    //exit(0);
     double resize_koef = 150.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     Mat edges = get_edges_color_based(img);

@@ -1,11 +1,15 @@
 /**
-  my_general_hough.hpp
+    my_general_hough.hpp
 
-  Implementation of the generalized Hough transform, using OpenCV
-  library.
+    Implementation of the generalized Hough transform, using OpenCV
+    library.
 
-  @author Matej Sedlacek
-  @version 0.0
+    Do not forget that images are displayed with y-axis
+    pointing down, it might fool you if you try to visualize
+    individual steps of the algorithms below.
+
+    @author Matej Sedlacek
+    @version 0.0
 */
 
 #ifndef _MY_GENERAL_HOUGH_HPP_
@@ -122,107 +126,52 @@ namespace my
 	// shifts all points in HoughTable from the reference point
 	for(auto & points : r_table) {
 	    for(auto & point : points) {
-		point = ref_point - point;
+		point = point - ref_point;
 	    }
 	}
 	return r_table;
     }
 
-  /**
-    Rotates r-table.
-
-    @param p - Something.
-    @param src_edges - An sdfaassssssssthe template image.
-    @param ref_point - Referessssssssssss template.
-    @return The sssssssssssssssssssss).
-  */
-
-    HoughTable get_rotated_r_table(const HoughTable &r_table, double angle_rad,
-			       int num_table_shift, cv::Size_<int> size, cv::Point ref_point)
-  {
-    HoughTable rotated_r_table = r_table;
-    // shift the table
-    for (int shift = 0; shift < num_table_shift; ++shift) {
-	std::vector<cv::Point> table_quant = rotated_r_table.back();
-	rotated_r_table.pop_back();
-	HoughTable::iterator it = rotated_r_table.begin();
-	rotated_r_table.insert(it, table_quant);
-    }
-    //my::visualize_points(r_table[0], cv::Size(1000,1000), -cv::Point(400,400));
-    //my::visualize_points(rotated_r_table[1], cv::Size(1000,1000), -cv::Point(400,400));
-    // rotate the points
-    //angle_rad = 1.0*M_PI/2;
-
-    double cs = std::cos(angle_rad);
-    double sn = std::sin(angle_rad);
-    //std::cout << cs << " " << sn << std::endl;
-    //rotated_r_table[1][0] = cv::Point(10,10);
-    for(auto & table_quant : rotated_r_table) {
-	for(auto & pt : table_quant) {
-	    int x = pt.x;
-	    pt.x = (int) (cs*pt.x - sn*pt.y);
-	    pt.y = (int) (sn*x + cs*pt.y);
-	}
-    }
-    //std::cout << rotated_r_table[1][0] << std::endl;
-    //my::visualize_points(r_table[0], cv::Size(1000,1000), -cv::Point(400,400));
-    //my::visualize_points(rotated_r_table[1], cv::Size(1000,1000), -cv::Point(400,400));
-    return rotated_r_table;
-  }
-
-
     /**
-	Gets a filled accumulator for one point.
+	Gets rotated R-Table. BEWARE: rotating counter-clockwise,
+	parameter angle_rad is negative, the shifting the R-Table
+	quants is then easier to implement.
 
-	@param ref_points - Possible reference points for a given src_pt.
-	@param src_pt - One feature point in the src_image.
-	@param size - Size of the src_image/accumulator.
-	@return One-layer accumulator for ref_points and src_pt.
+	@param r_table - Hough R-Table.
+	@param angle_rad - Angle in radians by which points are rotated.
+	@param num_table_shift - Number of times the R-Table quants are
+				 shifted.
+	@return Rotated R-Table.
     */
 
-    cv::Mat get_accum_layer(std::vector<cv::Point_<int> > ref_points,
-			  cv::Point_<int> src_pt,
-			  cv::Size_<int> size)
+    HoughTable get_rotated_r_table(const HoughTable &r_table,
+				   double angle_rad,
+				   int num_table_shift)
     {
-	cv::Point_<int> pt_shift(3,3);
-	cv::Mat accum_layer(size, CV_32FC1, cv::Scalar_<float>(0.0));
-	for(auto const& ref_pt : ref_points) {
-	    //std::cout << ref_pt << " " << src_pt << std::endl;
-	    cv::Point_<double> pt1, pt2;
-	    double a, b;
-	    if (src_pt.x == ref_pt.x) {
-		pt1.x = pt2.x = src_pt.x;
-		pt1.y = 0;
-		pt2.y = size.height;
-	    } else {
-		a = (src_pt.y - ref_pt.y)*1.0/(src_pt.x - ref_pt.x);
-		b = (ref_pt.y*src_pt.x - src_pt.y*ref_pt.x)*1.0/
-							(src_pt.x - ref_pt.x);
-		if (a == 0) {
-		    pt1.y = pt2.y = src_pt.y;
-		    pt1.x = 0;
-		    pt2.x = size.width;
-		} else if (std::abs(a) < 1) { // then use y = a*x + b
-		    //continue;
-		    pt1.x = 0;
-		    pt1.y = a*pt1.x + b;
-		    pt2.x = size.width;
-		    pt2.y = a*pt2.x + b;
-		} else { // then use x = (y-b)/a
-		    //continue;
-		    pt1.y = 0;
-		    pt1.x = (pt1.y - b) / a;
-		    pt2.y = size.height;
-		    pt2.x = (pt2.y - b) / a;
-		}
-	    }
-	    cv::line(accum_layer, pt1, pt2, cv::Scalar_<float>(1.0), 1);
-	}
-	//~ cv::rectangle(accum_layer, src_pt-pt_shift, src_pt+pt_shift,
-		      //~ cv::Scalar_<float>(0.0), CV_FILLED);
-	return accum_layer;
-    }
+	HoughTable rotated_r_table = r_table;
 
+	// shifts the R-Table quants, last-becomes-first shifting
+	for (int shift = 0; shift < num_table_shift; ++shift) {
+	    std::vector<cv::Point> table_quant;
+	    table_quant = rotated_r_table.back();
+	    rotated_r_table.pop_back();
+	    HoughTable::iterator it = rotated_r_table.begin();
+	    rotated_r_table.insert(it, table_quant);
+	}
+
+	// rotating the R-Table points by angle_rad (counter-clockwise)
+	double cs = std::cos(angle_rad);
+	double sn = std::sin(angle_rad);
+
+	for(auto & table_quant : rotated_r_table) {
+	    for(auto & pt : table_quant) {
+		int x = pt.x;
+		pt.x = cs*pt.x - sn*pt.y;
+		pt.y = sn*x + cs*pt.y;
+	    }
+	}
+	return rotated_r_table;
+    }
 
     /**
 	Gets the hough accumulator source feature points and reference
@@ -270,7 +219,7 @@ namespace my
 		    for(auto & src_pt : src_hough_points[quant_idx]) {
 
 			// OPTIONAL - ref_point of the template inside img
-			cv::Point_<int> ref_pt(pt_diff*s + src_pt);
+			cv::Point_<int> ref_pt(src_pt - pt_diff*s);
 			//std::cout << pt_diff*s << std::endl;
 			if (src_rect.contains(ref_pt) &&
 			    ref_pt_mask.at<int>(ref_pt)) {
@@ -365,6 +314,7 @@ namespace my
     double rot_max = -1;
     double scale_max = -1;
     for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
+	// BEWARE: rotating counter-clockwise (see the minus sign below)
 	double angle_rad = -rot_idx * rot_step_rad;
 	//std::cout << angle_rad << std::endl;
 	HoughTable rotated_r_table;
