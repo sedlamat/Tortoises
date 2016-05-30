@@ -27,58 +27,56 @@
 
 namespace my
 {
-    // cv::Point is alias (typedef) for cv::Point_<int>
-    typedef std::vector<cv::Point> HoughTableQuant;
-    typedef std::vector<HoughTableQuant> HoughTable;
+    // alias used to store points grouped by gradient direction
+    typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
+    // global constants for general hough transform
     const int NUM_OF_QUANT_DIRECTIONS = 4;
     const int NUM_OF_SCALES = 100;
     const float SCALES_LOW_BOUND = 0.3;
 
     /**
-	Gets the hough points, i.e., a vector (indexed by quantized
-	gradient orientations - 0 to 3) of vector of points (the
-	coordinates of edges).
+	Gets HoughTable containing coordinates of edges grouped by
+	quantized gradient directions of the edges.
 
+	Gradient orientations in [180, 360) are shifted to [0, 180) as
+	only the directions of the edges are used, e.g., 45deg is
+	the same direction as 225deg. This fixes the problem of a
+	gradient with 45deg orientation becoming 225deg when only the
+	intensity of the object/background is inversed.
 
-	@param src - A color image.
-	@param src_edges -  An edge image of the color image.
-	@return Vector of vector of points generated from src and
-		src_edges.
+	@param src - Color (BGR) image.
+	@param src_edges -  Edge image of the src image.
+	@return HoughTable generated from src and src_edges.
     */
-    HoughTable get_hough_points(
-					       const cv::Mat& src,
-					       const cv::Mat& src_edges)
+    HoughTable get_hough_points(const cv::Mat &src,
+				const cv::Mat &src_edges)
     {
-	cv::Mat orient = my::get_gradient_orientation(src);
-	std::vector<std::vector<cv::Point_<int> > > hough_points(
-					    NUM_OF_QUANT_DIRECTIONS);
+	HoughTable hough_points(NUM_OF_QUANT_DIRECTIONS);
 
-	// orientations in [0, 360) => make [180, 360) to [0, 180), only
-	// direction needed (45deg is the same direction as 225deg)
-	// this prevents 45deg being 225deg with inverse intensity.
-	// inverse intesity changes orientation, do not want that.
-	// direction changes only if the edge changes.
-
-	cv::Mat orient_adjust = (orient >= 180)/255;
+	// changing gradient orientations to gradient directions
+	cv::Mat orient, orient_adjust, directions;
+	orient = my::get_gradient_orientation(src);
+	orient_adjust = (orient >= 180)/255;
 	orient_adjust.convertTo(orient_adjust,orient.depth());
-	orient += orient_adjust * -180;
-	//my::display(orient);
-	int max = 0;
+	directions = orient + orient_adjust * -180;
+
 	float quant_width = 180.0 / NUM_OF_QUANT_DIRECTIONS;
-	// points are quantized from [0,180) into 0,1,2,3 indices
+	// going through all edge pixels
 	for (int yy = 0; yy < src_edges.rows; yy++) {
 	    const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
 	    for (int xx = 0; xx < src_edges.cols; xx++) {
 		if (ptr_src_edges_irow[xx]) {
 		    cv::Point_<int> pt(xx, yy);
-		    float phi = orient.at<float>(pt);
+		    // quantizing the edge direction
+		    float phi = directions.at<float>(pt);
 		    int quant_idx = -1;
+		    int idx = 0;
 		    if (phi >= 180 - quant_width/2 ||
-			phi < quant_width/2)
-			quant_idx = 0;
-		    else {
-			int idx = 1;
+			phi < quant_width/2) {
+			quant_idx = idx;
+		    } else {
+			++idx;
 			for (float quant_low_bound = quant_width/2;
 			     quant_low_bound < 180 - quant_width;
 			     quant_low_bound += quant_width) {
@@ -90,13 +88,13 @@ namespace my
 			    ++idx;
 			}
 		    }
-		    CV_Assert(quant_idx != -1&&"Undefined orientation");
-		    if (quant_idx > max) max = quant_idx;
+		    // check if quant for a given direction was found
+		    CV_Assert(quant_idx != -1);
+		    // fill the HoughTable
 		    hough_points[quant_idx].push_back(pt);
 		}
 	    }
 	}
-	std::cout << max << std::endl;
 	return hough_points;
     }
 
@@ -142,7 +140,7 @@ namespace my
     HoughTable rotated_r_table = r_table;
     // shift the table
     for (int shift = 0; shift < num_table_shift; ++shift) {
-	HoughTableQuant table_quant = rotated_r_table.back();
+	std::vector<cv::Point> table_quant = rotated_r_table.back();
 	rotated_r_table.pop_back();
 	HoughTable::iterator it = rotated_r_table.begin();
 	rotated_r_table.insert(it, table_quant);
