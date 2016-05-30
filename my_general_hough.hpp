@@ -138,9 +138,10 @@ namespace my
 	quants is then easier to implement.
 
 	@param r_table - Hough R-Table.
-	@param angle_rad - Angle in radians by which points are rotated.
-	@param num_table_shift - Number of times the R-Table quants are
-				 shifted.
+	@param angle_rad - Angle in radians by which points are
+			   rotated.
+	@param num_table_shift - Number of times the R-Table quants
+				 are shifted.
 	@return Rotated R-Table.
     */
 
@@ -159,7 +160,7 @@ namespace my
 	    rotated_r_table.insert(it, table_quant);
 	}
 
-	// rotating the R-Table points by angle_rad (counter-clockwise)
+	// rotates the R-Table points by angle_rad (counter-clockwise)
 	double cs = std::cos(angle_rad);
 	double sn = std::sin(angle_rad);
 
@@ -184,16 +185,13 @@ namespace my
 	@param size - Size of the accumulator/source_image.
 	@return The r-table (vector of vector of [points - ref_point]).
     */
-
-    cv::Mat get_accumulator(
-	std::vector<std::vector<cv::Point_<int> > > r_table,
-	std::vector<std::vector<cv::Point_<int> > > src_hough_points,
-	cv::Size_<int> size,
-	cv::Mat ref_pt_mask,
-	double &accu_max,
-	double &scale_max)
+    cv::Mat get_accumulator(HoughTable &r_table,
+			    HoughTable &src_hough_points,
+			    cv::Size_<int> &size,
+			    double &accum_max,
+			    double &scale_max,
+			    cv::Point_<int> &ref_point_found)
     {
-	CV_Assert(ref_pt_mask.size() == size);
 	const int sizes[3] = {size.height, size.width, NUM_OF_SCALES};
 	cv::Mat accum[NUM_OF_QUANT_DIRECTIONS];
 	for (int ii = 0; ii < NUM_OF_QUANT_DIRECTIONS; ++ii) {
@@ -221,8 +219,7 @@ namespace my
 			// OPTIONAL - ref_point of the template inside img
 			cv::Point_<int> ref_pt(src_pt - pt_diff*s);
 			//std::cout << pt_diff*s << std::endl;
-			if (src_rect.contains(ref_pt) &&
-			    ref_pt_mask.at<int>(ref_pt)) {
+			if (src_rect.contains(ref_pt)) {
 			    //std::cout << ii << std::endl;
 			    if (accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) < quant_num)
 				accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
@@ -250,7 +247,7 @@ namespace my
 	}
 	cv::Mat dst;
 
-	accu_max = 0;
+	accum_max = 0;
 
 	for (int ii = 0; ii < NUM_OF_SCALES; ++ii) {
 	    cv::Mat channel(size, CV_32FC1, cv::Scalar_<float>(1.0));
@@ -272,10 +269,14 @@ namespace my
 	    //cv::rectangle(kernel,cv::Point_<int>(24,24),cv::Point_<int>(28,28), cv::Scalar_<float>(1.0), CV_FILLED);
 	    cv::filter2D(channel, channel, CV_32F, kernel);
 	    cv::filter2D(channel, channel, CV_32F, gauss);
+	    double channel_max = 0, channel_min = 0;
+	    cv::Point_<int> channel_pt_max(0,0), channel_pt_min(0,0);
+	    minMaxLoc(InputArray src, double* minVal, double* maxVal=0, Point* minLoc=0, channel_pt_max, InputArray mask=noArray())
 	    double channel_max = my::maxMat(channel);
-	    if (channel_max > accu_max) {
-		accu_max = channel_max;
+	    if (channel_max > accum_max) {
+		accum_max = channel_max;
 		scale_max = SCALES_LOW_BOUND + ii*scale;
+		ref_point_found = channel_pt_max;
 	    }
 	    //std::cout << my::maxMat(channel) << std::endl;
 	    //my::display(channel);
@@ -283,96 +284,117 @@ namespace my
 	return accum[0];
     }
 
-  /**
-    General Hough transform.
+    /**
+	Computes the generalized Hough transform. The info about the
+	best match is saved into non-const parameters of the function,
+	see the declaration.
 
-    @param src_templ - A template image for the hough tranform.
-    @param src_templ_edges - Edges for the template image.
-    @param ref_point - Reference point of the template.
-    @param src - Source image.
-    @param src_edges - Edges of the source image.
-    @return SO FAR: Displays the hough accumulator.
-  */
-  void general_hough(const cv::Mat& src_templ,
-		     const cv::Mat& src_templ_edges,
-		     const cv::Point_<int>& ref_point,
-		     const cv::Mat& src,
-		     const cv::Mat& src_edges)
-  {
+	@param templ - Template image for the hough tranform.
+	@param templ_edges - Edges for the template image.
+	@param ref_point - Reference point of the template.
+	@param src - Source image.
+	@param src_edges - Edges of the source image.
+	@return void.
+    */
+    void general_hough(const cv::Mat &templ,
+		       const cv::Mat &templ_edges,
+		       const cv::Point_<int> &ref_point,
+		       const cv::Mat &src,
+		       const cv::Mat &src_edges,
+		       double &accu_max,
+		       double &rot_max,
+		       double &scale_max,
+		       cv::Point_<int> &ref_point_found)
+    {
+	HoughTable r_table, src_hough_points;
+	// sets accu_max -1 to check at the end if it changed
+	accu_max = -1;
 
-    std::vector<std::vector<cv::Point_<int> > > r_table =
-		my::get_r_table(src_templ, src_templ_edges, ref_point);
+	r_table = my::get_r_table(templ, templ_edges, ref_point);
+	src_hough_points = my::get_hough_points(src, src_edges);
 
-    std::vector<std::vector<cv::Point_<int> > > src_hough_points =
-		my::get_hough_points(src, src_edges);
+	cv::Size_<int> size = src.size();
 
-    cv::Size_<int> size = src.size();
-
-    const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
-    const double rot_step_rad = 2 * M_PI / num_of_rot;
-    double accu_max = -1;
-    double rot_max = -1;
-    double scale_max = -1;
-    for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
-	// BEWARE: rotating counter-clockwise (see the minus sign below)
-	double angle_rad = -rot_idx * rot_step_rad;
-	//std::cout << angle_rad << std::endl;
-	HoughTable rotated_r_table;
-	rotated_r_table = get_rotated_r_table(r_table, angle_rad, rot_idx, size, ref_point);
-
-	cv::Mat ref_pt_mask(size, CV_8UC1, cv::Scalar_<uchar>(255));
-
-    //my::display(ref_pt_mask);
-	double rot_accu_max = -1;
-	double rot_scale_max = -1;
-	cv::Mat accumulator = my::get_accumulator(rotated_r_table,
-						src_hough_points,
-						size, ref_pt_mask,
-						rot_accu_max,
-						rot_scale_max);
-	if (rot_accu_max > accu_max) {
-	    accu_max = rot_accu_max;
-	    rot_max = angle_rad * 180 / M_PI;
-	    scale_max = rot_scale_max;
+	// rotates the R-Table
+	const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
+	const double rot_step_rad = 2 * M_PI / num_of_rot;
+	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
+	    // BEWARE: rotating counter-clockwise (see the minus sign)
+	    double angle_rad = -rot_idx * rot_step_rad;
+	    HoughTable rotated_r_table;
+	    rotated_r_table = get_rotated_r_table(r_table, angle_rad,
+						  rot_idx);
+	    /* gets accumulator maximum at one of the scales for a
+	       given rotated R-Table and saves it into rot_accu_max
+	       and rot_scale_max */
+	    double rot_accu_max = -1;
+	    double rot_scale_max = -1;
+	    cv::Mat accumulator;
+	    accumulator = my::get_accumulator(rotated_r_table,
+					      src_hough_points,
+					      size,
+					      rot_accu_max,
+					      rot_scale_max,
+					      ref_point_found);
+	    // keeps track of the global accumulator
+	    if (rot_accu_max > accu_max) {
+		accu_max = rot_accu_max;
+		rot_max = angle_rad;
+		scale_max = rot_scale_max;
+	    }
 	}
-	prt(accu_max); prt(" where current "); prt(rot_accu_max);
-	prt(rot_idx);
-	prt(scale_max);
+	CV_Assert(accu_max != -1);
+	return;
     }
-    prt(accu_max);
-    prt(rot_max);
-    prt(scale_max);
-    //my::display(accumulator);
 
-    //cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
-	//	  255, cv::THRESH_BINARY);
-    //my::display(ref_pt_mask);
+    /**
+	Computes the generalized Hough transform. The best match is
+	displayed on the source image with the template edge image.
 
-    //~ for(int ii = 0; ii < 10; ii++) {
-	//~ accumulator = my::get_accumulator(r_table, src_hough_points,
-				      //~ size, ref_pt_mask);
-	//~ cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
-		  //~ 255, cv::THRESH_BINARY);
-	//~ my::display(accumulator);
-    //~ }
- /*   cv::threshold(accumulator, ref_pt_mask, my::maxMat(accumulator)*0.8,
-		  255, cv::THRESH_BINARY);
-    my::display(ref_pt_mask);
+	@param templ - Template image for the Hough tranform.
+	@param templ_edges - Edges for the template image.
+	@param ref_point - Reference point of the template.
+	@param src - Source image.
+	@param src_edges - Edges of the source image.
+	@return void.
+    */
+    void general_hough_fit_on_img(const cv::Mat &templ,
+			          const cv::Mat &templ_edges,
+				  const cv::Point_<int> &ref_point,
+				  const cv::Mat &src,
+				  const cv::Mat &src_edges)
+    {
+	cv::Mat dst(src);
+	double accu_max = 0, rot_max = 0, scale_max = 0;
+	cv::Point_<int> ref_point_found(0,0);
 
-    accumulator = my::get_accumulator(r_table, src_hough_points,
-				      size, ref_pt_mask);
-*/
-    //~ my::display(accumulator);
-//~
-    //~ my::display(src);
-    //~ my::display(src_edges);
-    //~ my::display(src_templ);
-    //~ my::display(src_templ_edges);
-  }
+	general_hough(templ, templ_edges, ref_point, src, src_edges,
+		      accu_max, rot_max, scale_max, ref_point_found);
 
+	HoughTable r_table;
+	r_table = my::get_r_table(templ, templ_edges, ref_point);
 
+	cv::Rect_<int> src_rect(cv::Point_<int>(0,0), src.size());
+
+	// rotates and shift the R-Table points
+	double cs = std::cos(rot_max);
+	double sn = std::sin(rot_max);
+
+	for(auto & table_quant : r_table) {
+	    for(auto & pt : table_quant) {
+		int x = pt.x;
+		pt.x = cs*pt.x - sn*pt.y;
+		pt.y = sn*x + cs*pt.y;
+		pt *= scale_max;
+		pt += ref_point_found;
+		if (src_rect.contains(pt)) {
+		    dst.at<uchar>(pt) = 255;
+		}
+	    }
+	}
+	my::display(dst);
+    }
 
 } /* namespace my */
-
 
 #endif /* _MY_GENERAL_HOUGH_HPP_ */

@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     Mat edges = get_edges_color_based(img);
     //my::display(edges);
-    general_hough(templ, templ_edges, ref_point, img, edges);
+    general_hough_fit_on_img(templ, templ_edges, ref_point, img, edges);
 
     return 0;
 }
