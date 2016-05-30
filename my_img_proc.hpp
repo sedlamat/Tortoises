@@ -29,7 +29,7 @@ namespace my
 	@param msg - Message to be printed.
 	@return void
     */
-    template <typename T> void prt(T &msg)
+    template <typename T> void prt(T msg)
     {
 	std::cout << msg << std::endl;
     }

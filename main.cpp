@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     Point ref_point(ref_point_loc.at<int>(0,0),
 		    ref_point_loc.at<int>(0,1));
 
-    string file_name = "Tg49700.pnm";
+    string file_name = "Tg37900.pnm";
     string imgs_path = path + "/Images/Tortoises/";
     string img_path = imgs_path + file_name;
     Mat img = imread(img_path,1);

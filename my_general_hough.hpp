@@ -271,8 +271,8 @@ namespace my
 	    cv::filter2D(channel, channel, CV_32F, gauss);
 	    double channel_max = 0, channel_min = 0;
 	    cv::Point_<int> channel_pt_max(0,0), channel_pt_min(0,0);
-	    minMaxLoc(InputArray src, double* minVal, double* maxVal=0, Point* minLoc=0, channel_pt_max, InputArray mask=noArray())
-	    double channel_max = my::maxMat(channel);
+	    cv::minMaxLoc(channel, &channel_min, &channel_max, &channel_pt_min, &channel_pt_max);
+	    //double channel_max = my::maxMat(channel);
 	    if (channel_max > accum_max) {
 		accum_max = channel_max;
 		scale_max = SCALES_LOW_BOUND + ii*scale;
@@ -329,18 +329,20 @@ namespace my
 	       and rot_scale_max */
 	    double rot_accu_max = -1;
 	    double rot_scale_max = -1;
+	    cv::Point_<int> rot_max_ref_point;
 	    cv::Mat accumulator;
 	    accumulator = my::get_accumulator(rotated_r_table,
 					      src_hough_points,
 					      size,
 					      rot_accu_max,
 					      rot_scale_max,
-					      ref_point_found);
+					      rot_max_ref_point);
 	    // keeps track of the global accumulator
 	    if (rot_accu_max > accu_max) {
 		accu_max = rot_accu_max;
 		rot_max = angle_rad;
 		scale_max = rot_scale_max;
+		ref_point_found = rot_max_ref_point;
 	    }
 	}
 	CV_Assert(accu_max != -1);
@@ -364,12 +366,16 @@ namespace my
 				  const cv::Mat &src,
 				  const cv::Mat &src_edges)
     {
-	cv::Mat dst(src);
+	cv::Mat dst;
+	src.copyTo(dst);
+	prt("dst type"); my::prt(dst.type());
 	double accu_max = 0, rot_max = 0, scale_max = 0;
 	cv::Point_<int> ref_point_found(0,0);
 
 	general_hough(templ, templ_edges, ref_point, src, src_edges,
 		      accu_max, rot_max, scale_max, ref_point_found);
+
+	prt(accu_max); prt(rot_max); prt(scale_max); prt(ref_point_found);
 
 	HoughTable r_table;
 	r_table = my::get_r_table(templ, templ_edges, ref_point);
@@ -385,10 +391,10 @@ namespace my
 		int x = pt.x;
 		pt.x = cs*pt.x - sn*pt.y;
 		pt.y = sn*x + cs*pt.y;
-		pt *= scale_max;
-		pt += ref_point_found;
+		pt = pt * scale_max;
+		pt = pt + ref_point_found;
 		if (src_rect.contains(pt)) {
-		    dst.at<uchar>(pt) = 255;
+		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
 		}
 	    }
 	}
