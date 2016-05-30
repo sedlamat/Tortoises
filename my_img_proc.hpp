@@ -14,7 +14,6 @@
 /* STANDARD C++ LIBRARIES */
 #include <iostream>
 #include <string>
-#include <exception>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -24,86 +23,87 @@
 
 namespace my
 {
-
     /**
 	Print message to console. Short version for debugging.
 
 	@param msg - Message to be printed.
 	@return void
     */
-    template <typename T> void prt(T msg)
+    template <typename T> void prt(T &msg)
     {
 	std::cout << msg << std::endl;
     }
 
-  /**
-    Gets minimum value of cv::Mat. Short version for debugging.
+    /**
+	Gets minimum value of cv::Mat. Short version for debugging.
 
-    @param src - An input image.
-    @return A min value of the input image.
-  */
-  double minMat(const cv::Mat& src)
-  {
-    double min, max;
-    cv::minMaxLoc(src, &min, &max);
-    return min;
-  }
-
-  /**
-    Gets maximum value of cv::Mat. Short version for debugging.
-
-    @param src - An input image.
-    @return A max value of the input image.
-  */
-  double maxMat(const cv::Mat& src)
-  {
-    double min, max;
-    cv::minMaxLoc(src, &min, &max);
-    return max;
-  }
-
-  /**
-    Scales the values of an input image into the range [0...255]
-    and casts it into CV_8U.
-
-    @param src - An input image.
-    @return Scaled and casted image.
-  */
-  cv::Mat get_scaled_CV_U8(const cv::Mat& src)
-  {
-    cv::Mat dst;
-    double min_val;
-    double max_val;
-    cv::minMaxLoc(src, &min_val, &max_val);
-    double alpha = 255/(max_val-min_val);
-    double beta = -min_val*alpha;
-    src.convertTo(dst,CV_8U,alpha,beta);
-    return dst;
-  }
-
-  /**
-    Displays an unsigned 8bit (CV_8U) image. The image is scaled
-    and casted to CV_8U if it is of other type.
-
-    @param src - An image to be displayed.
-    @param window_name - Displayed window name (optional).
-    @return void.
-  */
-  void display(const cv::Mat& src,
-		   const std::string& window_name="image")
-  {
-    cv::Mat dst;
-    // check if src is CV_8U, if not make it
-    if ( src.type() != CV_8UC1 && src.type() != CV_8UC2 &&
-	 src.type() != CV_8UC3 && src.type() != CV_8UC4 ) {
-      dst = my::get_scaled_CV_U8(src);
-    } else {
-      dst = src;
+	@param src - Input image.
+	@return Min value of the input image.
+    */
+    double minMat(const cv::Mat &src)
+    {
+	double min, max;
+	cv::minMaxLoc(src, &min, &max);
+	return min;
     }
-    cv::namedWindow(window_name, cv::WINDOW_NORMAL);
-    cv::imshow(window_name, dst);
-    cv::waitKey(0);
-  }
+
+    /**
+	Gets maximum value of cv::Mat. Short version for debugging.
+
+	@param src - Input image.
+	@return Max value of the input image.
+    */
+    double maxMat(const cv::Mat &src)
+    {
+	double min, max;
+	cv::minMaxLoc(src, &min, &max);
+	return max;
+    }
+
+    /**
+	Gets a scaled image to the range [0...255] and casted into
+	CV_8U. For details on the transformation see the documentation
+	of Mat::convertTo(....).
+
+	@param src - Input image.
+	@return Scaled and casted image.
+    */
+    cv::Mat get_scaled_CV_U8(const cv::Mat &src)
+    {
+	cv::Mat dst;
+	double min_val, max_val;
+	cv::minMaxLoc(src, &min_val, &max_val);
+	double alpha = 255 / (max_val - min_val);
+	double beta = - min_val * alpha;
+	src.convertTo(dst, CV_8U, alpha, beta);
+	return dst;
+    }
+
+    /**
+	Displays an unsigned 8bit (CV_8U) image, values [0...255], the
+	number of channels allowed is 1 and 3. The image is scaled and
+	casted to CV_8U if it is of other type. Short version for
+	debugging.
+
+	@param src - Image to be displayed.
+	@param window_name - Displayed window name (optional).
+	@return void.
+    */
+    void display(const cv::Mat &src,
+		 const std::string &window_name="image")
+    {
+	CV_Assert(src.channels() == 1 || src.channels() == 3);
+	cv::Mat dst;
+	// check if src is CV_8U, if not make it
+	if (src.type() != CV_8UC1 && src.type() != CV_8UC3) {
+	    dst = my::get_scaled_CV_U8(src);
+	} else {
+	    dst = src;
+	}
+	cv::namedWindow(window_name, cv::WINDOW_NORMAL);
+	cv::imshow(window_name, dst);
+	cv::waitKey(0);
+    }
 
   /**
     Gets gradient of an image using Scharr masks.
