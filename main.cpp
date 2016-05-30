@@ -19,6 +19,7 @@
 
 using namespace std;
 using namespace cv;
+using namespace my;
 
 int main(int argc, char **argv)
 {
@@ -41,9 +42,9 @@ int main(int argc, char **argv)
     Mat img = imread(img_path,1);
     double resize_koef = 150.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
-    Mat edges = my::get_edges_color_based(img);
+    Mat edges = get_edges_color_based(img);
     //my::display(edges);
-    my::general_hough(templ, templ_edges, ref_point, img, edges);
+    general_hough(templ, templ_edges, ref_point, img, edges);
 
     return 0;
 }
