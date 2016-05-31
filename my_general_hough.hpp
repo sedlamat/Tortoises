@@ -36,11 +36,11 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 4;
-    const int NUM_OF_SCALES = 100;
+    const int NUM_OF_QUANT_DIRECTIONS = 8;
+    const int NUM_OF_SCALES = 50;
     const int MAX_IMG_SIZE = 150;
     const int MAX_TEMPLATE_SIZE = 150;
-    float MAX_SCALE = 1.0*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
+    const float MAX_SCALE = 1.0*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
     const float SCALES_LOW_BOUND = 0.3 * MAX_SCALE;
 
     /**
@@ -190,101 +190,73 @@ namespace my
 	@param src_hough_points - Feature points grouped by their gradient
 			      orientations.
 	@param size - Size of the accumulator/source_image.
-	@return The r-table (vector of vector of [points - ref_point]).
+	@return void.
     */
-    cv::Mat get_accumulator(HoughTable &r_table,
-			    HoughTable &src_hough_points,
-			    cv::Size_<int> &size,
-			    double &accum_max,
-			    double &scale_max,
-			    cv::Point_<int> &ref_point_found)
+    void get_accumulator(HoughTable &r_table,
+			 HoughTable &src_hough_points,
+			 cv::Size_<int> &size,
+			 double &accum_max,
+			 double &scale_max,
+			 cv::Point_<int> &ref_point_found)
     {
 	std::clock_t t_start = std::clock();
 
-	const int sizes[3] = {size.height, size.width, NUM_OF_SCALES};
-	cv::Mat accum[NUM_OF_QUANT_DIRECTIONS];
-	for (int ii = 0; ii < NUM_OF_QUANT_DIRECTIONS; ++ii) {
-	    accum[ii] = cv::Mat(3, sizes, CV_32F, cv::Scalar_<float>(0.0));
-	}
+	accum_max = 0;
 
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
+	// prepare 2 kernels - plain and gauss
+	cv::Mat plain(2,2, CV_32F, cv::Scalar_<float>(1.0));
+	cv::Mat gauss = cv::getGaussianKernel(11,1, CV_32F);
+	gauss = gauss * gauss.t();
+	cv::Mat minus(11, 11, CV_32F,
+			cv::Scalar_<float>(-my::maxMat(gauss)/100.0));
+	gauss += minus;
 
-	float scale = MAX_SCALE/NUM_OF_SCALES;
-	int ii = 0;
-	for (float s = SCALES_LOW_BOUND; s < MAX_SCALE + scale; s += scale, ii++) {
+	//
+	float scale = (MAX_SCALE-SCALES_LOW_BOUND)/(NUM_OF_SCALES-1);
 
-	    //std::cout << s << std::endl;
-	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
-
-		//std::cout << quant_idx << std::endl;
-		//my::visualize_points(src_hough_points[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
-		//my::visualize_points(r_table[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
-		//cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
-		float quant_num = r_table[quant_idx].size();
-		//std::cout << quant_num << std::endl;
+	for (int scale_idx = 0; scale_idx < NUM_OF_SCALES;
+							++scale_idx) {
+	    cv::Mat accum;
+	    accum = cv::Mat(size, CV_32F, cv::Scalar_<float>(0.0));
+	    float s = SCALES_LOW_BOUND + scale_idx * scale;
+	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS;
+							++quant_idx) {
+		cv::Mat quant_accum =
+			cv::Mat(size, CV_32F, cv::Scalar_<float>(0.0));
+		float num_quant_pts = r_table[quant_idx].size();
 		for(auto & pt_diff : r_table[quant_idx]) {
-		    //std::vector<cv::Point_<int> > ref_pts;
-
 		    for(auto & src_pt : src_hough_points[quant_idx]) {
-
-			// OPTIONAL - ref_point of the template inside img
-			cv::Point_<int> ref_pt(src_pt - (pt_diff*s) );
-			//std::cout << pt_diff*s << std::endl;
+			cv::Point_<int> ref_pt(src_pt - (pt_diff*s));
 			if (src_rect.contains(ref_pt)) {
-			    //std::cout << ii << std::endl;
-			    if (accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) < quant_num) {
-				accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
+			    float &accum_pt =
+			      quant_accum.at<float>(ref_pt);
+			    if (accum_pt < num_quant_pts) {
+				accum_pt += 1.0;
 			    }
 			}
 		    }
 		}
+		if (num_quant_pts > 0) {
+		    accum += quant_accum/num_quant_pts;
+		}
+		//prt(accum);
+	    }
+	    cv::filter2D(accum, accum, CV_32F, plain);
+	    cv::filter2D(accum, accum, CV_32F, gauss);
+	    //my::display(accum);
+	    double local_max = 0, local_min = 0;
+	    cv::Point_<int> local_max_pt(0,0), local_min_pt(0,0);
+	    cv::minMaxLoc(accum, &local_min, &local_max,
+					&local_min_pt, &local_max_pt);
+	    if (local_max > accum_max) {
+		accum_max = local_max;
+		scale_max = s;
+		ref_point_found = local_max_pt;
 	    }
 	}
-	cv::Mat dst;
-
 	std::clock_t t_middle = std::clock();
 	prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
-
-	accum_max = 0;
-
-	for (int ii = 0; ii < NUM_OF_SCALES; ++ii) {
-	    cv::Mat channel(size, CV_32FC1, cv::Scalar_<float>(0.0));
-	    for (int xx = 0; xx < size.width; ++xx) {
-		for (int yy = 0; yy < size.height; ++yy) {
-		    for (int quant_ii = 0; quant_ii < NUM_OF_QUANT_DIRECTIONS; ++quant_ii) {
-			if (r_table[quant_ii].size() > 0) {
-			    channel.at<float>(yy, xx) += (accum[quant_ii].at<float>(yy, xx, ii)*1.0/r_table[quant_ii].size() + 1.0);
-			}
-		    }
-		}
-	    }
-	    cv::Mat kernel(2,2, CV_32F, cv::Scalar_<float>(1.0));
-	    cv::Mat gauss = cv::getGaussianKernel(11,1, CV_32F);
-	    gauss = gauss * gauss.t();
-	    cv::Mat minus(11, 11, CV_32F, cv::Scalar_<float>(-my::maxMat(gauss)/100.0));
-
-	    gauss += minus;
-	    //prt(gauss);
-	    //my::display(gauss);
-	    //cv::rectangle(kernel,cv::Point_<int>(24,24),cv::Point_<int>(28,28), cv::Scalar_<float>(1.0), CV_FILLED);
-	    cv::filter2D(channel, channel, CV_32F, kernel);
-	    cv::filter2D(channel, channel, CV_32F, gauss);
-	    double channel_max = 0, channel_min = 0;
-	    cv::Point_<int> channel_pt_max(0,0), channel_pt_min(0,0);
-	    cv::minMaxLoc(channel, &channel_min, &channel_max, &channel_pt_min, &channel_pt_max);
-	    //double channel_max = my::maxMat(channel);
-	    if (channel_max > accum_max) {
-		accum_max = channel_max;
-		scale_max = SCALES_LOW_BOUND + ii*scale;
-		ref_point_found = channel_pt_max;
-	    }
-	    //std::cout << my::maxMat(channel) << std::endl;
-	    //my::display(channel);
-	}
-
-	std::clock_t t_end = std::clock();
-	prt((t_end-t_middle)*1.0/CLOCKS_PER_SEC);
-	return accum[0];
     }
 
     /**
@@ -333,13 +305,12 @@ namespace my
 	    double rot_accu_max = -1;
 	    double rot_scale_max = -1;
 	    cv::Point_<int> rot_max_ref_point;
-	    cv::Mat accumulator;
-	    accumulator = my::get_accumulator(rotated_r_table,
-					      src_hough_points,
-					      size,
-					      rot_accu_max,
-					      rot_scale_max,
-					      rot_max_ref_point);
+	    my::get_accumulator(rotated_r_table,
+				src_hough_points,
+				size,
+				rot_accu_max,
+				rot_scale_max,
+				rot_max_ref_point);
 	    // keeps track of the global accumulator
 	    if (rot_accu_max > accu_max) {
 		accu_max = rot_accu_max;
