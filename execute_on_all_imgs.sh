@@ -1,7 +1,12 @@
 
 img_dir_in=$HOME"/Images/Tortoises/"
 img_dir_out=$img_dir_in"Results/"
-mkdir $img_dir_out
+
+if [ ! -f $img_dir_out ]
+then
+	mkdir $img_dir_out
+fi
+
 imgs=$(ls $img_dir_in | grep "*.pnm")
 
 for img_in in $imgs
