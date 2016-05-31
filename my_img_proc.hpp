@@ -231,7 +231,7 @@ namespace my
       dxdy[1] = my::get_BGR_max_of_abs(dxdy[1]);
     }
     cv::phase(dxdy[0], dxdy[1], grad_orient, true);
-    my::display(grad_orient);
+    //my::display(grad_orient);
     return grad_orient;
   }
 
@@ -272,30 +272,27 @@ namespace my
     color = dst - BGR_minima;
 
     color_grad_mag = my::get_gradient_magnitude(color);
-    my::display(color_grad_mag);
+    //my::display(color_grad_mag);
     BGR_minima_grad_mag = my::get_gradient_magnitude(BGR_minima);
-    my::display(BGR_minima_grad_mag);
-     std::cout << color_grad_mag.type() << " " << BGR_minima_grad_mag.type() << std::endl;
+    //my::display(BGR_minima_grad_mag);
+    // std::cout << color_grad_mag.type() << " " << BGR_minima_grad_mag.type() << std::endl;
     //mag = BGR_minima_grad_mag;
     mag =  color_grad_mag;//.mul(BGR_minima_grad_mag);
     mag = my::get_scaled_CV_U8(mag);
-    my::display(mag);
+    //my::display(mag);
     cv::Scalar_<double> mag_mean = cv::mean(mag,mag>0);
-    std::cout << mag_mean << std::endl;
+    //std::cout << mag_mean << std::endl;
     //cv::Canny(mag, mag_edges, 50, 150);
     //cv::adaptiveThreshold(mag, mag_edges, 255, cv::ADAPTIVE_THRESH_MEAN_C,
 	//		cv::THRESH_BINARY, 101, 0);
     cv::threshold(mag, mag_edges, mag_mean[0], 255, cv::THRESH_BINARY);
-    my::display(mag_edges);
-    std::cout << mag.type() << " " << mag_edges.type() << std::endl;
+
     mag_edges = my::get_scaled_CV_U8(mag_edges);
-    std::cout << mag.type() << " " << mag_edges.type() << std::endl;
     //cv::GaussianBlur(BGR_minima, BGR_minima, cv::Size_<int>(0,0), 1);
     cv::Canny(BGR_minima, edges, 0, 50);
-    my::display(edges);
+
     cv::bitwise_and(edges, mag_edges, dst);
     //LOCAL THRESHOLDING !!!!
-    my::display(dst);
     //~ exit(2);
     return dst;
   }

@@ -199,7 +199,7 @@ namespace my
 			 double &scale_max,
 			 cv::Point_<int> &ref_point_found)
     {
-	std::clock_t t_start = std::clock();
+	//std::clock_t t_start = std::clock();
 
 	accum_max = 0;
 
@@ -255,8 +255,8 @@ namespace my
 		ref_point_found = local_max_pt;
 	    }
 	}
-	std::clock_t t_middle = std::clock();
-	prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
+	//std::clock_t t_middle = std::clock();
+	//prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
     }
 
     /**
@@ -331,9 +331,9 @@ namespace my
 	@param ref_point - Reference point of the template.
 	@param src - Source image.
 	@param src_edges - Edges of the source image.
-	@return void.
+	@return Best fit.
     */
-    void general_hough_fit_on_img(const cv::Mat &templ,
+    cv::Mat general_hough_fit_on_img(const cv::Mat &templ,
 			          const cv::Mat &templ_edges,
 				  const cv::Point_<int> &ref_point,
 				  const cv::Mat &src,
@@ -341,14 +341,14 @@ namespace my
     {
 	cv::Mat dst;
 	src.copyTo(dst);
-	prt("dst type"); my::prt(dst.type());
+	//prt("dst type"); my::prt(dst.type());
 	double accu_max = 0, rot_max = 0, scale_max = 0;
 	cv::Point_<int> ref_point_found(0,0);
 
 	general_hough(templ, templ_edges, ref_point, src, src_edges,
 		      accu_max, rot_max, scale_max, ref_point_found);
 
-	prt(accu_max); prt(rot_max); prt(scale_max); prt(ref_point_found);
+	//prt(accu_max); prt(rot_max); prt(scale_max); prt(ref_point_found);
 
 	HoughTable r_table;
 	r_table = my::get_r_table(templ, templ_edges, ref_point);
@@ -371,7 +371,8 @@ namespace my
 		}
 	    }
 	}
-	my::display(dst);
+	cv::resize(dst, dst, cv::Size_<int>(0,0), 4.0, 4.0);
+	return dst;
     }
 
 } /* namespace my */
