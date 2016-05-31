@@ -6,3 +6,4 @@
 !*.geany
 !.gitignore
 !makefile
+!*.sh
