@@ -36,11 +36,11 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 16;
-    const int NUM_OF_SCALES = 50;
-    const int MAX_IMG_SIZE = 256;
+    const int NUM_OF_QUANT_DIRECTIONS = 4;
+    const int NUM_OF_SCALES = 100;
+    const int MAX_IMG_SIZE = 150;
     const int MAX_TEMPLATE_SIZE = 150;
-    float MAX_SCALE = MAX_IMG_SIZE*1.0/MAX_TEMPLATE_SIZE;
+    float MAX_SCALE = 1.0*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
     const float SCALES_LOW_BOUND = 0.3 * MAX_SCALE;
 
     /**
@@ -235,39 +235,25 @@ namespace my
 			    if (accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) < quant_num) {
 				accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
 			    }
-			    //std::cout << accum.at<float>(ref_pt.y, ref_pt.x) << std::endl;//+= 1.0;
 			}
-			//std::cout << pt_diff*s << std::endl;
-			    //ref_pts.push_back(ref_pt);
 		    }
-		    //cv::Mat accum_single = my::get_accum_layer(ref_pts, src_pt,
-							    //  size);
-		    //std::cout << my::maxMat(accum_layer) << std::endl;
-		    //my::display(accum_single);
-		    //exit(1);
-		    //my::display(accum_quant);
-		    //cv::bitwise_or(accum_quant,accum_single,accum_quant);
-		    //accum_quant += accum_single;
-		    //my::display(accum_quant);
 		}
-		//cv::threshold(accum_quant, accum_quant, 1, 1, cv::THRESH_BINARY);
-		//return accum;
-		//my::display(accum_quant);
-		//accum += accum_quant;
-
 	    }
 	}
 	cv::Mat dst;
 
+	std::clock_t t_middle = std::clock();
+	prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
+
 	accum_max = 0;
 
 	for (int ii = 0; ii < NUM_OF_SCALES; ++ii) {
-	    cv::Mat channel(size, CV_32FC1, cv::Scalar_<float>(1.0));
+	    cv::Mat channel(size, CV_32FC1, cv::Scalar_<float>(0.0));
 	    for (int xx = 0; xx < size.width; ++xx) {
 		for (int yy = 0; yy < size.height; ++yy) {
 		    for (int quant_ii = 0; quant_ii < NUM_OF_QUANT_DIRECTIONS; ++quant_ii) {
 			if (r_table[quant_ii].size() > 0) {
-			    channel.at<float>(yy, xx) += accum[quant_ii].at<float>(yy, xx, ii)*1.0/r_table[quant_ii].size();
+			    channel.at<float>(yy, xx) += (accum[quant_ii].at<float>(yy, xx, ii)*1.0/r_table[quant_ii].size() + 1.0);
 			}
 		    }
 		}
@@ -297,7 +283,7 @@ namespace my
 	}
 
 	std::clock_t t_end = std::clock();
-	prt((t_end-t_start)*1.0/CLOCKS_PER_SEC);
+	prt((t_end-t_middle)*1.0/CLOCKS_PER_SEC);
 	return accum[0];
     }
 

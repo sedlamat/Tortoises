@@ -285,7 +285,7 @@ namespace my
     //cv::Canny(mag, mag_edges, 50, 150);
     //cv::adaptiveThreshold(mag, mag_edges, 255, cv::ADAPTIVE_THRESH_MEAN_C,
 	//		cv::THRESH_BINARY, 101, 0);
-			      cv::threshold(mag, mag_edges, mag_mean[0], 255, cv::THRESH_BINARY);
+    cv::threshold(mag, mag_edges, mag_mean[0], 255, cv::THRESH_BINARY);
     my::display(mag_edges);
     std::cout << mag.type() << " " << mag_edges.type() << std::endl;
     mag_edges = my::get_scaled_CV_U8(mag_edges);
