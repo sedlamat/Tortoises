@@ -36,8 +36,8 @@ namespace my
 
     // global constants for general hough transform
     const int NUM_OF_QUANT_DIRECTIONS = 4;
-    const int NUM_OF_SCALES = 100;
-    const float SCALES_LOW_BOUND = 0.3;
+    const int NUM_OF_SCALES = 50;
+    const float SCALES_LOW_BOUND = 0.4;
 
     /**
 	Gets HoughTable containing coordinates of edges grouped by
@@ -62,7 +62,7 @@ namespace my
 	cv::Mat orient, orient_adjust, directions;
 	orient = my::get_gradient_orientation(src);
 	orient_adjust = (orient >= 180)/255;
-	orient_adjust.convertTo(orient_adjust,orient.depth());
+	orient_adjust.convertTo(orient_adjust, orient.depth());
 	directions = orient + orient_adjust * -180;
 
 	float quant_width = 180.0 / NUM_OF_QUANT_DIRECTIONS;
@@ -153,11 +153,13 @@ namespace my
 
 	// shifts the R-Table quants, last-becomes-first shifting
 	for (int shift = 0; shift < num_table_shift; ++shift) {
+	    //my::visualize_points(r_table[shift], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
 	    std::vector<cv::Point> table_quant;
 	    table_quant = rotated_r_table.back();
 	    rotated_r_table.pop_back();
 	    HoughTable::iterator it = rotated_r_table.begin();
 	    rotated_r_table.insert(it, table_quant);
+	    //my::visualize_points(rotated_r_table[2], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
 	}
 
 	// rotates the R-Table points by angle_rad (counter-clockwise)
@@ -171,6 +173,7 @@ namespace my
 		pt.y = sn*x + cs*pt.y;
 	    }
 	}
+	//my::visualize_points(rotated_r_table[1], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
 	return rotated_r_table;
     }
 
@@ -196,18 +199,21 @@ namespace my
 	cv::Mat accum[NUM_OF_QUANT_DIRECTIONS];
 	for (int ii = 0; ii < NUM_OF_QUANT_DIRECTIONS; ++ii) {
 	    accum[ii] = cv::Mat(3, sizes, CV_32F, cv::Scalar_<float>(0.0));
-	}
+	}R
 
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
-	float scale = 1.0/NUM_OF_SCALES;
+	float max_templ_size = std::max(size.width,size.height)/150.0;
+	float scale = max_templ_size/NUM_OF_SCALES;
+	std::cout << "max templ size" << max_templ_size << std::endl;
 	int ii = 0;
-	for (float s = SCALES_LOW_BOUND; s < 1 + scale; s += scale, ii++) {
+	for (float s = SCALES_LOW_BOUND; s < max_templ_size + scale; s += scale, ii++) {
 
 	    //std::cout << s << std::endl;
 	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
 
 		//std::cout << quant_idx << std::endl;
-		//my::visualize_points(src_hough_points[quant_idx], size);
+		//my::visualize_points(src_hough_points[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
+		//my::visualize_points(r_table[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
 		//cv::Mat accum_quant(size, CV_32FC1, cv::Scalar_<float>(0.0));
 		float quant_num = r_table[quant_idx].size();
 		//std::cout << quant_num << std::endl;
@@ -217,7 +223,7 @@ namespace my
 		    for(auto & src_pt : src_hough_points[quant_idx]) {
 
 			// OPTIONAL - ref_point of the template inside img
-			cv::Point_<int> ref_pt(src_pt - pt_diff*s);
+			cv::Point_<int> ref_pt(src_pt - (pt_diff*s) );
 			//std::cout << pt_diff*s << std::endl;
 			if (src_rect.contains(ref_pt)) {
 			    //std::cout << ii << std::endl;
@@ -320,7 +326,7 @@ namespace my
 	const double rot_step_rad = 2 * M_PI / num_of_rot;
 	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
 	    // BEWARE: rotating counter-clockwise (see the minus sign)
-	    double angle_rad = -rot_idx * rot_step_rad;
+	    double angle_rad = rot_idx * rot_step_rad;
 	    HoughTable rotated_r_table;
 	    rotated_r_table = get_rotated_r_table(r_table, angle_rad,
 						  rot_idx);
@@ -346,7 +352,6 @@ namespace my
 	    }
 	}
 	CV_Assert(accu_max != -1);
-	return;
     }
 
     /**

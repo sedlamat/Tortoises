@@ -231,6 +231,7 @@ namespace my
       dxdy[1] = my::get_BGR_max_of_abs(dxdy[1]);
     }
     cv::phase(dxdy[0], dxdy[1], grad_orient, true);
+    my::display(grad_orient);
     return grad_orient;
   }
 
@@ -306,8 +307,8 @@ namespace my
     cv::Mat dst(size, CV_8UC1, cv::Scalar_<uchar>(0));
     cv::Rect_<int> area(cv::Point(0,0),size);
     for(auto const& pt : points) {
-	if ( (pt-shift).inside(area))
-	    dst.at<uchar>(pt-shift) = 255;
+	if ( (pt+shift).inside(area))
+	    dst.at<uchar>(pt+shift) = 255;
     }
     my::display(dst);
   }
