@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <ctime>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -35,9 +36,12 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 4;
+    const int NUM_OF_QUANT_DIRECTIONS = 16;
     const int NUM_OF_SCALES = 50;
-    const float SCALES_LOW_BOUND = 0.4;
+    const int MAX_IMG_SIZE = 256;
+    const int MAX_TEMPLATE_SIZE = 150;
+    float MAX_SCALE = MAX_IMG_SIZE*1.0/MAX_TEMPLATE_SIZE;
+    const float SCALES_LOW_BOUND = 0.3 * MAX_SCALE;
 
     /**
 	Gets HoughTable containing coordinates of edges grouped by
@@ -195,18 +199,19 @@ namespace my
 			    double &scale_max,
 			    cv::Point_<int> &ref_point_found)
     {
+	std::clock_t t_start = std::clock();
+
 	const int sizes[3] = {size.height, size.width, NUM_OF_SCALES};
 	cv::Mat accum[NUM_OF_QUANT_DIRECTIONS];
 	for (int ii = 0; ii < NUM_OF_QUANT_DIRECTIONS; ++ii) {
 	    accum[ii] = cv::Mat(3, sizes, CV_32F, cv::Scalar_<float>(0.0));
-	}R
+	}
 
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
-	float max_templ_size = std::max(size.width,size.height)/150.0;
-	float scale = max_templ_size/NUM_OF_SCALES;
-	std::cout << "max templ size" << max_templ_size << std::endl;
+
+	float scale = MAX_SCALE/NUM_OF_SCALES;
 	int ii = 0;
-	for (float s = SCALES_LOW_BOUND; s < max_templ_size + scale; s += scale, ii++) {
+	for (float s = SCALES_LOW_BOUND; s < MAX_SCALE + scale; s += scale, ii++) {
 
 	    //std::cout << s << std::endl;
 	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS; ++quant_idx) {
@@ -227,8 +232,9 @@ namespace my
 			//std::cout << pt_diff*s << std::endl;
 			if (src_rect.contains(ref_pt)) {
 			    //std::cout << ii << std::endl;
-			    if (accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) < quant_num)
+			    if (accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) < quant_num) {
 				accum[quant_idx].at<float>(ref_pt.y, ref_pt.x, ii) += 1.0;
+			    }
 			    //std::cout << accum.at<float>(ref_pt.y, ref_pt.x) << std::endl;//+= 1.0;
 			}
 			//std::cout << pt_diff*s << std::endl;
@@ -260,7 +266,9 @@ namespace my
 	    for (int xx = 0; xx < size.width; ++xx) {
 		for (int yy = 0; yy < size.height; ++yy) {
 		    for (int quant_ii = 0; quant_ii < NUM_OF_QUANT_DIRECTIONS; ++quant_ii) {
-			channel.at<float>(yy, xx) += accum[quant_ii].at<float>(yy, xx, ii)*1.0/r_table[quant_ii].size();
+			if (r_table[quant_ii].size() > 0) {
+			    channel.at<float>(yy, xx) += accum[quant_ii].at<float>(yy, xx, ii)*1.0/r_table[quant_ii].size();
+			}
 		    }
 		}
 	    }
@@ -287,6 +295,9 @@ namespace my
 	    //std::cout << my::maxMat(channel) << std::endl;
 	    //my::display(channel);
 	}
+
+	std::clock_t t_end = std::clock();
+	prt((t_end-t_start)*1.0/CLOCKS_PER_SEC);
 	return accum[0];
     }
 
@@ -323,7 +334,7 @@ namespace my
 
 	// rotates the R-Table
 	const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
-	const double rot_step_rad = 2 * M_PI / num_of_rot;
+	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
 	    // BEWARE: rotating counter-clockwise (see the minus sign)
 	    double angle_rad = rot_idx * rot_step_rad;
