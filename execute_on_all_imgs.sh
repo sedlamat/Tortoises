@@ -7,12 +7,12 @@ then
 	mkdir $img_dir_out
 fi
 
-imgs=$(ls $img_dir_in | grep ".pnm")
-#echo $imgs
+imgs=$(ls -r $img_dir_in | grep ".jpg")
+echo $imgs
 for img_in in $imgs
 do
 	echo "Processing image $img_in"
-	img_out="res"${img_in:0:7}".jpg"
+	img_out=res${img_in:0:7}".jpg"
 	#echo $img_dir_out$img_out
 	./tortoise $img_dir_in$img_in $img_dir_out$img_out
 done

@@ -42,12 +42,14 @@ int main(int argc, char *argv[])
     Mat img = imread(img_path,1);
     //my::display(img);
     //exit(0);
+
     double resize_koef = 150.0/max(img.rows,img.cols);
     resize(img, img, Size(0,0), resize_koef, resize_koef);
     Mat edges = get_edges_color_based(img);
     //my::display(edges);
     Mat dst = general_hough_fit_on_img(templ, templ_edges,
 						ref_point, img, edges);
+
     imwrite(argv[2], dst);
     //cout << "image written" << endl;
     return 0;
