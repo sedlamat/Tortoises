@@ -36,11 +36,11 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 12;
+    const int NUM_OF_QUANT_DIRECTIONS = 36; // 4 * 3 [* 3] ...
     const int NUM_OF_SCALES = 50;
     const int MAX_IMG_SIZE = 150;
     const int MAX_TEMPLATE_SIZE = 150;
-    const float MAX_SCALE = 1.0*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
+    const float MAX_SCALE = 1.1*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
     const float SCALES_LOW_BOUND = 0.3 * MAX_SCALE;
 
     /**
@@ -68,8 +68,9 @@ namespace my
 	orient_adjust = (orient >= 180)/255;
 	orient_adjust.convertTo(orient_adjust, orient.depth());
 	directions = orient + orient_adjust * -180;
-
+	my::display(directions);
 	float quant_width = 180.0 / NUM_OF_QUANT_DIRECTIONS;
+	prt(quant_width/2);
 	// goes through all edge pixels
 	for (int yy = 0; yy < src_edges.rows; yy++) {
 	    const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
@@ -80,14 +81,15 @@ namespace my
 		    float phi = directions.at<float>(pt);
 		    int quant_idx = -1;
 		    int idx = 0;
-		    if (phi >= 180 - quant_width/2 ||
-			phi < quant_width/2) {
+		    if (phi >= 180 - quant_width/2.0 ||
+			phi < quant_width/2.0) {
 			quant_idx = idx;
 		    } else {
 			++idx;
-			for (float quant_low_bound = quant_width/2;
-			     quant_low_bound < 180 - quant_width;
+			for (float quant_low_bound = quant_width/2.0;
+			     quant_low_bound < 180.0 - quant_width;
 			     quant_low_bound += quant_width) {
+			    //prt(quant_low_bound);
 			    if (phi >= quant_low_bound &&
 				phi < quant_low_bound + quant_width) {
 				quant_idx = idx;
@@ -199,10 +201,26 @@ namespace my
 			 double &scale_max,
 			 cv::Point_<int> &ref_point_found)
     {
-	//std::clock_t t_start = std::clock();
+	std::clock_t t_start = std::clock();
 
 	accum_max = 0;
-	float multiplier = 10.0;
+	float multiplier = 1.0;
+	int quant_neighbour = NUM_OF_QUANT_DIRECTIONS/4;
+	switch (quant_neighbour) {
+	    case 1:
+		quant_neighbour = 0;
+		break;
+	    case 3:
+		quant_neighbour = 1;
+		break;
+	    case 9:
+		quant_neighbour = 4;
+		break;
+	    default:
+		throw "Unexpected quant_neighbour";
+	}
+	//quant_neighbour = quant_neighbour == 1 ? 0 //NUM_OF_QUANT_DIRECTIONS/12;
+
 	cv::Size_<int> sizeM(size.width*multiplier, size.height*multiplier);
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
 	// prepare 2 kernels - plain and gauss
@@ -211,11 +229,11 @@ namespace my
 	cv::Mat plain(plain_size,plain_size, CV_32F, cv::Scalar_<float>(1.0));
 	cv::Mat gauss = cv::getGaussianKernel(gauss_size,1, CV_32F);
 	gauss = gauss * gauss.t();
-	//cv::Mat minus(gauss_size, gauss_size, CV_32F,
-	//		cv::Scalar_<float>(-my::maxMat(gauss)/1000.0));
-	//gauss += minus;
+	//~ cv::Mat minus(gauss_size, gauss_size, CV_32F,
+			//~ cv::Scalar_<float>(-my::maxMat(gauss)/1000.0));
+	//~ gauss += minus;
 
-	//
+
 	float scale = (MAX_SCALE-SCALES_LOW_BOUND)/(NUM_OF_SCALES-1);
 
 	for (int scale_idx = 0; scale_idx < NUM_OF_SCALES;
@@ -227,9 +245,29 @@ namespace my
 							++quant_idx) {
 		cv::Mat quant_accum =
 			cv::Mat(sizeM, CV_32F, cv::Scalar_<float>(0.0));
-		float num_quant_pts = r_table[quant_idx].size();
-		for(auto & pt_diff : r_table[quant_idx]) {
-		    for(auto & src_pt : src_hough_points[quant_idx]) {
+		std::vector<cv::Point_<int> > r_table_pts, src_pts;
+		prt(r_table[quant_idx].size());
+		my::visualize_points(r_table[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
+		for (int quant_shift = -quant_neighbour;
+		     quant_shift <= quant_neighbour; ++quant_shift) {
+		    int idx = quant_idx + quant_shift;
+		    if (idx < 0) {
+			idx = idx + NUM_OF_QUANT_DIRECTIONS;
+		    }
+		    if (idx >= NUM_OF_QUANT_DIRECTIONS) {
+			idx = idx - NUM_OF_QUANT_DIRECTIONS;
+		    }
+		    r_table_pts.insert(r_table_pts.end(),
+				       r_table[idx].begin(),
+				       r_table[idx].end());
+		    src_pts.insert(src_pts.end(),
+				   src_hough_points[idx].begin(),
+				   src_hough_points[idx].end());
+		}
+		float num_quant_pts = r_table_pts.size();
+		//prt(num_quant_pts);
+		for(auto & pt_diff : r_table_pts) {
+		    for(auto & src_pt : src_pts) {
 			cv::Point_<int> ref_pt(src_pt - (pt_diff*s));
 			if (src_rect.contains(ref_pt)) {
 			    float &accum_pt =
@@ -243,11 +281,14 @@ namespace my
 		if (num_quant_pts > 0) {
 		    accum += quant_accum/num_quant_pts;
 		}
+
 		//prt(accum);
 	    }
 	    cv::filter2D(accum, accum, CV_32F, plain);
 	    cv::filter2D(accum, accum, CV_32F, gauss);
+
 	    my::display(accum);
+
 	    double local_max = 0, local_min = 0;
 	    cv::Point_<int> local_max_pt(0,0), local_min_pt(0,0);
 	    cv::minMaxLoc(accum, &local_min, &local_max,
@@ -260,8 +301,8 @@ namespace my
 		ref_point_found.y = local_max_pt.y/multiplier;
 	    }
 	}
-	//std::clock_t t_middle = std::clock();
-	//prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
+	std::clock_t t_middle = std::clock();
+	prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
     }
 
     /**
@@ -298,7 +339,7 @@ namespace my
 	// rotates the R-Table
 	const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
 	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
-	for (int rot_idx = 18; rot_idx < 19; ++rot_idx) {
+	for (int rot_idx = 0; rot_idx < 1; ++rot_idx) {
 	    // BEWARE: rotating counter-clockwise (see the minus sign)
 	    double angle_rad = rot_idx * rot_step_rad;
 	    HoughTable rotated_r_table;

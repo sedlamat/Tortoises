@@ -272,10 +272,10 @@ namespace my
     BGR_minima = my::get_3channel(BGR_minima);
     color = dst - BGR_minima;
 
-    my::display(BGR_minima);
+    //my::display(BGR_minima);
     cv::Mat minEdges;
     cv::Canny(BGR_minima, minEdges, 100, 150);
-    my::display(minEdges);
+    //my::display(minEdges);
     //~ my::display(my::get_gradient_scharr(color)[0]);
     //~ my::display(my::get_gradient_scharr(color)[1]);
     //~ my::display(my::get_gradient_scharr(color)[1] + my::get_gradient_scharr(color)[0]);
@@ -303,7 +303,7 @@ namespace my
     cv::bitwise_and(edges, mag_edges, dst);
     //my::display(dst);
     dst = edges;
-    my::display(edges);
+    //my::display(edges);
     //LOCAL THRESHOLDING !!!!
     //~ exit(2);
     return dst;

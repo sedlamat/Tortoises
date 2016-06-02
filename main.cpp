@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 	Point ref_point(ref_point_loc.at<int>(0,0),
 			ref_point_loc.at<int>(0,1));
 
-	string file_name = "Tg33000.jpg";
+	string file_name = "Tg52700.jpg";
 	string imgs_path = path + "/Images/Tortoises/";
 	string img_path = imgs_path + file_name;
 	//string img_path = argv[1];
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 
 	//exit(0);
 
-	double resize_koef = 150.0/max(img.rows,img.cols);
+	double resize_koef = 256.0/max(img.rows,img.cols);
 	resize(img, img, Size(0,0), resize_koef, resize_koef);
 	my::display(img);
 	Mat edges = get_edges_color_based(img);
@@ -56,12 +56,14 @@ int main(int argc, char *argv[])
 						ref_point, img, edges);
 	my::display(dst);
 	exit(0);
-    } catch (...) {
-	cout << "Error when processing " << argv[1] << endl;
-	exit(0);
-    }
+
 	//imwrite(argv[2], dst);
 	//cout << "image written" << endl;
+    } catch (string e) {
+	cout << "Error when processing " << argv[1];
+	cout << " " << e << endl;
+	exit(0);
+    }
     return 0;
 }
 
