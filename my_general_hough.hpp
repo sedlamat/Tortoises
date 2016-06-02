@@ -36,7 +36,7 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 36; // 4 * 3 [* 3] ...
+    const int NUM_OF_QUANT_DIRECTIONS = 12; // 4 * 3 [* 3] ...
     const int NUM_OF_SCALES = 50;
     const int MAX_IMG_SIZE = 150;
     const int MAX_TEMPLATE_SIZE = 150;
@@ -68,9 +68,9 @@ namespace my
 	orient_adjust = (orient >= 180)/255;
 	orient_adjust.convertTo(orient_adjust, orient.depth());
 	directions = orient + orient_adjust * -180;
-	my::display(directions);
+	//my::display(directions);
 	float quant_width = 180.0 / NUM_OF_QUANT_DIRECTIONS;
-	prt(quant_width/2);
+	//prt(quant_width/2);
 	// goes through all edge pixels
 	for (int yy = 0; yy < src_edges.rows; yy++) {
 	    const uchar *ptr_src_edges_irow = src_edges.ptr<uchar>(yy);
@@ -246,8 +246,8 @@ namespace my
 		cv::Mat quant_accum =
 			cv::Mat(sizeM, CV_32F, cv::Scalar_<float>(0.0));
 		std::vector<cv::Point_<int> > r_table_pts, src_pts;
-		prt(r_table[quant_idx].size());
-		my::visualize_points(r_table[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
+		//prt(r_table[quant_idx].size());
+		//my::visualize_points(r_table[quant_idx], cv::Size_<int>(500,500), cv::Point_<int>(250,250));
 		for (int quant_shift = -quant_neighbour;
 		     quant_shift <= quant_neighbour; ++quant_shift) {
 		    int idx = quant_idx + quant_shift;
@@ -287,13 +287,13 @@ namespace my
 	    cv::filter2D(accum, accum, CV_32F, plain);
 	    cv::filter2D(accum, accum, CV_32F, gauss);
 
-	    my::display(accum);
+	    //my::display(accum);
 
 	    double local_max = 0, local_min = 0;
 	    cv::Point_<int> local_max_pt(0,0), local_min_pt(0,0);
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
-	    prt(local_max);
+	    //prt(local_max);
 	    if (local_max > accum_max) {
 		accum_max = local_max;
 		scale_max = s;
@@ -339,7 +339,7 @@ namespace my
 	// rotates the R-Table
 	const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
 	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
-	for (int rot_idx = 0; rot_idx < 1; ++rot_idx) {
+	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
 	    // BEWARE: rotating counter-clockwise (see the minus sign)
 	    double angle_rad = rot_idx * rot_step_rad;
 	    HoughTable rotated_r_table;
