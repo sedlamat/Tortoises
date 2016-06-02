@@ -36,7 +36,7 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 12; // 4 * 3 [* 3] ...
+    const int NUM_OF_QUANT_DIRECTIONS = 4; // 4 * 3 [* 3] ...
     const int NUM_OF_SCALES = 50;
     const int MAX_IMG_SIZE = 150;
     const int MAX_TEMPLATE_SIZE = 150;
@@ -201,7 +201,7 @@ namespace my
 			 double &scale_max,
 			 cv::Point_<int> &ref_point_found)
     {
-	std::clock_t t_start = std::clock();
+	//std::clock_t t_start = std::clock();
 
 	accum_max = 0;
 	float multiplier = 1.0;
@@ -301,8 +301,8 @@ namespace my
 		ref_point_found.y = local_max_pt.y/multiplier;
 	    }
 	}
-	std::clock_t t_middle = std::clock();
-	prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
+	//std::clock_t t_middle = std::clock();
+	//prt((t_middle-t_start)*1.0/CLOCKS_PER_SEC);
     }
 
     /**
