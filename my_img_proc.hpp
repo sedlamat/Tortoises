@@ -224,6 +224,7 @@ namespace my
   */
   cv::Mat get_gradient_orientation(const cv::Mat& src)
   {
+
     cv::Mat grad_orient;
     std::vector<cv::Mat> dxdy = my::get_gradient_scharr(src);
     if (src.channels() > 1) {
@@ -271,6 +272,14 @@ namespace my
     BGR_minima = my::get_3channel(BGR_minima);
     color = dst - BGR_minima;
 
+    my::display(BGR_minima);
+    cv::Mat minEdges;
+    cv::Canny(BGR_minima, minEdges, 100, 150);
+    my::display(minEdges);
+    //~ my::display(my::get_gradient_scharr(color)[0]);
+    //~ my::display(my::get_gradient_scharr(color)[1]);
+    //~ my::display(my::get_gradient_scharr(color)[1] + my::get_gradient_scharr(color)[0]);
+    //~ my::display(my::get_gradient_scharr(dst)[1] + my::get_gradient_scharr(dst)[0]);
     color_grad_mag = my::get_gradient_magnitude(color);
     //my::display(color_grad_mag);
     BGR_minima_grad_mag = my::get_gradient_magnitude(BGR_minima);
@@ -280,7 +289,7 @@ namespace my
     mag =  color_grad_mag;//.mul(BGR_minima_grad_mag);
     mag = my::get_scaled_CV_U8(mag);
     //my::display(mag);
-    cv::Scalar_<double> mag_mean = cv::mean(mag,mag>0);
+    cv::Scalar_<double> mag_mean = cv::mean(mag, mag>0);
     //std::cout << mag_mean << std::endl;
     //cv::Canny(mag, mag_edges, 50, 150);
     //cv::adaptiveThreshold(mag, mag_edges, 255, cv::ADAPTIVE_THRESH_MEAN_C,
@@ -289,9 +298,12 @@ namespace my
 
     mag_edges = my::get_scaled_CV_U8(mag_edges);
     //cv::GaussianBlur(BGR_minima, BGR_minima, cv::Size_<int>(0,0), 1);
-    cv::Canny(BGR_minima, edges, 0, 50);
+    cv::Canny(BGR_minima, edges, 20, 50);
 
     cv::bitwise_and(edges, mag_edges, dst);
+    //my::display(dst);
+    dst = edges;
+    my::display(edges);
     //LOCAL THRESHOLDING !!!!
     //~ exit(2);
     return dst;

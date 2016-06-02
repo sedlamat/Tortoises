@@ -36,7 +36,7 @@ namespace my
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
     // global constants for general hough transform
-    const int NUM_OF_QUANT_DIRECTIONS = 8;
+    const int NUM_OF_QUANT_DIRECTIONS = 12;
     const int NUM_OF_SCALES = 50;
     const int MAX_IMG_SIZE = 150;
     const int MAX_TEMPLATE_SIZE = 150;
@@ -202,15 +202,18 @@ namespace my
 	//std::clock_t t_start = std::clock();
 
 	accum_max = 0;
-
+	float multiplier = 10.0;
+	cv::Size_<int> sizeM(size.width*multiplier, size.height*multiplier);
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0),size);
 	// prepare 2 kernels - plain and gauss
-	cv::Mat plain(2,2, CV_32F, cv::Scalar_<float>(1.0));
-	cv::Mat gauss = cv::getGaussianKernel(11,1, CV_32F);
+	int plain_size = 2*multiplier;
+	int gauss_size = 11*multiplier;
+	cv::Mat plain(plain_size,plain_size, CV_32F, cv::Scalar_<float>(1.0));
+	cv::Mat gauss = cv::getGaussianKernel(gauss_size,1, CV_32F);
 	gauss = gauss * gauss.t();
-	cv::Mat minus(11, 11, CV_32F,
-			cv::Scalar_<float>(-my::maxMat(gauss)/100.0));
-	gauss += minus;
+	//cv::Mat minus(gauss_size, gauss_size, CV_32F,
+	//		cv::Scalar_<float>(-my::maxMat(gauss)/1000.0));
+	//gauss += minus;
 
 	//
 	float scale = (MAX_SCALE-SCALES_LOW_BOUND)/(NUM_OF_SCALES-1);
@@ -218,19 +221,19 @@ namespace my
 	for (int scale_idx = 0; scale_idx < NUM_OF_SCALES;
 							++scale_idx) {
 	    cv::Mat accum;
-	    accum = cv::Mat(size, CV_32F, cv::Scalar_<float>(0.0));
+	    accum = cv::Mat(sizeM, CV_32F, cv::Scalar_<float>(0.0));
 	    float s = SCALES_LOW_BOUND + scale_idx * scale;
 	    for(int quant_idx = 0; quant_idx < NUM_OF_QUANT_DIRECTIONS;
 							++quant_idx) {
 		cv::Mat quant_accum =
-			cv::Mat(size, CV_32F, cv::Scalar_<float>(0.0));
+			cv::Mat(sizeM, CV_32F, cv::Scalar_<float>(0.0));
 		float num_quant_pts = r_table[quant_idx].size();
 		for(auto & pt_diff : r_table[quant_idx]) {
 		    for(auto & src_pt : src_hough_points[quant_idx]) {
 			cv::Point_<int> ref_pt(src_pt - (pt_diff*s));
 			if (src_rect.contains(ref_pt)) {
 			    float &accum_pt =
-			      quant_accum.at<float>(ref_pt);
+			      quant_accum.at<float>(ref_pt*multiplier);
 			    if (accum_pt < num_quant_pts) {
 				accum_pt += 1.0;
 			    }
@@ -244,15 +247,17 @@ namespace my
 	    }
 	    cv::filter2D(accum, accum, CV_32F, plain);
 	    cv::filter2D(accum, accum, CV_32F, gauss);
-	    //my::display(accum);
+	    my::display(accum);
 	    double local_max = 0, local_min = 0;
 	    cv::Point_<int> local_max_pt(0,0), local_min_pt(0,0);
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
+	    prt(local_max);
 	    if (local_max > accum_max) {
 		accum_max = local_max;
 		scale_max = s;
-		ref_point_found = local_max_pt;
+		ref_point_found.x = local_max_pt.x/multiplier;
+		ref_point_found.y = local_max_pt.y/multiplier;
 	    }
 	}
 	//std::clock_t t_middle = std::clock();
@@ -293,7 +298,7 @@ namespace my
 	// rotates the R-Table
 	const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
 	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
-	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
+	for (int rot_idx = 18; rot_idx < 19; ++rot_idx) {
 	    // BEWARE: rotating counter-clockwise (see the minus sign)
 	    double angle_rad = rot_idx * rot_step_rad;
 	    HoughTable rotated_r_table;
