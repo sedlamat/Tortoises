@@ -16,4 +16,3 @@ do
 	#echo $img_dir_out$img_out
 	./tortoise $img_dir_in$img_in $img_dir_out$img_out
 done
-
