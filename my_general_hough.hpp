@@ -86,7 +86,7 @@ namespace sedlamat
 
 	void run();
 
-	void display_result() const;
+	cv::Mat get_result_img() const;
 
 	cv::Point get_ref_pt() const { return ref_pt; };
 	int get_template_max_size() const {
@@ -444,57 +444,45 @@ namespace sedlamat
 	}
     }
 
-
-
-    void general_hough(const cv::Mat &templ,
-		       const cv::Mat &templ_edges,
-		       const cv::Point_<int> &ref_point,
-		       const cv::Mat &src,
-		       const cv::Mat &src_edges,
-		       double &accu_max,
-		       double &rot_max,
-		       double &scale_max,
-		       cv::Point_<int> &ref_point_found)
+    void GeneralHough::run()
     {
-	HoughTable r_table, src_hough_points;
-	// sets accu_max -1 to check at the end if it changed
-	accu_max = -1;
+	fill_r_table();
+	fill_src_hough_pts();
 
-	r_table = get_r_table(templ, templ_edges, ref_point);
-	src_hough_points = get_hough_points(src, src_edges);
-
-	cv::Size_<int> size = src.size();
-
-	// rotates the R-Table
-	const int num_of_rot = NUM_OF_QUANT_DIRECTIONS * 2;
+	// accumulate for all rotated r-tables
+	const int num_of_rot = num_quant_directions * 2;
 	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
-	    // BEWARE: rotating counter-clockwise (see the minus sign)
-	    double angle_rad = rot_idx * rot_step_rad;
-	    HoughTable rotated_r_table;
-	    rotated_r_table = get_rotated_r_table(r_table, angle_rad,
-						  rot_idx);
-	    /* gets accumulator maximum at one of the scales for a
-	       given rotated R-Table and saves it into rot_accu_max
-	       and rot_scale_max */
-	    double rot_accu_max = -1;
-	    double rot_scale_max = -1;
-	    cv::Point_<int> rot_max_ref_point;
-	    get_accumulator(rotated_r_table,
-				src_hough_points,
-				size,
-				rot_accu_max,
-				rot_scale_max,
-				rot_max_ref_point);
-	    // keeps track of the global accumulator
-	    if (rot_accu_max > accu_max) {
-		accu_max = rot_accu_max;
-		rot_max = angle_rad;
-		scale_max = rot_scale_max;
-		ref_point_found = rot_max_ref_point;
+	    double rot_step_rad = rot_idx * rot_step_rad;
+	    set_rotated_r_table(rot_step_rad, rot_idx);
+	    accumulate();
 	    }
 	}
-	CV_Assert(accu_max != -1);
+    }
+
+    cv::Mat get_result_img()
+    {
+	cv::Mat dst;
+	this->src_img.copyTo(dst);
+
+	// rotates and shift the R-Table points
+	double cs = std::cos(this->best_angle);
+	double sn = std::sin(this->best_angle);
+
+	for(auto & table_quant : this->r_table) {
+	    for(auto & pt : table_quant) {
+		int x = pt.x;
+		pt.x = cs*pt.x - sn*pt.y;
+		pt.y = sn*x + cs*pt.y;
+		pt = pt * this->best_scale;
+		pt = pt + this->best_ref_pt;
+		if (this->src_area.contains(pt)) {
+		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
+		}
+	    }
+	}
+	cv::resize(dst, dst, cv::Size(0,0), 4.0, 4.0);
+	return dst;
     }
 
 
