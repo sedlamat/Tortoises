@@ -88,6 +88,14 @@ namespace sedlamat
 
 	cv::Mat get_result_img() const;
 
+	double get_best_accum_val() const {
+					return this->best_accum_val; }
+	double get_best_angle() const {
+					return this->best_angle; }
+	double get_best_scale() const {
+					return this->best_scale; }
+	cv::Point get_best_ref_pt() const {
+					return this->best_ref_pt; }
 	cv::Point get_ref_pt() const { return ref_pt; };
 	int get_template_max_size() const {
 				    return this->template_max_size; }
@@ -107,7 +115,7 @@ namespace sedlamat
 					int num_table_shift);
 	void set_template_max_size();
 	void set_kernels();
-	void accumulate();
+	void accumulate(double rotation_rad);
     };
 
     GeneralHough::GeneralHough(const cv::Mat &src_img,
@@ -360,7 +368,7 @@ namespace sedlamat
 	//~ gauss += minus;
     }
 
-    void GeneralHough::accumulate()
+    void GeneralHough::accumulate(double rotation_rad)
     {
 	int quant_neighbour = this->num_quant_directions/4;
 	switch (quant_neighbour) {
@@ -376,7 +384,6 @@ namespace sedlamat
 	    default:
 		throw "Unexpected quant_neighbour";
 	}
-
 
 
 	float scale = (this->max_scale - this->min_scale) /
@@ -427,40 +434,40 @@ namespace sedlamat
 	    }
 	    cv::filter2D(accum, accum, CV_32F, this->plain);
 	    cv::filter2D(accum, accum, CV_32F, this->gauss);
-
 	    //my::display(accum);
 
 	    double local_max = 0, local_min = 0;
-	    cv::Point_<int> local_max_pt(0,0), local_min_pt(0,0);
+	    cv::Point local_max_pt(0,0), local_min_pt(0,0);
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
-	    //prt(local_max);
+	    //my::prt(local_max);
 	    if (local_max > this->best_accum_val) {
 		this->best_accum_val = local_max;
-		this->best_angle = s;
+		this->best_scale = s;
+		this->best_angle = rotation_rad;
 		this->best_ref_pt.x = local_max_pt.x;
 		this->best_ref_pt.y = local_max_pt.y;
 	    }
+	    //my::prt(this->best_accum_val);
 	}
     }
 
     void GeneralHough::run()
     {
-	fill_r_table();
-	fill_src_hough_pts();
-
+	this->set_kernels();
+	this->fill_r_table();
+	this->fill_src_hough_pts();
 	// accumulate for all rotated r-tables
-	const int num_of_rot = num_quant_directions * 2;
+	const int num_of_rot = this->num_quant_directions * 2;
 	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
-	    double rot_step_rad = rot_idx * rot_step_rad;
-	    set_rotated_r_table(rot_step_rad, rot_idx);
-	    accumulate();
-	    }
+	    double rotation_rad = rot_idx * rot_step_rad;
+	    this->set_rotated_r_table(rotation_rad, rot_idx);
+	    this->accumulate(rotation_rad);
 	}
     }
 
-    cv::Mat get_result_img()
+    cv::Mat GeneralHough::get_result_img() const
     {
 	cv::Mat dst;
 	this->src_img.copyTo(dst);
@@ -469,8 +476,8 @@ namespace sedlamat
 	double cs = std::cos(this->best_angle);
 	double sn = std::sin(this->best_angle);
 
-	for(auto & table_quant : this->r_table) {
-	    for(auto & pt : table_quant) {
+	for(auto table_quant : this->r_table) {
+	    for(auto pt : table_quant) {
 		int x = pt.x;
 		pt.x = cs*pt.x - sn*pt.y;
 		pt.y = sn*x + cs*pt.y;

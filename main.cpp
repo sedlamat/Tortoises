@@ -42,7 +42,20 @@ int main(int argc, char *argv[])
 	Mat img = imread(img_path,1);
 
 	my::display(img);
-	sedlamat::GeneralHough general_hough(img, templ, ref_point);
+	sedlamat::GeneralHough general_hough(img, templ, ref_point,
+						cv::Mat(),
+						templ_edges,
+						4,
+						50,
+						150,
+						1.0,
+						0.3);
+	general_hough.run();
+	cout << general_hough.get_best_accum_val() << endl;
+	cout << general_hough.get_best_angle() << endl;
+	cout << general_hough.get_best_ref_pt() << endl;
+	cout << general_hough.get_best_scale() << endl;
+	my::display(general_hough.get_result_img());
 	my::display(general_hough.get_template_edges());
 	my::display(general_hough.get_src_edges());
 	my::display(general_hough.get_src_img());

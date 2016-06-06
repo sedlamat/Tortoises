@@ -101,8 +101,11 @@ namespace my
 	    dst = src;
 	}
 	cv::namedWindow(window_name, cv::WINDOW_NORMAL);
-	cv::imshow(window_name, dst);
-	cv::waitKey(0);
+	int k = 1;
+	while (k != 27) {
+	    cv::imshow(window_name, dst);
+	    k = cv::waitKey(0);
+	}
     }
 
     /**
