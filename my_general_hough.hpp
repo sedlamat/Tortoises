@@ -36,6 +36,7 @@ namespace sedlamat
 	Beware:
 	    cv::Point is alias for cv::Point_<int>
 	    cv::Size is alias for cv::Size_<int>
+	    cv::Rect is alias for cv::Rect_<int>
     */
     class GeneralHough {
 
@@ -45,14 +46,20 @@ namespace sedlamat
 	cv::Mat src_img, src_edges, template_img, template_edges;
 	HoughTable r_table, src_hough_points;
 
-	const int num_quant_directions; // 4 * 3 [* 3] ...
-	const int num_scales;
-	const int MAX_IMG_SIZE = 150;
-	const int MAX_TEMPLATE_SIZE = 150;
-	const float MAX_SCALE = 1.1*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
-	const float SCALES_LOW_BOUND = 0.3 * MAX_SCALE;
+	cv::Size src_size, template_img_size;
+	cv::Rect src_area, template_img_area;
 
 	cv::Point ref_pt; // reference point of the template
+
+	const int num_quant_directions; // 4 * 3 [* 3] ...
+	const int num_scales;
+	const int max_img_size;
+	const double max_template_scale;
+	const double min_template_scale;
+
+	int template_size;
+	double max_scale; //= 1.1*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
+	double min_scale; //= 0.3 * max_template_scale;
 
 	// parameters of the best fit
 	double best_scale;
@@ -68,8 +75,8 @@ namespace sedlamat
 		     const int num_quant_directions = 4,
 		     const int num_scales = 50,
 		     const int max_img_size = 150,
-		     const double max_template_scale = 1,
-		     const double min_template_scale = 0);
+		     const double max_template_scale = 1.0,
+		     const double min_template_scale = 0.0); // 0.3
 
 	~GeneralHough() {}
 
@@ -82,6 +89,54 @@ namespace sedlamat
 	HoughTable get_hough_points();
     };
 
+    GeneralHough::GeneralHough(const cv::Mat &src_img,
+			    const cv::Mat &template_img,
+			    const cv::Point ref_pt,
+			    const cv::Mat &src_edges,
+			    const cv::Mat &template_edges,
+			    const int num_quant_directions,
+			    const int num_scales,
+			    const int max_img_size,
+			    const double max_template_scale,
+			    const double min_template_scale):
+			    src_img(src_img),
+			    src_edges(src_edges),
+			    template_img(template_img),
+			    template_edges(template_edges),
+			    ref_pt(ref_pt),
+			    num_quant_directions(num_quant_directions),
+			    num_scales(num_scales),
+			    max_img_size(max_img_size),
+			    max_template_scale(max_template_scale),
+			    min_template_scale(min_template_scale)
+    {
+	if (this->src_img.empty() || this->template_img.empty()) {
+	    throw "Source and/or template image is empty!";
+	} else {
+	    this->template_img_size = this->template_img.size();
+	    this->template_img_area = cv::Rect(cv::Point(0,0),
+					    this->template_img_size);
+	    if ( ! this->ref_pt.inside(this->template_img_area)) {
+		throw "Reference point outside template image!";
+	    } else {
+		int src_w = this->src_img.cols;
+		int src_h = this->src_img.rows;
+		double resize_koef = this->max_img_size * 1.0 /
+						std::max(src_w,src_h);
+		cv::resize(this->src_img, this->src_img, cv::Size(0,0),
+					resize_koef, resize_koef);
+
+		this->src_size = this->src_img.size();
+		this->src_area = cv::Rect(cv::Point(0,0),
+						    this->src_size);
+	    }
+	}
+
+
+
+
+
+    }
 
 
 
