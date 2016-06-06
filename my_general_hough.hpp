@@ -33,10 +33,38 @@
 namespace sedlamat
 {
     class GeneralHough {
-	// alias used to store points grouped by gradient direction
-	typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
+	// cv::Point is alias for cv::Point_<int>
 
-    private:
+	// alias used to store points grouped by gradient direction
+	typedef std::vector<std::vector<cv::Point> > HoughTable;
+
+	const cv::Mat src_img, src_edges, template_img, template_edges;
+	HoughTable r_table, src_hough_points;
+
+	const int NUM_QUANT_DIRECTIONS = 4; // 4 * 3 [* 3] ...
+	const int NUM_SCALES = 50;
+	const int MAX_IMG_SIZE = 150;
+	const int MAX_TEMPLATE_SIZE = 150;
+	const float MAX_SCALE = 1.1*MAX_IMG_SIZE/MAX_TEMPLATE_SIZE;
+	const float SCALES_LOW_BOUND = 0.3 * MAX_SCALE;
+
+	cv::Point ref_pt; // reference point of the template
+
+	// parameters of the best fit
+	double best_scale;
+	double best_angle;
+	cv::Point best_ref_pt;
+
+    public:
+	GeneralHough(const std::string &path_src_img,
+		     const std::string &path_src_edges,
+		     const std::string &path_template_img,
+		     const std::string &path_template_edges,
+		     const cv::Point ref_pt = cv::Point(-1,-1),
+		     const int num_quant_directions = 4,
+		     const int num_scales = 50,
+		     const int max_img_size = 150);
+
 	GeneralHough(const cv::Mat &src_img,
 		     const cv::Mat &src_edges,
 		     const cv::Mat &template_img,
@@ -44,7 +72,29 @@ namespace sedlamat
 		     const int num_quant_directions = 4,
 		     const int num_scales = 50,
 		     const int max_img_size = 150);
+	~GeneralHough() {}
+
+	void run();
+	void display() const;
+	cv::Point get_ref_pt() const { return ref_pt; };
+
+    private:
+	void fill_r_table();
+	HoughTable get_hough_points();
     };
+
+    GeneralHough::GeneralHough(const cv::Mat &src_img,
+			       const cv::Mat &src_edges,
+			       const cv::Mat &template_img,
+			       const cv::Mat &template_edges,
+			       const int num_quant_directions = 4,
+			       const int num_scales = 50,
+			       const int max_img_size = 150)
+    {
+
+    }
+
+
 
     // alias used to store points grouped by gradient direction
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
