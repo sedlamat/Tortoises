@@ -30,8 +30,22 @@
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
 
-namespace my
+namespace sedlamat
 {
+    class GeneralHough {
+	// alias used to store points grouped by gradient direction
+	typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
+
+    private:
+	GeneralHough(const cv::Mat &src_img,
+		     const cv::Mat &src_edges,
+		     const cv::Mat &template_img,
+		     const cv::Mat &template_edges,
+		     const int num_quant_directions = 4,
+		     const int num_scales = 50,
+		     const int max_img_size = 150);
+    };
+
     // alias used to store points grouped by gradient direction
     typedef std::vector<std::vector<cv::Point_<int> > > HoughTable;
 
@@ -331,8 +345,8 @@ namespace my
 	// sets accu_max -1 to check at the end if it changed
 	accu_max = -1;
 
-	r_table = my::get_r_table(templ, templ_edges, ref_point);
-	src_hough_points = my::get_hough_points(src, src_edges);
+	r_table = get_r_table(templ, templ_edges, ref_point);
+	src_hough_points = get_hough_points(src, src_edges);
 
 	cv::Size_<int> size = src.size();
 
@@ -351,7 +365,7 @@ namespace my
 	    double rot_accu_max = -1;
 	    double rot_scale_max = -1;
 	    cv::Point_<int> rot_max_ref_point;
-	    my::get_accumulator(rotated_r_table,
+	    get_accumulator(rotated_r_table,
 				src_hough_points,
 				size,
 				rot_accu_max,
@@ -397,7 +411,7 @@ namespace my
 	//prt(accu_max); prt(rot_max); prt(scale_max); prt(ref_point_found);
 
 	HoughTable r_table;
-	r_table = my::get_r_table(templ, templ_edges, ref_point);
+	r_table = get_r_table(templ, templ_edges, ref_point);
 
 	cv::Rect_<int> src_rect(cv::Point_<int>(0,0), src.size());
 
