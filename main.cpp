@@ -35,13 +35,21 @@ int main(int argc, char *argv[])
 	Point ref_point(ref_point_loc.at<int>(0,0),
 			ref_point_loc.at<int>(0,1));
 
-	//string file_name = "Tg59800.jpg";
-	//string imgs_path = path + "/Images/Tortoises/";
-	//string img_path = imgs_path + file_name;
-	string img_path = argv[1];
+	string file_name = "Tg59800.jpg";
+	string imgs_path = path + "/Images/Tortoises/";
+	string img_path = imgs_path + file_name;
+	//string img_path = argv[1];
 	Mat img = imread(img_path,1);
 
-	//exit(0);
+	my::display(img);
+	sedlamat::GeneralHough general_hough(img, templ, ref_point);
+	my::display(general_hough.get_template_edges());
+	my::display(general_hough.get_src_edges());
+	my::display(general_hough.get_src_img());
+	my::display(general_hough.get_template_img());
+	prt(general_hough.get_template_max_size());
+	prt("hotovo");
+	exit(0);
 
 	double resize_koef = 150.0/max(img.rows,img.cols);
 	resize(img, img, Size(0,0), resize_koef, resize_koef);
@@ -55,7 +63,7 @@ int main(int argc, char *argv[])
 	//my::display(dst);
 	//exit(0);
 
-	imwrite(argv[2], dst);
+	//imwrite(argv[2], dst);
 	//cout << "image written" << endl;
     } catch (string e) {
 	cout << "Error when processing " << argv[1];
