@@ -1,6 +1,7 @@
 ﻿/* STANDARD C/C++ LIBRARIES */
 #include <iostream>
 #include <string>
+#include <limits>
 
 /* THIRD PARTY LIBRARIES */
 #include <pwd.h>
@@ -21,6 +22,8 @@ using namespace my;
 
 int main(int argc, char *argv[])
 {
+    cout << -numeric_limits<int>::max() << endl;
+    exit(0);
     try {
 	passwd *pw = getpwuid(getuid());
 	string path(pw->pw_dir);
@@ -60,7 +63,6 @@ int main(int argc, char *argv[])
 	my::display(general_hough.get_src_edges());
 	my::display(general_hough.get_src_img());
 	my::display(general_hough.get_template_img());
-	prt(general_hough.get_template_max_size());
 	prt("hotovo");
 	exit(0);
 
@@ -71,8 +73,8 @@ int main(int argc, char *argv[])
 
 	//my::display(edges);
 	//exit(0);
-	Mat dst = sedlamat::general_hough_fit_on_img(templ, templ_edges,
-						ref_point, img, edges);
+	//Mat dst = sedlamat::general_hough_fit_on_img(templ, templ_edges,
+	//					ref_point, img, edges);
 	//my::display(dst);
 	//exit(0);
 
