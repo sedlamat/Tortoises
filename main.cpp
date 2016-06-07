@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 	std::string path(pw->pw_dir);
 
 	std::string ght_path = path + "/Images/Generalized_Hough_Transform/";
-	std::string templ_path = ght_path + "ght_template.bmp";
+	std::string templ_path = ght_path + "tortoise_template.bmp";
 	std::string templ_edges_path = ght_path + "ght_template_edges1.bmp";
 	cv::Mat templ = cv::imread(templ_path, 0);
 	cv::Mat templ_edges = cv::imread(templ_edges_path, 0);
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
 	sedlamat::display(img);
 	sedlamat::GeneralHough general_hough(img, templ, ref_point,
-				cv::Mat(), cv::Mat(), 4, 10, 100,
+				cv::Mat(), cv::Mat(), 4, 10, 50,
 				1.0, 0.3, 20, 50, 1);
 	sedlamat::display(img);
 	sedlamat::print("running");

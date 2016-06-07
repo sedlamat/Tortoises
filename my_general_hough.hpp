@@ -265,7 +265,7 @@ namespace sedlamat
 	    && this->max_template_scale <= 1)
 	{
 	    this->set_template_max_size();
-	    double src_templ_size_koef = this->max_img_size /
+	    double src_templ_size_koef = this->max_img_size*1.0 /
 					    this->template_max_size;
 	    this->max_scale = max_template_scale * src_templ_size_koef;
 	    this->min_scale = min_template_scale * src_templ_size_koef;
@@ -283,8 +283,6 @@ namespace sedlamat
 	} else {
 	    throw "Wrong: num_scales must be in [1,1000].";
 	}
-
-
 
 	// sets the values of the best fit
 	this->best_accum_val = MIN_DOUBLE;
@@ -361,6 +359,7 @@ namespace sedlamat
 						    templ_max_width);
     }
 
+
     /**
 	Sets kernels for smoothing the accumulator.
 
@@ -370,8 +369,10 @@ namespace sedlamat
     void GeneralHough::set_kernels()
     {
 	// prepare 2 kernels - plain and gauss
-	int plain_size = 2;
-	int gauss_size = 11;
+	int plain_size = 2*this->max_img_size/150;
+	int gauss_size = 11*this->max_img_size/150;
+	plain_size = (plain_size > 0) ? plain_size : 1;
+	gauss_size = (gauss_size > 0) ? gauss_size : 1;
 	this->plain = cv::Mat(plain_size,plain_size, CV_32F,
 					    cv::Scalar_<float>(1.0));
 	this->gauss = cv::getGaussianKernel(gauss_size,1, CV_32F);
@@ -529,7 +530,10 @@ namespace sedlamat
 						    ++scale_idx) {
 	    cv::Mat accum = cv::Mat(this->src_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
-	    float s = this->min_scale + scale_idx * this->scale_step;
+	    double s = this->min_scale + scale_idx * this->scale_step;
+	    sedlamat::print(s);
+	    sedlamat::print( this->min_scale);
+	    sedlamat::print( this->scale_step);
 	    // for all quantified directions
 	    for(int quant_idx = 0;
 		quant_idx < this->num_quant_directions;
@@ -556,6 +560,7 @@ namespace sedlamat
 				   this->src_hough_pts[idx].begin(),
 				   this->src_hough_pts[idx].end());
 		}
+
 		float num_quant_pts = r_table_pts.size();
 		// for all points in the r_table quant
 		for(auto & pt_diff : r_table_pts) {
@@ -580,6 +585,8 @@ namespace sedlamat
 		    accum += quant_accum/num_quant_pts;
 		}
 	    }
+	    if (DISPLAY_ACCUM) sedlamat::display(accum);
+
 	    // smooth the accumulator
 	    cv::filter2D(accum, accum, CV_32F, this->plain);
 	    cv::filter2D(accum, accum, CV_32F, this->gauss);
