@@ -531,9 +531,6 @@ namespace sedlamat
 	    cv::Mat accum = cv::Mat(this->src_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
 	    double s = this->min_scale + scale_idx * this->scale_step;
-	    sedlamat::print(s);
-	    sedlamat::print( this->min_scale);
-	    sedlamat::print( this->scale_step);
 	    // for all quantified directions
 	    for(int quant_idx = 0;
 		quant_idx < this->num_quant_directions;
