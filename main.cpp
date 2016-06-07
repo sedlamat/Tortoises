@@ -15,75 +15,46 @@
 #include "my_general_hough.hpp"
 //#include "tortoise.h"
 
-using namespace std;
-using namespace cv;
-using namespace my;
-
 
 int main(int argc, char *argv[])
 {
-    cout << -numeric_limits<int>::max() << endl;
-    exit(0);
     try {
 	passwd *pw = getpwuid(getuid());
-	string path(pw->pw_dir);
+	std::string path(pw->pw_dir);
 
-	string ght_path = path + "/Images/Generalized_Hough_Transform/";
-	string templ_path = ght_path + "ght_template.bmp";
-	string templ_edges_path = ght_path + "ght_template_edges1.bmp";
-	Mat templ = imread(templ_path, 0);
-	Mat templ_edges = imread(templ_edges_path, 0);
-	Mat ref_point_loc;
-	findNonZero(templ_edges==127,ref_point_loc);
-	Point ref_point(ref_point_loc.at<int>(0,0),
+	std::string ght_path = path + "/Images/Generalized_Hough_Transform/";
+	std::string templ_path = ght_path + "ght_template.bmp";
+	std::string templ_edges_path = ght_path + "ght_template_edges1.bmp";
+	cv::Mat templ = cv::imread(templ_path, 0);
+	cv::Mat templ_edges = cv::imread(templ_edges_path, 0);
+	cv::Mat ref_point_loc;
+	cv::findNonZero(templ_edges==127,ref_point_loc);
+	cv::Point ref_point(ref_point_loc.at<int>(0,0),
 			ref_point_loc.at<int>(0,1));
 
-	string file_name = "Tg59800.jpg";
-	string imgs_path = path + "/Images/Tortoises/";
-	string img_path = imgs_path + file_name;
+	std::string file_name = "Tg59800.jpg";
+	std::string imgs_path = path + "/Images/Tortoises/";
+	std::string img_path = imgs_path + file_name;
 	//string img_path = argv[1];
-	Mat img = imread(img_path,1);
+	cv::Mat img = cv::imread(img_path,1);
 
-	my::display(img);
+	sedlamat::display(img);
 	sedlamat::GeneralHough general_hough(img, templ, ref_point,
-						cv::Mat(),
-						templ_edges,
-						4,
-						50,
-						150,
-						1.0,
-						0.3);
+				cv::Mat(), cv::Mat(), 4, 10, 100,
+				1.0, 0.3, 20, 50, 1);
+	sedlamat::display(img);
+	sedlamat::print("running");
 	general_hough.run();
-	cout << general_hough.get_best_accum_val() << endl;
-	cout << general_hough.get_best_angle() << endl;
-	cout << general_hough.get_best_ref_pt() << endl;
-	cout << general_hough.get_best_scale() << endl;
-	my::display(general_hough.get_result_img());
-	my::display(general_hough.get_template_edges());
-	my::display(general_hough.get_src_edges());
-	my::display(general_hough.get_src_img());
-	my::display(general_hough.get_template_img());
-	prt("hotovo");
-	exit(0);
-
-	double resize_koef = 150.0/max(img.rows,img.cols);
-	resize(img, img, Size(0,0), resize_koef, resize_koef);
-	//my::display(img);
-	Mat edges = get_edges_color_based(img);
-
-	//my::display(edges);
-	//exit(0);
-	//Mat dst = sedlamat::general_hough_fit_on_img(templ, templ_edges,
-	//					ref_point, img, edges);
-	//my::display(dst);
-	//exit(0);
-
-	//imwrite(argv[2], dst);
-	//cout << "image written" << endl;
-    } catch (string e) {
-	cout << "Error when processing " << argv[1];
-	cout << " " << e << endl;
-	exit(0);
+	sedlamat::display(general_hough.get_result_img());
+	sedlamat::display(general_hough.get_template_edges());
+	sedlamat::display(general_hough.get_src_edges());
+	sedlamat::display(general_hough.get_src_img());
+	sedlamat::display(general_hough.get_template_img());
+	sedlamat::print("hotovo");
+    } catch (std::string e) {
+	std::cout << "Error when processing " << argv[1] << std::endl;
+	std::cout << " " << e << std::endl;
+	exit(1);
     }
     return 0;
 }

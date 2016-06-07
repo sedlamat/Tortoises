@@ -21,7 +21,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 
-namespace my
+namespace sedlamat
 {
     /**
 	Print message to console. Short version for debugging.
@@ -29,7 +29,7 @@ namespace my
 	@param msg - Message to be printed.
 	@return void
     */
-    template <typename T> void prt(T msg)
+    template <typename T> void print(T msg)
     {
 	std::cout << msg << std::endl;
     }
@@ -96,7 +96,7 @@ namespace my
 	cv::Mat dst;
 	// check if src is CV_8U, if not make it
 	if (src.type() != CV_8UC1 && src.type() != CV_8UC3) {
-	    dst = my::get_scaled_CV_U8(src);
+	    dst = sedlamat::get_scaled_CV_U8(src);
 	} else {
 	    dst = src;
 	}
@@ -207,10 +207,10 @@ namespace my
   cv::Mat get_gradient_magnitude(const cv::Mat& src)
   {
     cv::Mat grad_mag;
-    std::vector<cv::Mat> dxdy = my::get_gradient_scharr(src);
+    std::vector<cv::Mat> dxdy = sedlamat::get_gradient_scharr(src);
     if (src.channels() > 1) {
-      dxdy[0] = my::get_BGR_maxima(cv::abs(dxdy[0]));
-      dxdy[1] = my::get_BGR_maxima(cv::abs(dxdy[1]));
+      dxdy[0] = sedlamat::get_BGR_maxima(cv::abs(dxdy[0]));
+      dxdy[1] = sedlamat::get_BGR_maxima(cv::abs(dxdy[1]));
     }
     cv::magnitude(dxdy[0], dxdy[1], grad_mag);
     return grad_mag;
@@ -229,13 +229,13 @@ namespace my
   {
 
     cv::Mat grad_orient;
-    std::vector<cv::Mat> dxdy = my::get_gradient_scharr(src);
+    std::vector<cv::Mat> dxdy = sedlamat::get_gradient_scharr(src);
     if (src.channels() > 1) {
-      dxdy[0] = my::get_BGR_max_of_abs(dxdy[0]);
-      dxdy[1] = my::get_BGR_max_of_abs(dxdy[1]);
+      dxdy[0] = sedlamat::get_BGR_max_of_abs(dxdy[0]);
+      dxdy[1] = sedlamat::get_BGR_max_of_abs(dxdy[1]);
     }
     cv::phase(dxdy[0], dxdy[1], grad_orient, true);
-    //my::display(grad_orient);
+    //sedlamat::display(grad_orient);
     return grad_orient;
   }
 
@@ -271,27 +271,27 @@ namespace my
     cv::Mat BGR_minima_grad_mag, mag, mag_edges, edges;
     dst = src;
     //cv::GaussianBlur(src, dst, cv::Size(0,0), 1.0);
-    BGR_minima = my::get_BGR_minima(dst);
-    BGR_minima = my::get_3channel(BGR_minima);
+    BGR_minima = sedlamat::get_BGR_minima(dst);
+    BGR_minima = sedlamat::get_3channel(BGR_minima);
     color = dst - BGR_minima;
 
-    //my::display(BGR_minima);
+    //sedlamat::display(BGR_minima);
     cv::Mat minEdges;
     cv::Canny(BGR_minima, minEdges, 100, 150);
-    //my::display(minEdges);
-    //~ my::display(my::get_gradient_scharr(color)[0]);
-    //~ my::display(my::get_gradient_scharr(color)[1]);
-    //~ my::display(my::get_gradient_scharr(color)[1] + my::get_gradient_scharr(color)[0]);
-    //~ my::display(my::get_gradient_scharr(dst)[1] + my::get_gradient_scharr(dst)[0]);
-    color_grad_mag = my::get_gradient_magnitude(color);
-    //my::display(color_grad_mag);
-    BGR_minima_grad_mag = my::get_gradient_magnitude(BGR_minima);
-    //my::display(BGR_minima_grad_mag);
+    //sedlamat::display(minEdges);
+    //~ sedlamat::display(sedlamat::get_gradient_scharr(color)[0]);
+    //~ sedlamat::display(my::get_gradient_scharr(color)[1]);
+    //~ sedlamat::display(sedlamat::get_gradient_scharr(color)[1] + sedlamat::get_gradient_scharr(color)[0]);
+    //~ sedlamat::display(sedlamat::get_gradient_scharr(dst)[1] + sedlamat::get_gradient_scharr(dst)[0]);
+    color_grad_mag = sedlamat::get_gradient_magnitude(color);
+    //sedlamat::display(color_grad_mag);
+    BGR_minima_grad_mag = sedlamat::get_gradient_magnitude(BGR_minima);
+    //sedlamat::display(BGR_minima_grad_mag);
     // std::cout << color_grad_mag.type() << " " << BGR_minima_grad_mag.type() << std::endl;
     //mag = BGR_minima_grad_mag;
     mag =  color_grad_mag;//.mul(BGR_minima_grad_mag);
-    mag = my::get_scaled_CV_U8(mag);
-    //my::display(mag);
+    mag = sedlamat::get_scaled_CV_U8(mag);
+    //sedlamat::display(mag);
     cv::Scalar_<double> mag_mean = cv::mean(mag, mag>0);
     //std::cout << mag_mean << std::endl;
     //cv::Canny(mag, mag_edges, 50, 150);
@@ -299,14 +299,14 @@ namespace my
 	//		cv::THRESH_BINARY, 101, 0);
     cv::threshold(mag, mag_edges, mag_mean[0], 255, cv::THRESH_BINARY);
 
-    mag_edges = my::get_scaled_CV_U8(mag_edges);
+    mag_edges = sedlamat::get_scaled_CV_U8(mag_edges);
     //cv::GaussianBlur(BGR_minima, BGR_minima, cv::Size_<int>(0,0), 1);
     cv::Canny(BGR_minima, edges, 20, 50);
 
     cv::bitwise_and(edges, mag_edges, dst);
-    //my::display(dst);
+    //sedlamat::display(dst);
     dst = edges;
-    //my::display(edges);
+    //sedlamat::display(edges);
     //LOCAL THRESHOLDING !!!!
     //~ exit(2);
     return dst;
@@ -322,7 +322,7 @@ namespace my
 	if ( (pt+shift).inside(area))
 	    dst.at<uchar>(pt+shift) = 255;
     }
-    my::display(dst);
+    sedlamat::display(dst);
   }
 
 
@@ -385,7 +385,7 @@ namespace my
 
 
 
-} /* namespace my */
+} /* namespace sedlamat */
 
 
 #endif /* _MY_IMGPROC_HPP_ */
