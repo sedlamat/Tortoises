@@ -1,50 +1,50 @@
-﻿#include "tortoise.h"
+﻿#include "tortoise.hpp"
 #include "genHoughTrnf.h"
 #include "tortoiseClassification.h"
 
 
-  //! constructor of Tortoise class
-  /**
-      \outline 
-      - Loads file names and the original TG image. Checks if resultsData file exists, which
-        will contain data about partial results, and if resultsImg file exists, which will
-        show the partial results on an image.
-  **/
-  Tortoise::Tortoise(string imgDirectory, string tortoiseName, string processID)
-  {	
-    m_strProcessID = processID;
-    m_strLoadDirectory.assign(imgDirectory);
-    m_strSaveDirectory.assign(imgDirectory);
-    m_strTortoiseName.assign(tortoiseName);
-    m_strResultsDataFileName.assign(m_strSaveDirectory+"resultsData"+m_strTortoiseName+".cimg");
+  //~ //! constructor of Tortoise class
+  //~ /**
+      //~ \outline
+      //~ - Loads file names and the original TG image. Checks if resultsData file exists, which
+        //~ will contain data about partial results, and if resultsImg file exists, which will
+        //~ show the partial results on an image.
+  //~ **/
+  //~ Tortoise::Tortoise(string imgDirectory, string tortoiseName, string processID)
+  //~ {
+    //~ m_strProcessID = processID;
+    //~ m_strLoadDirectory.assign(imgDirectory);
+    //~ m_strSaveDirectory.assign(imgDirectory);
+    //~ m_strTortoiseName.assign(tortoiseName);
+    //~ m_strResultsDataFileName.assign(m_strSaveDirectory+"resultsData"+m_strTortoiseName+".cimg");
+//~
+	  //~ try
+	  //~ {
+      //~ m_imgOriginal.assign( (m_strLoadDirectory+m_strTortoiseName+".pnm").c_str() ); //	loading original image and its parameters
+		  //~ m_nWidth = m_imgOriginal.width();
+		  //~ m_nHeight = m_imgOriginal.height();
+//~
+      //~ m_imgResultsDataSize = 20;
+//~
+      //~ if (FILE *file = fopen(m_strResultsDataFileName.c_str(), "r")) // if results data exists (data with partial results)
+      //~ {
+        //~ fclose(file);
+        //~ m_imgResultsData.assign(m_strResultsDataFileName.c_str());
+      //~ }
+      //~ else // if not, create one
+      //~ {
+        //~ m_imgResultsData.assign(m_imgResultsDataSize,m_imgResultsDataSize,1,1, 0);
+      //~ }
+	  //~ }
+	  //~ catch(CImgIOException&)
+	  //~ {
+		  //~ cout << "Error: unable to load the image: " << (m_strLoadDirectory+m_strTortoiseName+".pnm").c_str() << endl;
+		  //~ throw;
+	  //~ }
+  //~ }
 
-	  try
-	  {
-      m_imgOriginal.assign( (m_strLoadDirectory+m_strTortoiseName+".pnm").c_str() ); //	loading original image and its parameters
-		  m_nWidth = m_imgOriginal.width();
-		  m_nHeight = m_imgOriginal.height();
 
-      m_imgResultsDataSize = 20;
-
-      if (FILE *file = fopen(m_strResultsDataFileName.c_str(), "r")) // if results data exists (data with partial results)
-      {
-        fclose(file);
-        m_imgResultsData.assign(m_strResultsDataFileName.c_str());
-      } 
-      else // if not, create one
-      {
-        m_imgResultsData.assign(m_imgResultsDataSize,m_imgResultsDataSize,1,1, 0);
-      }
-	  }
-	  catch(CImgIOException&)
-	  {
-		  cout << "Error: unable to load the image: " << (m_strLoadDirectory+m_strTortoiseName+".pnm").c_str() << endl;
-		  throw;
-	  }
-  }
-
-
-//------------	 Central Seam Localization	-------------------------------------------------------------------------------/	
+//------------	 Central Seam Localization	-------------------------------------------------------------------------------/
   CImg<int> Tortoise::GetUniformlyResizedImg(CImg<int> img, int resizedMaxSizeInPix) // resize the original image - with fixed ratio of sides
   {
     int width = img.width();
@@ -117,19 +117,19 @@
 		{
 			if(edgeImg(x,y))
 			{
-				int dirVertical =  edgeImg(x-1,y-1) + edgeImg(x,y-1) + edgeImg(x+1,y-1) 
+				int dirVertical =  edgeImg(x-1,y-1) + edgeImg(x,y-1) + edgeImg(x+1,y-1)
 									       + edgeImg(x-1,y+1) + edgeImg(x,y+1) + edgeImg(x+1,y+1);
-				int dirHorizontal =  edgeImg(x-1,y-1) + edgeImg(x+1,y-1) 
-									         + edgeImg(x-1,y  ) +                  edgeImg(x+1,y  ) 
+				int dirHorizontal =  edgeImg(x-1,y-1) + edgeImg(x+1,y-1)
+									         + edgeImg(x-1,y  ) +                  edgeImg(x+1,y  )
 									         + edgeImg(x-1,y+1) + edgeImg(x+1,y+1);;
-				int dirDiagonalRightUp =  edgeImg(x,y-1) + edgeImg(x+1,y-1) 
-									              + edgeImg(x-1,y  ) +                  edgeImg(x+1,y  ) 
+				int dirDiagonalRightUp =  edgeImg(x,y-1) + edgeImg(x+1,y-1)
+									              + edgeImg(x-1,y  ) +                  edgeImg(x+1,y  )
 									              + edgeImg(x-1,y+1) + edgeImg(x,y+1);
 				int dirDiagonalLeftUp =  edgeImg(x-1,y-1) + edgeImg(x,y-1)
-									             + edgeImg(x-1,y  ) +                  edgeImg(x+1,y  ) 
+									             + edgeImg(x-1,y  ) +                  edgeImg(x+1,y  )
 									             + edgeImg(x,y+1) + edgeImg(x+1,y+1);
 				if (dirHorizontal >= dirVertical && dirHorizontal >= dirDiagonalRightUp && dirHorizontal >= dirDiagonalLeftUp) imgWithDirectionOfEdges(x,y) = 2;
-        else if (dirVertical >= dirHorizontal && dirVertical >= dirDiagonalRightUp && dirVertical >= dirDiagonalLeftUp) imgWithDirectionOfEdges(x,y) = 3;	
+        else if (dirVertical >= dirHorizontal && dirVertical >= dirDiagonalRightUp && dirVertical >= dirDiagonalLeftUp) imgWithDirectionOfEdges(x,y) = 3;
 				else if (dirDiagonalRightUp >= dirHorizontal && dirDiagonalRightUp >= dirVertical && dirDiagonalRightUp >= dirDiagonalLeftUp) imgWithDirectionOfEdges(x,y) = 1;
 				else if (dirDiagonalLeftUp >= dirHorizontal && dirDiagonalLeftUp >= dirDiagonalRightUp && dirDiagonalLeftUp >= dirVertical) imgWithDirectionOfEdges(x,y) = 1;
 			}
@@ -147,7 +147,7 @@
 	{
 		for(int x = 1; x < width-1; x++)
 		{
-			if(imgToDoItOn(x,y) == 1) 
+			if(imgToDoItOn(x,y) == 1)
 			{ // eliminate one pixel edges
 				if(imgToDoItOn(x-1,y)==0 && imgToDoItOn(x-1,y-1)==0 && imgToDoItOn(x-1,y+1)==0 && imgToDoItOn(x,y-1)==0 &&
 					imgToDoItOn(x+1,y)==0 && imgToDoItOn(x+1,y-1)==0 && imgToDoItOn(x+1,y+1)==0 && imgToDoItOn(x,y+1)==0) { imgToDoItOn(x,y) = 0; }
@@ -167,7 +167,7 @@
 	  {
 		  for(int x = 2; x < width-2; x++)
 		  {
-			  if(imgToDoItOn(x,y) == 1) 
+			  if(imgToDoItOn(x,y) == 1)
 			  {
 				  CImg<unsigned char> imgCrop(imgToDoItOn.get_crop(x-1,y-1,x+1,y+1));
 				  if(imgCrop.sum() <= 2)
@@ -240,7 +240,7 @@
       int minHoughXcoor = static_cast<int>(HoughSpace.get_row(1).get_stats()(8));
       int xMin = HoughSpace(minHoughXcoor,2);
       int yMin = HoughSpace(minHoughXcoor,3);
-      int minHoughAngle = HoughSpace(minHoughXcoor,0);   
+      int minHoughAngle = HoughSpace(minHoughXcoor,0);
       m_nRotationAngleToVerticalInDegrees = minHoughAngle;
 
       m_sPlastronCentreOnRotatedImg.xCoor = xMin*m_nWidth/nWidth;
@@ -283,7 +283,7 @@
     ght.bestCandidate(sAccumMax,nRotationAngleMax,fWidthRatioMax,nPlastronWidht).save(("ght\\GHTRes" + m_strTortoiseName + "WithRestriction.bmp").c_str());
     // the  m_sPlastronCentreOnRotatedImg.xCoor stays the same
     m_sPlastronCentreOnRotatedImg.yCoor = sAccumMax.yCoor*nRotImgHeight/nResRotImgHeight;
-    if(nRotationAngleMax>90 && nRotationAngleMax<270) 
+    if(nRotationAngleMax>90 && nRotationAngleMax<270)
     {
       m_nRotationAngleToVerticalInDegrees =  (m_nRotationAngleToVerticalInDegrees+180) % 360;
       //m_imgRotatedOriginal.rotate(180);
@@ -330,7 +330,7 @@
   //using edges on a wider central-seam stripe
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
     CImg<int> imgPlastron(imgRotatedOriginal.get_crop(
-      min(m_imgRotatedOriginal.width()-1,max(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,0)),sJunctions.s1Head.yCoor, 
+      min(m_imgRotatedOriginal.width()-1,max(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,0)),sJunctions.s1Head.yCoor,
       min(m_imgRotatedOriginal.width()-1,max(sPlastronCentreOnRotatedImg.xCoor+nAbdSeamLength,0)),sJunctions.s7Tail.yCoor));
     imgPlastron = GetUniformlyResizedImg(imgPlastron,500);
     int nCentreYCoor = (sPlastronCentreOnRotatedImg.yCoor - sJunctions.s1Head.yCoor)*imgPlastron.height()/(sJunctions.s7Tail.yCoor-sJunctions.s1Head.yCoor);
@@ -339,7 +339,7 @@
 	  const int nImgEdgesWidth = imgEdges.width();
 	  const int nImgEdgesHeight = imgEdges.height();
 
-  //every edge pix is part of a some path - all edge pixs are assigned an index of the path they belong to 
+  //every edge pix is part of a some path - all edge pixs are assigned an index of the path they belong to
 	  CImg<int> sidePathsIndexes(imgEdges.get_fill(0));
   //pixs on the cetral path have 2-column index array, beacause there meet paths from left and right side  - they meet in the middle: x = nImgEdgesWidth/2
 	  CImg<int> indexesOnTheCentralPath(2,nImgEdgesHeight,1,1, 0);
@@ -360,12 +360,12 @@
 		  int x = 4;
 		  {
   //prefilling - for all edge pixs in the area
-			  if(imgEdges(x,y)) 
-			  { 
+			  if(imgEdges(x,y))
+			  {
   //prefilling - initial value (distance) of sidePathsFromLeft is set to 2
-				  sidePathsFromLeft(x,y) = 2; 
-  //prefilling - edge pixs in the area are all assigned an index in sidePathsIndexes, which they will pass on to pixs that will be in the same path 
-				  sidePathsIndexes(x,y) = nPathIndex; 
+				  sidePathsFromLeft(x,y) = 2;
+  //prefilling - edge pixs in the area are all assigned an index in sidePathsIndexes, which they will pass on to pixs that will be in the same path
+				  sidePathsIndexes(x,y) = nPathIndex;
 			  }
 		  }
 		  nPathIndex++;
@@ -376,12 +376,12 @@
 	  {
       int x = nImgEdgesWidth-5;
 		  {
-			  if(imgEdges(x,y)) 
-			  { 
+			  if(imgEdges(x,y))
+			  {
   //prefilling - initial value (distance) of sidePathsFromRight is set to 2
-				  sidePathsFromRight(x,y) = 2; 
-  //prefilling - edge pixs in the area are all assigned an index in sidePathsIndexes, which they will pass on to pixs that will be in the same path 
-				  sidePathsIndexes(x,y) = nPathIndex; 
+				  sidePathsFromRight(x,y) = 2;
+  //prefilling - edge pixs in the area are all assigned an index in sidePathsIndexes, which they will pass on to pixs that will be in the same path
+				  sidePathsIndexes(x,y) = nPathIndex;
 			  }
 		  }
       nPathIndex++;
@@ -391,13 +391,13 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 3; 
-      distanceMask(6,y) += 3; 
-      distanceMask(1,y) += 2; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 3;
+      distanceMask(6,y) += 3;
+      distanceMask(1,y) += 2;
       distanceMask(5,y) += 2;
-      distanceMask(2,y) += 1; 
+      distanceMask(2,y) += 1;
       distanceMask(4,y) += 1;
     }
 	  //distanceMask.display();
@@ -410,14 +410,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) && x<=nImgEdgesWidth/2) 
+        if(imgEdges(x,y) && x<=nImgEdgesWidth/2)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -430,7 +430,7 @@
 		  }
 	  }
   //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
 	 distanceMask.rotate(180);
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -452,7 +452,7 @@
 	  }
 	  //(sidePathsFromLeft,sidePathsFromRight).display();
   //postprocessing - set values 10000 to 0 in sidePathsFromLeft and sidePathsFromRight
-    for(int y = 0; y < nImgEdgesHeight; y++) 
+    for(int y = 0; y < nImgEdgesHeight; y++)
 	  {
       for(int x = 0; x < nImgEdgesWidth; x++)
 		  {
@@ -474,15 +474,15 @@
 			  CentralSideCrosses(y) = sidePathsFromLeft(x,y) + sidePathsFromRight(x,y);
 		  }
   //postprocessing - else, left and right indexes of the central-path pix are set to 0
-		  else 
+		  else
 		  {
 			  indexesOnTheCentralPath(0,y) = 0;
 			  indexesOnTheCentralPath(1,y) = 0;
 		  }
 	  }
    // (CentralSideCrosses,indexesOnTheCentralPath,(sidePathsFromLeft+sidePathsFromRight)).display();
-  //finding best side paths - setting number of pixs that are to be discarded, being next (based on index) to a pix where we will find the local minimum (of distances in CentralSideCrosses) 
-  //                        - with 3000pixs height img time constant 0.025 (based on real images) so that we get ~ 70pixs 
+  //finding best side paths - setting number of pixs that are to be discarded, being next (based on index) to a pix where we will find the local minimum (of distances in CentralSideCrosses)
+  //                        - with 3000pixs height img time constant 0.025 (based on real images) so that we get ~ 70pixs
   //                        - (it has to be so much that we eliminate all neighbouring paths with similar distances, but so that we do not eliminate other correct side paths)
     int halfIntervalOfIndexes = static_cast<int>(nImgEdgesHeight*0.1);
   //finding best side paths - countOfCrossing counts side paths and is used to index the paths
@@ -532,16 +532,16 @@
 				    CentralSideCrosses(y) = nMaxPathValue;
 			    }
 		    }
-    //finding best side paths - numbering side paths 
+    //finding best side paths - numbering side paths
 		    CentralSideCrosses(yMin) = nMaxPathValue + currentMin + 1;
-        
+
     //finding best side paths - rising the count of side paths
         //(CentralSideCrosses,indexesOnTheCentralPath).display();
        //(CentralSideCrosses,indexesOnTheCentralPath,(sidePathsFromLeft+sidePathsFromRight)).display();
       countOfCrossing++;
 	  }
 	 //(sidePathsFromLeft+sidePathsFromRight).display("sidePaths");
-    
+
    //  (CentralSideCrosses,indexesOnTheCentralPath,(sidePathsFromLeft+sidePathsFromRight),yCoorOfTheJunctions).display();
     for(int ii = 0; ii < permittedNumberOfPaths; ++ii)
     {
@@ -564,7 +564,7 @@
   //using edges on a wider central-seam stripe
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
     CImg<int> imgPlastron(imgRotatedOriginal.get_crop(
-      max(0,min(sJunctions.s1Head.xCoor-nAbdSeamLength*3/8,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s5AbdToFem.yCoor+nAbdSeamLength*4/30,imgRotatedOriginal.height()-1)), 
+      max(0,min(sJunctions.s1Head.xCoor-nAbdSeamLength*3/8,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s5AbdToFem.yCoor+nAbdSeamLength*4/30,imgRotatedOriginal.height()-1)),
       max(0,min(sJunctions.s1Head.xCoor+nAbdSeamLength*3/8,imgRotatedOriginal.width()-1)),max(0,min(imgRotatedOriginal.height()-1,sJunctions.s5AbdToFem.yCoor+nAbdSeamLength*2/3))));
     //imgPlastron = GetUniformlyResizedImg(imgPlastron,500);
     CImg<int> imgEdges(GetEdgeImg(imgPlastron,0,0,0));
@@ -578,8 +578,8 @@
 
     for(int y = 0; y < nImgEdgesHeight; ++y)
 	  {
-      sidePathsFromLeft(4,y) = 2; 
-      sidePathsFromRight(nImgEdgesWidth-5,y) = 2; 
+      sidePathsFromLeft(4,y) = 2;
+      sidePathsFromRight(nImgEdgesWidth-5,y) = 2;
       if(imgEdges(nImgEdgesWidth/2,y)==0) imgEdges(nImgEdgesWidth/2,y) = 1;
       if(imgEdges(4,y)==0) imgEdges(4,y) = 1;
       if(imgEdges(nImgEdgesWidth-5,y)==0) imgEdges(nImgEdgesWidth-5,y) = 1;
@@ -589,15 +589,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 4; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 4;
       distanceMask(1,y) += 3;
       distanceMask(2,y) += 2;
       distanceMask(3,y) += 0;
       distanceMask(4,y) += 0;
       distanceMask(5,y) += 1;
-      distanceMask(6,y) += 2; 
+      distanceMask(6,y) += 2;
     }
 
   //filling left side paths - rotating distanceMask
@@ -609,14 +609,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -632,7 +632,7 @@
 		  }
 	  }
   //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -668,7 +668,7 @@
   //using edges on a wider central-seam stripe
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
     CImg<int> imgPlastron(imgRotatedOriginal.get_crop(
-      max(0,min(sJunctions.s1Head.xCoor-nAbdSeamLength*2/3,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s4PecToAbd.yCoor-nAbdSeamLength*2/3,imgRotatedOriginal.height()-1)), 
+      max(0,min(sJunctions.s1Head.xCoor-nAbdSeamLength*2/3,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s4PecToAbd.yCoor-nAbdSeamLength*2/3,imgRotatedOriginal.height()-1)),
       max(0,min(sJunctions.s1Head.xCoor+nAbdSeamLength*2/3,imgRotatedOriginal.width()-1)),max(0,min(imgRotatedOriginal.height()-1,sJunctions.s4PecToAbd.yCoor))));
     //imgPlastron = GetUniformlyResizedImg(imgPlastron,500);
     CImg<int> imgEdges(GetEdgeImg(imgPlastron,0,0,0));
@@ -682,8 +682,8 @@
 
     for(int y = 0; y < nImgEdgesHeight; ++y)
 	  {
-      sidePathsFromLeft(4,y) = 2; 
-      sidePathsFromRight(nImgEdgesWidth-5,y) = 2; 
+      sidePathsFromLeft(4,y) = 2;
+      sidePathsFromRight(nImgEdgesWidth-5,y) = 2;
       if(imgEdges(nImgEdgesWidth/2,y)==0) imgEdges(nImgEdgesWidth/2,y) = 1;
       if(imgEdges(4,y)==0) imgEdges(4,y) = 1;
       if(imgEdges(nImgEdgesWidth-5,y)==0) imgEdges(nImgEdgesWidth-5,y) = 1;
@@ -696,9 +696,9 @@
       for(int x = 0; x < nImgEdgesWidth; ++x)
 		  {
         if( imgEdges(x,y) && (y>=B*x/(4*A)+B*7/8 || y>=B*(A-x)/(4*A)+B*7/8) )
-			  { 
+			  {
   //prefilling - initial value (distance) of sidePathsFromRight is set to 2
-				  imgEdges(x,y) = 0; 
+				  imgEdges(x,y) = 0;
 			  }
 		  }
 	  }
@@ -708,15 +708,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 3; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 3;
       distanceMask(1,y) += 2;
       distanceMask(2,y) += 0;
       distanceMask(3,y) += 0;
       distanceMask(4,y) += 1;
       distanceMask(5,y) += 2;
-      distanceMask(6,y) += 3; 
+      distanceMask(6,y) += 3;
     }
 
   //filling left side paths - rotating distanceMask
@@ -728,14 +728,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -751,7 +751,7 @@
 		  }
 	  }
 //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -795,7 +795,7 @@
     else if(colour==blue) nBlue = 255;
     else if(colour==white) {nRed = 255;nGreen = 255;nBlue = 255;}
     else if(colour==black) {}
-    else if(colour==yellow) {nRed = 255;nGreen = 255;} 
+    else if(colour==yellow) {nRed = 255;nGreen = 255;}
     else if(colour==purple) {nRed = 255;nBlue = 255;}
     else if(colour==cyan) {nGreen = 255;nBlue = 255;}
     for(int ii = -nDrawnAreaWidth; ii <= nDrawnAreaWidth; ++ii)
@@ -829,7 +829,7 @@
   //using edges on a wider central-seam stripe
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
     CImg<int> imgPlastron(imgRotatedOriginal.get_crop(
-      max(0,min(sJunctions.s1Head.xCoor-nAbdSeamLength/4,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s4PecToAbd.yCoor-nAbdSeamLength,imgRotatedOriginal.height()-1)), 
+      max(0,min(sJunctions.s1Head.xCoor-nAbdSeamLength/4,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s4PecToAbd.yCoor-nAbdSeamLength,imgRotatedOriginal.height()-1)),
       max(0,min(sJunctions.s1Head.xCoor+nAbdSeamLength/4,imgRotatedOriginal.width()-1)),max(0,min(imgRotatedOriginal.height()-1,sJunctions.s3HumToPec.yCoor-nAbdSeamLength/4))));
     //imgPlastron = GetUniformlyResizedImg(imgPlastron,500);
     CImg<int> imgEdges(GetEdgeImg(imgPlastron,0,0,0));
@@ -855,15 +855,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 2; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 2;
       distanceMask(1,y) += 1;
       distanceMask(2,y) += 0;
       distanceMask(3,y) += 1;
       distanceMask(4,y) += 2;
       distanceMask(5,y) += 3;
-      distanceMask(6,y) += 4; 
+      distanceMask(6,y) += 4;
     }
 
   //filling left side paths - rotating distanceMask
@@ -875,14 +875,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -898,7 +898,7 @@
 		  }
 	  }
 //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -929,7 +929,7 @@
    //     if(sidePathsFromRight(x,y)==nMaxPathValue)
 			//  {
    //         sidePathsFromRight(x,y) = 0;
-   //         
+   //
 			//  }
    //     if(sidePathsFromLeft(x,y)==nMaxPathValue) sidePathsFromLeft(x,y) = 0;
 		 // }
@@ -1178,27 +1178,27 @@
       m_sJunctions.s1Head.xCoor = m_sRightJunctions.s1Head.xCoor;
       m_sJunctions.s1Head.yCoor = m_sRightJunctions.s1Head.yCoor;
       // s2GulToHum
-      if(abs(m_sJunctions.s2GulToHum.yCoor-m_sRightJunctions.s2GulToHum.yCoor) 
+      if(abs(m_sJunctions.s2GulToHum.yCoor-m_sRightJunctions.s2GulToHum.yCoor)
         <  abs(m_sJunctions.s2GulToHum.yCoor-m_sLeftJunctions.s2GulToHum.yCoor))  m_sJunctions.s2GulToHum.xCoor = m_sRightJunctions.s2GulToHum.xCoor;
       else m_sJunctions.s2GulToHum.xCoor = m_sLeftJunctions.s2GulToHum.xCoor;
       //m_sJunctions.s2GulToHum.yCoor = m_imgResultsData(4,8);
       // s3HumToPec
-      if(abs(m_sJunctions.s3HumToPec.yCoor-m_sRightJunctions.s3HumToPec.yCoor) 
+      if(abs(m_sJunctions.s3HumToPec.yCoor-m_sRightJunctions.s3HumToPec.yCoor)
         <  abs(m_sJunctions.s3HumToPec.yCoor-m_sLeftJunctions.s3HumToPec.yCoor))  m_sJunctions.s3HumToPec.xCoor = m_sRightJunctions.s3HumToPec.xCoor;
       else m_sJunctions.s3HumToPec.xCoor = m_sLeftJunctions.s3HumToPec.xCoor;
       //m_sJunctions.s3HumToPec.yCoor = m_imgResultsData(6,8);
       // s4PecToAbd
-      if(abs(m_sJunctions.s4PecToAbd.yCoor-m_sRightJunctions.s4PecToAbd.yCoor) 
+      if(abs(m_sJunctions.s4PecToAbd.yCoor-m_sRightJunctions.s4PecToAbd.yCoor)
         <  abs(m_sJunctions.s4PecToAbd.yCoor-m_sLeftJunctions.s4PecToAbd.yCoor))  m_sJunctions.s4PecToAbd.xCoor = m_sRightJunctions.s4PecToAbd.xCoor;
       else m_sJunctions.s4PecToAbd.xCoor = m_sLeftJunctions.s4PecToAbd.xCoor;
       //m_sJunctions.s4PecToAbd.yCoor = m_imgResultsData(8,8);
       // s5AbdToFem
-      if(abs(m_sJunctions.s5AbdToFem.yCoor-m_sRightJunctions.s5AbdToFem.yCoor) 
+      if(abs(m_sJunctions.s5AbdToFem.yCoor-m_sRightJunctions.s5AbdToFem.yCoor)
         <  abs(m_sJunctions.s5AbdToFem.yCoor-m_sLeftJunctions.s5AbdToFem.yCoor))  m_sJunctions.s5AbdToFem.xCoor = m_sRightJunctions.s5AbdToFem.xCoor;
       else m_sJunctions.s5AbdToFem.xCoor = m_sLeftJunctions.s5AbdToFem.xCoor;
       //m_sJunctions.s5AbdToFem.yCoor = m_imgResultsData(10,8);
       // s6FemToAna
-      if(abs(m_sJunctions.s6FemToAna.yCoor-m_sRightJunctions.s6FemToAna.yCoor) 
+      if(abs(m_sJunctions.s6FemToAna.yCoor-m_sRightJunctions.s6FemToAna.yCoor)
         <  abs(m_sJunctions.s6FemToAna.yCoor-m_sLeftJunctions.s6FemToAna.yCoor))  m_sJunctions.s6FemToAna.xCoor = m_sRightJunctions.s6FemToAna.xCoor;
       else m_sJunctions.s6FemToAna.xCoor = m_sLeftJunctions.s6FemToAna.xCoor;
       //m_sJunctions.s6FemToAna.yCoor = m_imgResultsData(12,8);
@@ -1276,7 +1276,7 @@
       //m_imgResultsData.save(m_strResultsDataFileName.c_str());
     //}
 
-    
+
     //CImg<int> imgShowLeftJunctions(m_imgRotatedOriginal*2/3);
     //MarkAJunction(imgShowLeftJunctions,m_sLeftJunctions.s4PecToAbd,0,red);
     //MarkAJunction(imgShowLeftJunctions,m_sLeftJunctions.s5AbdToFem,0,yellow);
@@ -1305,7 +1305,7 @@
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
     cout << "Hello" << endl;
     CImg<int> imgUpperHalfTortoise(imgRotatedOriginal.get_crop(
-      max(0,min(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s2GulToHum.yCoor-nAbdSeamLength*65/100,imgRotatedOriginal.height()-1)), 
+      max(0,min(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s2GulToHum.yCoor-nAbdSeamLength*65/100,imgRotatedOriginal.height()-1)),
       max(0,min(sPlastronCentreOnRotatedImg.xCoor+nAbdSeamLength,imgRotatedOriginal.width()-1)),max(0,min(imgRotatedOriginal.height()-1,sJunctions.s2GulToHum.yCoor))));
     int nGulToHumYCoor = sJunctions.s2GulToHum.yCoor - max(0,min(sJunctions.s2GulToHum.yCoor-nAbdSeamLength*65/100,imgRotatedOriginal.height()-1));
     //cout << nGulToHumYCoor << endl;
@@ -1354,7 +1354,7 @@
   {
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
     CImg<int> imgUpperHalfTortoise(imgRotatedOriginal.get_crop(
-      max(0,min(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s6FemToAna.yCoor,imgRotatedOriginal.height()-1)), 
+      max(0,min(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,imgRotatedOriginal.width()-1)),max(0,min(sJunctions.s6FemToAna.yCoor,imgRotatedOriginal.height()-1)),
       max(0,min(sPlastronCentreOnRotatedImg.xCoor+nAbdSeamLength,imgRotatedOriginal.width()-1)),max(0,min(imgRotatedOriginal.height()-1,sJunctions.s6FemToAna.yCoor+nAbdSeamLength*65/100))));
     int nFemToAnaYCoor = sJunctions.s6FemToAna.yCoor - max(0,min(sJunctions.s6FemToAna.yCoor,imgRotatedOriginal.height()-1));
     //cout << nGulToHumYCoor << endl;
@@ -1402,7 +1402,7 @@
 
 
   CImg<unsigned char> Tortoise::SkeletonizationMinDist(CImg<unsigned char> imgEdges)
-{	
+{
 	imgEdges = EliminateTwoPixelsEdges(EliminateOnePixelEdges(imgEdges));
 	CImg<int> res(imgEdges);//,edgesWrapping(getEdgesWrapping(imgToDoItOn)), edgesWrappingInverse;
 	int width = res.width();
@@ -1456,8 +1456,8 @@
 				{
 					for(int x = 1; x < width-1; x++)
 					{
-						if(res(x,y) == level) 
-						{	
+						if(res(x,y) == level)
+						{
 // eliminate from rigth down corner
 							if( res(x-1,y-1)> 0 && res(x,y-1)> 0 && res(x+1,y-1)>=0  &&
 								res(x-1,y)  > 0 &&				    res(x+1,y)  ==0  &&
@@ -1483,7 +1483,7 @@
 									  res(x-1,y)  ==0 &&					                res(x+1,y) >0 &&
 								      res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
 // eliminate from up side
-							else if( (res(x-1,y-1)==0 || res(x+1,y-1)==0) && res(x,y-1)==0 && 
+							else if( (res(x-1,y-1)==0 || res(x+1,y-1)==0) && res(x,y-1)==0 &&
 									 (res(x-1,y)  >0 ||					 res(x+1,y)  >0) &&
 									  res(x-1,y+1)>0 && res(x,y+1)>0 && res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
 // eliminate from down side
@@ -1491,7 +1491,7 @@
 									(res(x-1,y)  >0 ||					 res(x+1,y)>0) &&
 									(res(x-1,y+1)==0 || res(x+1,y+1)==0) && res(x,y+1)==0   ) { res(x,y) = 0; change = 1; }
 							else
-							{		
+							{
 
 							}
 						}
@@ -1511,7 +1511,7 @@
 // paths contains skeleton of edge stripe image without large empty spaces
 	int width = paths.width();
 	int height = paths.height();
-//decrLevel ... number of lines that we look backward(forward) to find more (suitable) edge points 
+//decrLevel ... number of lines that we look backward(forward) to find more (suitable) edge points
 	const int decrLevel = 5;
 //distanceMask is filled by distances
 	distanceMask.assign(5,decrLevel,1,1, 0);
@@ -1533,7 +1533,7 @@
 //starting point should be in y-lower part
 	for(int y = decrLevel + 1; y < height; y++)
 	{
-		for(int x = 2; x < width - 2; x++) 
+		for(int x = 2; x < width - 2; x++)
 		{
 			if(paths(x,y) == nMaxValue)
 			{
@@ -1650,15 +1650,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 2; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 2;
       distanceMask(1,y) += 1;
       distanceMask(2,y) += 0;
       distanceMask(3,y) += 1;
       distanceMask(4,y) += 2;
       distanceMask(5,y) += 3;
-      distanceMask(6,y) += 4; 
+      distanceMask(6,y) += 4;
     }
 
   //filling left side paths - rotating distanceMask
@@ -1670,14 +1670,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -1693,7 +1693,7 @@
 		  }
 	  }
 //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -1826,9 +1826,9 @@
       for(int x = 0; x < nImgEdgesWidth; ++x)
 		  {
         if( imgEdges(x,y) && (y>=B*x/(4*A)+B*7/8 || y>=B*(A-x)/(4*A)+B*7/8) )
-			  { 
+			  {
   //prefilling - initial value (distance) of sidePathsFromRight is set to 2
-				  imgEdges(x,y) = 0; 
+				  imgEdges(x,y) = 0;
 			  }
 		  }
 	  }
@@ -1838,15 +1838,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 3; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 3;
       distanceMask(1,y) += 2;
       distanceMask(2,y) += 0;
       distanceMask(3,y) += 0;
       distanceMask(4,y) += 1;
       distanceMask(5,y) += 2;
-      distanceMask(6,y) += 3; 
+      distanceMask(6,y) += 3;
     }
 
   //filling left side paths - rotating distanceMask
@@ -1858,14 +1858,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -1881,7 +1881,7 @@
 		  }
 	  }
 //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -2012,15 +2012,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 4; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 4;
       distanceMask(1,y) += 3;
       distanceMask(2,y) += 2;
       distanceMask(3,y) += 0;
       distanceMask(4,y) += 0;
       distanceMask(5,y) += 1;
-      distanceMask(6,y) += 2; 
+      distanceMask(6,y) += 2;
     }
 
   //filling left side paths - rotating distanceMask
@@ -2032,14 +2032,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -2055,7 +2055,7 @@
 		  }
 	  }
   //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -2185,15 +2185,15 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 3; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 3;
       distanceMask(1,y) += 2;
       distanceMask(2,y) += 1;
       distanceMask(3,y) += 0;
       distanceMask(4,y) += 1;
       distanceMask(5,y) += 2;
-      distanceMask(6,y) += 3; 
+      distanceMask(6,y) += 3;
     }
 
   //filling left side paths - rotating distanceMask
@@ -2205,14 +2205,14 @@
       for(int y = 5; y < nImgEdgesHeight-5; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -2228,7 +2228,7 @@
 		  }
 	  }
   //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -2430,11 +2430,11 @@
 	  CImg<int> distanceMask(7,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),3.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 9; 
-      distanceMask(1,y) += 4; 
-      distanceMask(2,y) += 2; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 9;
+      distanceMask(1,y) += 4;
+      distanceMask(2,y) += 2;
       distanceMask(3,y) += 1;
       distanceMask(4,y) += 0;
       distanceMask(5,y) += 2;
@@ -2450,14 +2450,14 @@
       for(int y = 3; y < nImgEdgesHeight-3; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -2473,7 +2473,7 @@
 		  }
 	  }
 //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -2551,7 +2551,7 @@
    // cout << nLowerLocalYJunctionEstimate << " " << nUpperLocalYJunctionEstimate << endl;
    // (sidePathsFromRight,imgRotatedOriginal).display();
   }
-  
+
   void Tortoise::GetHeadJunctionPreciseLocation(const CImg<int> &imgRotatedOriginal, const plastronJunctions &sJunctions, const point2dCoor &sPlastronCenter)
   {
     const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
@@ -2597,9 +2597,9 @@
 	  CImg<int> distanceMask(5,5,1,1, 0);
   //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
 	  for(int x = 0; x < 5; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-	  for(int y = 0; y < 5; y++) 
-    { 
-      distanceMask(0,y) += 2; 
+	  for(int y = 0; y < 5; y++)
+    {
+      distanceMask(0,y) += 2;
       distanceMask(1,y) += 0;
       distanceMask(2,y) += 0;
       distanceMask(3,y) += 0;
@@ -2615,14 +2615,14 @@
       for(int y = 2; y < nImgEdgesHeight-2; ++y)
 		  {
   //filling left side paths - evaluating only edge pixs on the left of the central path
-        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/) 
+        if(imgEdges(x,y) /*&& x<=nImgEdgesWidth/2*/)
 			  {
-  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs 
+  //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
 				  CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-2,x-5,y+2) + distanceMask);
   //filling left side paths - minimum distance is saved
 				  int min = cropAreaDistances.min();
   //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-          if(min<nMaxPathValue) 
+          if(min<nMaxPathValue)
 				  {
   //filling left side paths - minimum distance is saved in the current pix
 					  sidePathsFromLeft(x,y) = min;
@@ -2638,7 +2638,7 @@
 		  }
 	  }
 //  (sidePathsFromLeft,sidePathsIndexes).display();
-  //filling right side paths - rotating distanceMask 
+  //filling right side paths - rotating distanceMask
   distanceMask.mirror('x');
   //filling right side paths - the same as is in the left side
    for(int x = nImgEdgesWidth-6; x >= 0; --x)
@@ -2756,11 +2756,11 @@
     double lastNearestY = MP(0,0,1);
     for(int i = 0; i < 6; i++)
     {
-      double distanceFromLastNearestPointOnLeft = sqrt( (double) (lastNearestX-MP(0,i+1,0))*(lastNearestX-MP(0,i+1,0)) 
+      double distanceFromLastNearestPointOnLeft = sqrt( (double) (lastNearestX-MP(0,i+1,0))*(lastNearestX-MP(0,i+1,0))
                                                                 + (lastNearestY-MP(0,i+1,1))*(lastNearestY-MP(0,i+1,1)) );
-      double distanceFromLastNearestPointOnRight = sqrt( (double) (lastNearestX-MP(1,i+1,0))*(lastNearestX-MP(1,i+1,0)) 
+      double distanceFromLastNearestPointOnRight = sqrt( (double) (lastNearestX-MP(1,i+1,0))*(lastNearestX-MP(1,i+1,0))
                                                                 + (lastNearestY-MP(1,i+1,1))*(lastNearestY-MP(1,i+1,1)) );
-      double differenceBetweenLeftRightJunctionPoints = sqrt( (double) (MP(0,i+1,0)-MP(1,i+1,0))*(MP(0,i+1,0)-MP(1,i+1,0)) 
+      double differenceBetweenLeftRightJunctionPoints = sqrt( (double) (MP(0,i+1,0)-MP(1,i+1,0))*(MP(0,i+1,0)-MP(1,i+1,0))
                                                                       + (MP(0,i+1,1)-MP(1,i+1,1))*(MP(0,i+1,1)-MP(1,i+1,1)) );
       if (distanceFromLastNearestPointOnLeft < distanceFromLastNearestPointOnRight)
       {
@@ -2772,7 +2772,7 @@
         {
           seamSegments(0,i+1) += differenceBetweenLeftRightJunctionPoints;
           leftRightJunctionDifferences(0,i) = - differenceBetweenLeftRightJunctionPoints;
-        }      
+        }
       }
       else
       {
@@ -2784,12 +2784,12 @@
         {
           seamSegments(1,i+1) += differenceBetweenLeftRightJunctionPoints;
           leftRightJunctionDifferences(0,i) = differenceBetweenLeftRightJunctionPoints;
-        }  
+        }
       }
     }
     //normalizing to the size of the plastron
 	  double lengthOfCentralSeam = seamSegments.get_column(0).sum();
-	  for(int i = 0; i < 6; i++) 
+	  for(int i = 0; i < 6; i++)
     {
       seamSegments(0,i) /= lengthOfCentralSeam;
       seamSegments(1,i) /= lengthOfCentralSeam;
@@ -2815,7 +2815,7 @@
     //  fclose(file);
     //  allTGsFeatures.assign(strAllTGsFeatures.c_str());
     //  allTGsFeatures.append(resultFeatureZeroVec,'x');
-    //} 
+    //}
     //else // if not, create one
     //{
     //  allTGsFeatures.append(resultFeatureZeroVec,'x');
@@ -2836,7 +2836,7 @@
 
     //GetUniformlyResizedImg(m_imgOriginal,500).save((m_strLoadDirectory+m_strTortoiseName+"Res.bmp").c_str());
     //getTrainingAndTestSetsLabelsAndTGnumbersForAGivenGroupOfFeatures(1,0,0,0);
-    
+
     //CImg<double> FeaturesMeasuredByHand( (m_strLoadDirectory + "FeaturesMeasuredByHand.cimg").c_str());
     //CImg<int> TgNumbersInINT((m_strLoadDirectory + "numbersOfTGs.cimg").c_str());
     //(FeaturesMeasuredByHand,TgNumbersInINT).display();
@@ -2874,7 +2874,7 @@
   //      trainClasses.at<float>(i,0) = trainingLabels(0,i);
   //    }
   //    CvKNearest knn( trainData, trainClasses, cv::Mat(), false, K ); // learning of the classifier, using training set and traning labels
-    
+
     //  ofstream kNNClassificationResults (kNNclassificationResultsFileName + ".txt");
     //  ofstream kAndErrors (kNNclassificationResultsFileName + "_Errors" + ".txt");
     //  ofstream outliers (kNNclassificationResultsFileName + "_Outliers" + ".txt");
@@ -2941,7 +2941,7 @@
     //    //outliers << setw(20) << meanOfClass1 << setw(20) << stdOfClass1 << setw(20) << meanOfClass0 << setw(20) << stdOfClass0 << '\n';
     //    outliers << "TrainingSet Classification" << '\n';
     //    outliers << setw(20) <<"TgNumber1" << setw(20) << "TgNumber2" << setw(20) << "sumOfFeatures" << setw(20) << "GroundTruthClass" << setw(20) << "ClassifiedClass" << '\n';
-    //  
+    //
     //    for (int i =  0; i < numberOfTrainingData; ++i) // OPTIMISTIC CLASSIFICATION - using training set
     //    {
     //      cv::Mat sampleMat (1,numberOfDataDimensions,CV_32FC1);
@@ -3009,7 +3009,7 @@
     //    double optimisticTotalError = (numberOfFalsePositiveErrorsMisclassifiedAsSameTortoises*1.0/numberOfTrainingData + numberOfFalseNegativeErrorsMisclassifiedAsDifferentTortoises*1.0/numberOfTrainingData)*100.0;
     //    kAndErrors << setw(30) << optimisticTotalError;
     //    kNNClassificationResults << '\n';
-    //  
+    //
     //    numberOfCorrectlyClassifiedAsSameTortoises = 0;
     //    numberOfCorrectlyClassifiedAsDifferentTortoises = 0;
     //    numberOfFalsePositiveErrorsMisclassifiedAsSameTortoises = 0;

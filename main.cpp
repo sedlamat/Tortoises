@@ -1,7 +1,9 @@
-﻿/* STANDARD C/C++ LIBRARIES */
+﻿/* STANDARD C++ LIBRARIES */
 #include <iostream>
 #include <string>
 #include <limits>
+#include <cmath>
+#include <iomanip>
 
 /* THIRD PARTY LIBRARIES */
 #include <pwd.h>
@@ -13,8 +15,7 @@
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
 #include "my_general_hough.hpp"
-//#include "tortoise.h"
-
+//#include "tortoise.hpp"
 
 int main(int argc, char *argv[])
 {

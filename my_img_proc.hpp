@@ -323,7 +323,7 @@ namespace sedlamat
 	@param shift - Amount the points should be shifted.
 	@return Image with screenshot.
     */
-    void visualize_points(std::vector<cv::Point> > points,
+    void visualize_points(std::vector<cv::Point> points,
 		    cv::Size size, cv::Point shift = cv::Point(0,0))
     {
 	cv::Mat dst(size, CV_8UC1, cv::Scalar_<uchar>(0));
