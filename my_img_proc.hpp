@@ -261,7 +261,6 @@ namespace sedlamat
 	return dst;
     }
 
-
     /**
 	Gets image edges based on the gradient magnitude in both
 	the intensity and the color of the image.
@@ -316,22 +315,32 @@ namespace sedlamat
 	return dst;
     }
 
-    // COMMENT TODO
-    void visualize_points(std::vector<cv::Point_<int> > points,
-			cv::Size_<int> size, cv::Point_<int> shift)
+    /**
+	Displays points on screen.
+
+	@param points - Vector of 2d points.
+	@param size - Size of the screen for display.
+	@param shift - Amount the points should be shifted.
+	@return Image with screenshot.
+    */
+    void visualize_points(std::vector<cv::Point> > points,
+		    cv::Size size, cv::Point shift = cv::Point(0,0))
     {
 	cv::Mat dst(size, CV_8UC1, cv::Scalar_<uchar>(0));
-	cv::Rect_<int> area(cv::Point(0,0),size);
-	for(auto const& pt : points) {
+	cv::Rect area(cv::Point(0,0),size);
+	for(auto const &pt : points) {
 	    if ( (pt+shift).inside(area))
 		dst.at<uchar>(pt+shift) = 255;
 	}
 	sedlamat::display(dst);
     }
 
+    /**
+	Gets a screenshot.
 
-
-
+	@param void.
+	@return Image with screenshot.
+    */
     cv::Mat screenshot()
     {
 	int Width = 0;
@@ -362,6 +371,5 @@ namespace sedlamat
     }
 
 } /* namespace sedlamat */
-
 
 #endif /* _MY_IMGPROC_HPP_ */
