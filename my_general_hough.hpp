@@ -119,7 +119,7 @@ namespace sedlamat
 			= std::map<std::string, cv::Point>());
 
 	~GeneralHough() {}
-	void run();
+	void detect();
 	cv::Mat get_result_img() const;
 	double get_best_accum_val() const { return best_accum_val; }
 	double get_best_angle() const { return best_angle; }
@@ -512,7 +512,7 @@ namespace sedlamat
 	@param void.
 	@return void.
     */
-    void GeneralHough::run()
+    void GeneralHough::detect()
     {
 	this->fill_r_table();
 	this->fill_src_hough_pts();
@@ -529,19 +529,22 @@ namespace sedlamat
 	best_scale *= inv_resize_coeff;
 	best_ref_pt *= inv_resize_coeff;
 
-	double cs = std::cos(best_angle);
-	double sn = std::sin(best_angle);
+	if (!tmpl_interest_pts.empty()) {
+	    double cs = std::cos(best_angle);
+	    double sn = std::sin(best_angle);
 
-	std::map<std::string, cv::Point>::iterator it, it_end;
-	it = tmpl_interest_pts.begin();
-	it_end = tmpl_interest_pts.end();
-	while (it != it_end) {
-	    it->second -= ref_pt;
-	    int x = it->second.x;
-	    it->second.x = cs*it->second.x - sn*it->second.y;
-	    it->second.y = sn*x + cs*it->second.y;
-	    it->second *= best_scale;
-	    it->second += best_ref_pt;
+	    std::map<std::string, cv::Point>::iterator it, it_end;
+	    it = tmpl_interest_pts.begin();
+	    it_end = tmpl_interest_pts.end();
+	    while (it != it_end) {
+		it->second -= ref_pt;
+		int x = it->second.x;
+		it->second.x = cs*it->second.x - sn*it->second.y;
+		it->second.y = sn*x + cs*it->second.y;
+		it->second *= best_scale;
+		it->second += best_ref_pt;
+		++it;
+	    }
 	}
     }
 
@@ -580,15 +583,18 @@ namespace sedlamat
 		}
 	    }
 	}
-	std::map<std::string, cv::Point>::const_iterator it, it_end;
-	it = tmpl_interest_pts.cbegin();
-	it_end = tmpl_interest_pts.cend();
-	while (it != it_end) {
-	    if (src_img_orig_rect.contains(it->second)) {
-		cv::rectangle(dst,
-			      it->second-shift_pt,
-			      it->second+shift_pt,
-			      cv::Scalar(0,255,0), CV_FILLED);
+	if (!tmpl_interest_pts.empty()) {
+	    std::map<std::string, cv::Point>::const_iterator it, it_end;
+	    it = tmpl_interest_pts.cbegin();
+	    it_end = tmpl_interest_pts.cend();
+	    while (it != it_end) {
+		if (src_img_orig_rect.contains(it->second)) {
+		    cv::rectangle(dst,
+				  it->second-shift_pt,
+				  it->second+shift_pt,
+				  cv::Scalar(0,255,0), CV_FILLED);
+		}
+		++it;
 	    }
 	}
 	return dst;

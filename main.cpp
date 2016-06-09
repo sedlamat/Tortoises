@@ -13,9 +13,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 /* FIRST PARTY LIBRARIES */
-#include "my_img_proc.hpp"
-#include "my_general_hough.hpp"
-//#include "tortoise.hpp"
+#include "tortoise.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -23,40 +21,38 @@ int main(int argc, char *argv[])
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
 
-	std::string ght_path = path + "/Images/Generalized_Hough_Transform/";
-	std::string templ_path = ght_path + "tortoise_template.bmp";
-	std::string templ_edges_path = ght_path + "ght_template_edges1.bmp";
-	cv::Mat templ = cv::imread(templ_path, 0);
-	cv::Mat templ_edges = cv::imread(templ_edges_path, 0);
-	cv::Mat ref_point_loc;
-	cv::findNonZero(templ_edges==127,ref_point_loc);
-	cv::Point ref_point(ref_point_loc.at<int>(0,0),
-			ref_point_loc.at<int>(0,1));
-
 	std::string file_name = "Tg33200.jpg";
 	std::string imgs_path = path + "/Images/Tortoises/";
 	std::string img_path = imgs_path + file_name;
 	//std::string img_path = argv[1];
-	cv::Mat img = cv::imread(img_path,1);
+	cv::Mat plastron_img = cv::imread(img_path,1);
 
 
-	//plastronJunctions sContourJunctions = {{64,58},{64,74},{64,97},{64,105},{64,155},{64,168},{64,185}};
-	std::map<std::string, cv::Point> map_tempate_junctions;
-	map_tempate_junctions["1"] = cv::Point(64,58);
-	map_tempate_junctions["2"] = cv::Point(64,74);
-	map_tempate_junctions["3"] = cv::Point(64,97);
-	map_tempate_junctions["4"] = cv::Point(64,105);
-	map_tempate_junctions["5"] = cv::Point(64,155);
-	map_tempate_junctions["6"] = cv::Point(64,168);
-	map_tempate_junctions["7"] = cv::Point(64,185);
+
+	std::string templ_path = "plastron_template.bmp";
+	cv::Mat plastron_template = cv::imread(templ_path, 0);
+
+	cv::Point reference_point(65,125);
+
+
+	std::map<std::string, cv::Point> map_template_junctions;
+	map_template_junctions["1"] = cv::Point(64,58);
+	map_template_junctions["2"] = cv::Point(64,74);
+	map_template_junctions["3"] = cv::Point(64,97);
+	map_template_junctions["4"] = cv::Point(64,105);
+	map_template_junctions["5"] = cv::Point(64,155);
+	map_template_junctions["6"] = cv::Point(64,168);
+	map_template_junctions["7"] = cv::Point(64,185);
 	//sedlamat::display(img);
-	sedlamat::GeneralHough general_hough(img, templ, ref_point,
-					 4, 25, 300, 1.0, 0.3, 0,
-					 map_tempate_junctions);
+	sedlamat::GeneralHough general_hough(plastron_img,
+					     plastron_template,
+					     reference_point,
+					     4, 25, 300, 1.0, 0.3, 0,
+					     map_template_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
 	sedlamat::display(general_hough.get_src_edges());
-	general_hough.run();
+	general_hough.detect();
 	sedlamat::display(general_hough.get_result_img());
 	//~ sedlamat::display(general_hough.get_template_edges());
 	//~ sedlamat::display(general_hough.get_src_edges());

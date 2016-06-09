@@ -3,6 +3,9 @@
 #include <map>
 #include <string>
 
+/* THIRD PARTY LIBRARIES */
+#include <opencv2/core/core.hpp>
+
 //~ // using several standard libraries
 //~ #include <iostream>
 //~ #include <time.h>
@@ -20,11 +23,15 @@
 //~ // using libraries for image recognition (CImg and OpenCV)
 //~ //#include "CImg.h"
 //~ #include <opencv2/opencv.hpp>
-#include <opencv2/core/core.hpp>
+
 //~ #include <opencv2/highgui/highgui.hpp>
 //~ #include <opencv2/imgproc/imgproc.hpp>
 //~ #include <opencv2/ml/ml.hpp>
 //include <opencv2\legacy\legacy.hpp>
+
+/* FIRST PARTY LIBRARIES */
+#include "my_img_proc.hpp"
+#include "my_general_hough.hpp"
 
 
 
@@ -38,12 +45,13 @@ class Tortoise {
     };
 
     Junctions l_juncs, r_juncs; // left and right junctions
-
-    std::map<std::string, cv::Vec3b> colors;
-    std::cout << colors.size() << std::endl;
-
-colors.insert ( std::pair<std::string, cv::Vec3b>("a",cv::Vec3b(0,0,255)) );
-    colors["red"] = cv::Vec3b(0,0,255);
+//~
+    //~ std::map<std::string, cv::Vec3b> colors;
+    //~ std::cout << colors.size() << std::endl;
+//~
+    //~ colors.insert(std::pair<std::string,
+    //~ cv::Vec3b>("a",cv::Vec3b(0,0,255)) );
+    //~ colors["red"] = cv::Vec3b(0,0,255);
     //~ color["green"] = cv::Vec3b(0,255,0);
     //~ color["blue"] = cv::Vec3b(255,0,0);
     //~ color["white"] = cv::Vec3b(255,255,255);
@@ -61,35 +69,36 @@ colors.insert ( std::pair<std::string, cv::Vec3b>("a",cv::Vec3b(0,0,255)) );
     //~ color["j7Tail"] = color["cyan"];
 
 public:
-    Tortoise(cv::Mat &img): img(img) {}
+    Tortoise(cv::Mat &plastron_image): img(plastron_image) {}
     ~Tortoise(){}
     void measure(); // locate and measure features
 
 private:
-
+    void locate_plastron();
+/*
     string            m_strLoadDirectory;
     string            m_strSaveDirectory;
     string            m_strTortoiseName;
     string            m_strProcessID;
     string            m_strResultsDataFileName;
-
+//~ //~
     CImg<int>	      m_imgOriginal;
     CImg<int>         m_imgRotatedOriginal;
     CImg<int>         m_imgResultsData;
     CImg<int>         m_imgCentralPathXCoordinates;
-
+//~ //~
     int               m_nWidth, m_nHeight;
     int			          m_nRotationAngleToVerticalInDegrees;
     int		    	      m_imgResultsDataSize;
-
+//~ //~
     plastronJunctions m_sJunctions;
     plastronJunctions m_sLeftJunctions;
     plastronJunctions m_sRightJunctions;
-
+//~ //~
     point2dCoor       m_sPlastronCentreOnRotatedImg;
     point2dCoor       m_sCentralSeamHeadEnd;
     point2dCoor       m_sCentralSeamTailEnd;
-
+//~ //~
    // Methods for tortoise recognition
    void CentralSeamLocalization();
    CImg<int> GetUniformlyResizedImg(CImg<int> img, int resizedMaxSizeInPix);
@@ -116,16 +125,18 @@ private:
    void GetCentralPathXCoordinatesForHeadAndTailArea();
    void GetTailJunctionPreciseLocation(const CImg<int> &imgRotatedOriginal, const plastronJunctions &sJunctions, const point2dCoor &sPlastronCenter);
    void GetHeadJunctionPreciseLocation(const CImg<int> &imgRotatedOriginal, const plastronJunctions &sJunctions, const point2dCoor &sPlastronCenter);
-
+//~ //~
    CImg<double> GetNormalizedJunctionDifferencesAndSeamLengths(const plastronJunctions &sLeftJunctions, const plastronJunctions &sRightJunctions);
  public:
-
+//~ //~
     //Tortoise(string imgDirectory, string tortoiseName, string processID); 	//constructor
     //~Tortoise(){}                                                           // destructor
    void Recognition();
    void Classification();
+   * */
  };
-
+/*
    void AccuracyEvaluation(string strLoadDirectory);
    void kNNclassifier();
    void Classification();
+*/
