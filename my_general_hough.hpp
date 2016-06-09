@@ -37,6 +37,17 @@
 
 namespace sedlamat
 {
+
+    class HoughTemplate {
+	cv::Mat template_img, template_edges;
+	cv::Point ref_pt;
+	std::vector<cv::Point> interest_pts;
+    public:
+	HoughTemplate(cv::Mat template_img, cv::Point ref_pt,
+		      cv::Mat template_edges = cv::Mat(),
+		      std::vector<cv::Point> interest_pts = std::vector<cv::Point>()) {}
+	~HoughTemplate() {}
+    }
     /*
 	Beware:
 	    cv::Point is alias for cv::Point_<int>
