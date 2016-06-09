@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	cv::Point ref_point(ref_point_loc.at<int>(0,0),
 			ref_point_loc.at<int>(0,1));
 
-	std::string file_name = "Tg55900.jpg";
+	std::string file_name = "Tg33200.jpg";
 	std::string imgs_path = path + "/Images/Tortoises/";
 	std::string img_path = imgs_path + file_name;
 	//std::string img_path = argv[1];

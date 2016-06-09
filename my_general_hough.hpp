@@ -204,7 +204,7 @@ namespace sedlamat
 
 	    src_img_size = src_img.size();
 	    src_img_rect = cv::Rect(cv::Point(0,0), src_img_size);
-	    cv::GaussianBlur(src_img, src_img, cv::Size(0,0), 1.0);
+	    cv::GaussianBlur(src_img, src_img, cv::Size(0,0), 0.5);
 	} else {
 	    throw "Source and/or template image is empty!";
 	}
@@ -544,6 +544,9 @@ namespace sedlamat
 	double cs = std::cos(best_angle);
 	double sn = std::sin(best_angle);
 
+	double inv_resize_coeff = 1.0 / resize_coeff;
+	cv::Point shift_pt(inv_resize_coeff,inv_resize_coeff);
+
 	for(auto table_quant : r_table) {
 	    for(auto pt : table_quant) {
 		int x = pt.x;
@@ -552,6 +555,10 @@ namespace sedlamat
 		pt = pt * best_scale;
 		pt = pt + best_ref_pt;
 		if (src_img_orig_rect.contains(pt)) {
+		    cv::rectangle(dst,
+				  pt-shift_pt,
+				  pt+shift_pt,
+				  cv::Scalar(0,0,255), CV_FILLED);
 		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
 		}
 	    }
