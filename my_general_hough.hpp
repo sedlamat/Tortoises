@@ -44,21 +44,10 @@
 
 namespace sedlamat
 {
-    class HoughTemplate {
-	cv::Mat template_img, template_edges;
-	cv::Point ref_pt;
-	std::vector<cv::Point> interest_pts;
-    public:
-	HoughTemplate(cv::Mat template_img, cv::Point ref_pt,
-		      cv::Mat template_edges = cv::Mat(),
-		      std::vector<cv::Point> interest_pts = std::vector<cv::Point>()) {}
-	~HoughTemplate() {}
-    };
-
     class GeneralHough {
 	/*** constructor input parameters: ***/
 	// source(with objects to be detected) and template images
-	cv::Mat src_img, src_edges, template_img, template_edges;
+	cv::Mat src_img, tmpl_img, src_edges, tmpl_edges;
 	// template reference point
 	const cv::Point ref_pt;
 	// number of possible orientations of the object in src_img
@@ -68,31 +57,32 @@ namespace sedlamat
 	// size to which the src_img is resized
 	const int max_img_size;
 	// min/max size of the object in percents of the src_img (0..1]
-	const double max_template_scale;
-	const double min_template_scale;
+	const double max_tmpl_scale;
+	const double min_tmpl_scale;
 	// thresholds for creating edge images(lower values->more edges)
 	const int canny_low_thresh;
 	const int canny_high_thresh;
 
 	/*** other parameters set up in contructor: ***/
-	// kernels for smoothing the accumulator
-	cv::Mat plain, gauss;
-	// Size and Rectangle are of the src/template_img
-	cv::Size src_size, template_img_size;
-	cv::Rect src_area, template_img_area;
+	// kernel for smoothing the accumulator
+	cv::Mat gauss;
+	// Size and Rectangle are of the src/tmpl_img
+	cv::Size src_size, tmpl_img_size;
+	cv::Rect src_img_rect, tmpl_img_rect;
 	// scaling step in the accumulator
 	float scale_step;
 	// number of neighbouring quants for pooling in the accumulator
 	int num_quant_neighbours;
 	// template size in pixels (area with non-zero pixels)
-	int template_max_size;
+	cv::Rect tmpl_bound_rect;
+	cv::Size tmpl_size;
 	// min/max_scaling of the template
 	double max_scale;
 	double min_scale;
 	// rotation step of the rotated_r_table in radians
 	double rot_rad;
 	// flag - if 1 then all accumulators will be displayed
-	const bool DISPLAY_ACCUM;
+	const bool display_accum;
 
 	/*** Declarations for Hough R-table and src Hough points: ***/
 	// alias used to store points grouped by gradient direction
@@ -111,36 +101,31 @@ namespace sedlamat
 	cv::Point best_ref_pt;
 
     public:
-	GeneralHough(const cv::Mat &src_img,
-		     const cv::Mat &template_img,
-		     const cv::Point ref_pt,
-		     const cv::Mat &src_edges = cv::Mat(),
+	GeneralHough(const cv::Mat &source_image,
+		     const cv::Mat &template_image,
+		     const cv::Point reference_point,
+		     const cv::Mat &source_edges = cv::Mat(),
 		     const cv::Mat &template_edges = cv::Mat(),
-		     const int num_quant_directions = 12,
-		     const int num_scales = 20,
-		     const int max_img_size = 150,
-		     const double max_template_scale = 1.0,
-		     const double min_template_scale = 0.3,
-		     const int canny_low_thresh = 20,
-		     const int canny_high_thresh = 50,
-		     const bool DISPLAY_ACCUM = 0);
+		     const int number_of_directions = 4,
+		     const int number_of_scales = 20,
+		     const int maximum_image_size = 150,
+		     const double maximum_template_scale = 1.0,
+		     const double minimum_template_scale = 0.3,
+		     const int canny_lower_threshold = 20,
+		     const int canny_higher_threshold = 50,
+		     const bool display_accumulator = 0);
 
 	~GeneralHough() {}
 	void run();
 	cv::Mat get_result_img() const;
-	double get_best_accum_val() const {
-				    return this->best_accum_val; }
-	double get_best_angle() const {
-				    return this->best_angle; }
-	double get_best_scale() const {
-				    return this->best_scale; }
-	cv::Point get_best_ref_pt() const {
-				    return this->best_ref_pt; }
-	cv::Mat get_src_img() const { return this->src_img; }
-	cv::Mat get_template_img() const { return this->template_img; }
-	cv::Mat get_template_edges() const {
-				    return this->template_edges;}
-	cv::Mat get_src_edges() const { return this->src_edges; }
+	double get_best_accum_val() const { return best_accum_val; }
+	double get_best_angle() const { return best_angle; }
+	double get_best_scale() const { return best_scale; }
+	cv::Point get_best_ref_pt() const { return best_ref_pt; }
+	cv::Mat get_src_img() const { return src_img; }
+	cv::Mat get_tmpl_img() const { return tmpl_img; }
+	cv::Mat get_tmpl_edges() const { return tmpl_edges;}
+	cv::Mat get_src_edges() const { return src_edges; }
 
     private:
 	void fill_r_table();
@@ -150,8 +135,6 @@ namespace sedlamat
 				const cv::Mat &img_edges);
 	void set_rotated_r_table(double rot_step_rad,
 					int num_table_shift);
-	void set_template_max_size();
-	void set_kernels();
 	void accumulate();
     };
 
@@ -162,43 +145,43 @@ namespace sedlamat
 	@param see class declaration.
 	@return void.
     */
-    GeneralHough::GeneralHough(const cv::Mat &src_img,
-			    const cv::Mat &template_img,
-			    const cv::Point ref_pt,
-			    const cv::Mat &src_edges,
+    GeneralHough::GeneralHough(const cv::Mat &source_image,
+			    const cv::Mat &template_image,
+			    const cv::Point reference_point,
+			    const cv::Mat &source_edges,
 			    const cv::Mat &template_edges,
-			    const int num_quant_directions,
-			    const int num_scales,
-			    const int max_img_size,
-			    const double max_template_scale,
-			    const double min_template_scale,
-			    const int canny_low_thresh,
-			    const int canny_high_thresh,
-			    const bool DISPLAY_ACCUM):
-			    src_img(src_img),
-			    src_edges(src_edges),
-			    template_img(template_img),
-			    template_edges(template_edges),
-			    ref_pt(ref_pt),
-			    num_quant_directions(num_quant_directions),
-			    num_scales(num_scales),
-			    max_img_size(max_img_size),
-			    max_template_scale(max_template_scale),
-			    min_template_scale(min_template_scale),
-			    canny_low_thresh(canny_low_thresh),
-			    canny_high_thresh(canny_high_thresh),
-			    DISPLAY_ACCUM(DISPLAY_ACCUM)
+			    const int number_of_directions,
+			    const int number_of_scales,
+			    const int maximum_image_size,
+			    const double maximum_template_scale,
+			    const double minimum_template_scale,
+			    const int canny_lower_threshold,
+			    const int canny_higher_threshold,
+			    const bool display_accumulator):
+			    src_img(source_image),
+			    tmpl_img(template_image),
+			    src_edges(source_edges),
+			    tmpl_edges(template_edges),
+			    ref_pt(reference_point),
+			    num_quant_directions(number_of_directions),
+			    num_scales(number_of_scales),
+			    max_img_size(maximum_image_size),
+			    max_tmpl_scale(maximum_template_scale),
+			    min_tmpl_scale(minimum_template_scale),
+			    canny_low_thresh(canny_lower_threshold),
+			    canny_high_thresh(canny_higher_threshold),
+			    display_accum(display_accumulator)
     {
 	// checks num_quant_directions AND sets num_quant_neighbours
-	switch (this->num_quant_directions) {
+	switch (num_quant_directions) {
 	    case 4:
-		this->num_quant_neighbours = 0;
+		num_quant_neighbours = 0;
 		break;
 	    case 12:
-		this->num_quant_neighbours = 1;
+		num_quant_neighbours = 1;
 		break;
 	    case 36:
-		this->num_quant_neighbours = 4;
+		num_quant_neighbours = 4;
 		break;
 	    default:
 		throw "Wrong num_quant_directions. \
@@ -206,34 +189,34 @@ namespace sedlamat
 	}
 
 	// checks max_img_size
-	if ( ! (1 <= this->max_img_size &&
-	        this->max_img_size <= 1000) ) {
+	if ( ! (1 <= >max_img_size && max_img_size <= 1000) ) {
 	    throw "Wrong: max_img_size must be in [1,1000]";
 	}
 
 	/* checks src/tempalate_img AND resizes src_img
 	   AND sets src/templ_size/area */
-	if (!this->src_img.empty() && !this->template_img.empty()) {
-	    this->template_img_size = this->template_img.size();
-	    this->template_img_area = cv::Rect(cv::Point(0,0),
-					    this->template_img_size);
+	if (!src_img.empty() && !tmpl_img.empty()) {
+	    tmpl_img_size = tmpl_img.size();
+	    tmpl_img_rect = cv::Rect(cv::Point(0,0), tmpl_img_size);
+
 	    // Warns if ref_pt outside template_img
-	    if (!this->ref_pt.inside(this->template_img_area)) {
+	    if (!ref_pt.inside(tmpl_img_rect)) {
 		throw "Wrong: Reference point outside template image. \
 		       If it has to be outside, make changes in the  \
 		       GeneralHough constructor and in the \
 		       accumulator() method.";
 	    }
-	    // Resizes the source image
-	    int src_w = this->src_img.cols;
-	    int src_h = this->src_img.rows;
-	    double resize_koef = this->max_img_size * 1.0 /
-					    std::max(src_w,src_h);
-	    cv::resize(this->src_img, this->src_img, cv::Size(0,0),
-				    resize_koef, resize_koef);
 
-	    this->src_size = this->src_img.size();
-	    this->src_area = cv::Rect(cv::Point(0,0), this->src_size);
+	    // Resizes the source image
+	    int src_w = src_img.cols;
+	    int src_h = src_img.rows;
+	    double resize_koef = max_img_size * 1.0 /
+					         std::max(src_w,src_h);
+	    cv::resize(src_img, src_img, cv::Size(0,0), resize_koef,
+							  resize_koef);
+
+	    src_size = src_img.size();
+	    src_img_rect = cv::Rect(cv::Point(0,0), src_size);
 	} else {
 	    throw "Source and/or template image is empty!";
 	}
@@ -256,34 +239,37 @@ namespace sedlamat
 	    throw "Size of src image and src edges is not equal";
 	}
 
-	// checks and sets the template_edges
-	if (this->template_edges.empty()) {
-	    if (this->template_img.channels() == 3) {
-		cv::cvtColor(this->template_img, this->template_edges,
+	// checks and sets the tmpl_edges
+	if (this->tmpl_edges.empty()) {
+	    if (this->tmpl_img.channels() == 3) {
+		cv::cvtColor(this->tmpl_img, this->tmpl_edges,
 						cv::COLOR_BGR2GRAY);
 	    } else {
-		this->template_img.copyTo(this->template_edges);
+		this->tmpl_img.copyTo(this->tmpl_edges);
 	    }
-	    cv::Canny(this->template_edges, this->template_edges,
+	    cv::Canny(this->tmpl_edges, this->tmpl_edges,
 				canny_low_thresh, canny_high_thresh);
-	} else if (this->template_edges.size()
-				    != this->template_img_size) {
+	} else if (this->tmpl_edges.size()
+				    != this->tmpl_img_size) {
 	    throw "Size of src image and src edges is not equal";
 	}
 
-	// checks min/max_template_scale AND sets min/max_scale
-	if (this->min_template_scale < this->max_template_scale
-	    && 0 < this->min_template_scale
-	    && this->max_template_scale <= 1)
+	// checks min/max_tmpl_scale AND sets min/max_scale
+	if (this->min_tmpl_scale < this->max_tmpl_scale
+	    && 0 < this->min_tmpl_scale
+	    && this->max_tmpl_scale <= 1)
 	{
-	    this->set_template_max_size();
+	    cv::Mat tmpl_pts;
+	    cv::findNonZero(this->tmpl_img, tmpl_pts);
+	    this->tmpl_bound_rect = cv::boundingRect(tmpl_pts);
+	    this->tmpl_size = this->tmpl_bound_rect.size();
 	    double src_templ_size_koef = this->max_img_size*1.0 /
-					    this->template_max_size;
-	    this->max_scale = max_template_scale * src_templ_size_koef;
-	    this->min_scale = min_template_scale * src_templ_size_koef;
+			std::max(this->tmpl_size.width,this->tmpl_size.height);
+	    this->max_scale = max_tmpl_scale * src_templ_size_koef;
+	    this->min_scale = min_tmpl_scale * src_templ_size_koef;
 	} else {
-	    throw "Wrong: min_template_scale param must be < then \
-			  max_template_scale and both in (0,1].";
+	    throw "Wrong: min_tmpl_scale param must be < then \
+			  max_tmpl_scale and both in (0,1].";
 	}
 	// checks num_scales AND sets scale_step
 	if (1 < this->num_scales && this->num_scales <= 1000) {
@@ -302,96 +288,15 @@ namespace sedlamat
 	this->best_angle = MIN_DOUBLE;
 	this->best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
-	// prepares kernels for smothing of the accumulator
-	this->set_kernels();
+	// prepares gaussian kernel for smothing of the accumulator
+	int gauss_size = 9.0*max_img_size/100;
+	double gauss_sigma = 1.0*max_img_size/100;
+	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
+	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
+	gauss = gauss * gauss.t();
 
 	// initialize the rotation step
 	this->rot_rad = 0;
-    }
-
-    /**
-	Sets template_max_size parameter to the maximum of template
-	width and height.
-
-	@param void.
-	@return void.
-    */
-    void GeneralHough::set_template_max_size()
-    {
-	if (this->template_img.empty()) {
-	    throw "Template image is empty.";
-	}
-	int templ_max_height = 0;
-	int idx_low_non_zero = 0;
-	int idx_up_non_zero = this->template_img_size.height - 1;
-
-	int non_zero_count = cv::countNonZero(
-			    this->template_img.row(idx_low_non_zero));
-	while (non_zero_count == 0) {
-	    ++idx_low_non_zero;
-	    non_zero_count = cv::countNonZero(
-			    this->template_img.row(idx_low_non_zero));
-	}
-	non_zero_count = cv::countNonZero(
-			    this->template_img.row(idx_up_non_zero));
-	while (non_zero_count == 0) {
-	    --idx_up_non_zero;
-	    non_zero_count = cv::countNonZero(
-			    this->template_img.row(idx_up_non_zero));
-	}
-	templ_max_height = (idx_up_non_zero > idx_low_non_zero) ?
-			    idx_up_non_zero - idx_low_non_zero :
-			    throw "Template is blank!";
-
-	int templ_max_width = 0;
-	idx_low_non_zero = 0;
-	idx_up_non_zero = this->template_img_size.width - 1;
-
-	non_zero_count = cv::countNonZero(
-			    this->template_img.col(idx_low_non_zero));
-	while (non_zero_count == 0) {
-	    ++idx_low_non_zero;
-	    non_zero_count = cv::countNonZero(
-			    this->template_img.col(idx_low_non_zero));
-	}
-	non_zero_count = cv::countNonZero(
-			    this->template_img.col(idx_up_non_zero));
-	while (non_zero_count == 0) {
-	    --idx_up_non_zero;
-	    non_zero_count = cv::countNonZero(
-			    this->template_img.col(idx_up_non_zero));
-	}
-
-	templ_max_width = (idx_up_non_zero > idx_low_non_zero) ?
-			    idx_up_non_zero - idx_low_non_zero :
-			    throw "Template is blank!";
-
-
-	this->template_max_size = std::max(templ_max_height,
-						    templ_max_width);
-    }
-
-
-    /**
-	Sets kernels for smoothing the accumulator.
-
-	@param void.
-	@return void.
-    */
-    void GeneralHough::set_kernels()
-    {
-	// prepare 2 kernels - plain and gauss
-	int plain_size = 2*this->max_img_size/150;
-	int gauss_size = 11*this->max_img_size/150;
-	plain_size = (plain_size > 0) ? plain_size : 1;
-	gauss_size = (gauss_size > 0) ? gauss_size : 1;
-	this->plain = cv::Mat(plain_size,plain_size, CV_32F,
-					    cv::Scalar_<float>(1.0));
-	this->gauss = cv::getGaussianKernel(gauss_size,1, CV_32F);
-	gauss = gauss * gauss.t();
-	cv::Mat minus(gauss_size, gauss_size, CV_32F,
-		cv::Scalar_<float>(-sedlamat::maxMat(gauss)/1000.0));
-	gauss += minus;
     }
 
 
@@ -457,7 +362,7 @@ namespace sedlamat
 
     /**
 	Fills the R-table. First fills the r_table with hough points
-	from template_img and template_edges and then shifts them by
+	from tmpl_img and tmpl_edges and then shifts them by
 	the reference point.
 
 	@param void.
@@ -465,8 +370,8 @@ namespace sedlamat
     */
     void GeneralHough::fill_r_table()
     {
-	this->set_hough_points(this->r_table, this->template_img,
-						this->template_edges);
+	this->set_hough_points(this->r_table, this->tmpl_img,
+						this->tmpl_edges);
 
 	// shifts all points in HoughTable from the reference point
 	for(auto & pts : this->r_table) {
@@ -578,7 +483,7 @@ namespace sedlamat
 			// increments accumulator
 			cv::Point refer_pt(src_pt - (pt_diff*s));
 			// only if inside source image area
-			if (this->src_area.contains(refer_pt)) {
+			if (this->src_img_rect.contains(refer_pt)) {
 			    float &accum_pt =
 					quant_accum.at<float>(refer_pt);
 			    // should not be more that points in r_table
@@ -594,21 +499,20 @@ namespace sedlamat
 		    accum += quant_accum/num_quant_pts;
 		}
 	    }
-	    if (DISPLAY_ACCUM) sedlamat::display(accum);
+	    //if (display_accum) sedlamat::display(accum);
 
-	    // smooth the accumulator
-	    cv::filter2D(accum, accum, CV_32F, this->plain);
+	    // smooths the accumulator
 	    cv::filter2D(accum, accum, CV_32F, this->gauss);
 
-	    if (DISPLAY_ACCUM) sedlamat::display(accum);
+	    if (display_accum) sedlamat::display(accum);
 
-	    // find accumulator maximum
+	    // finds accumulator maximum
 	    double local_max = 0, local_min = 0;
 	    cv::Point local_max_pt(0,0), local_min_pt(0,0);
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
 
-	    if (DISPLAY_ACCUM) sedlamat::print(local_max);
+	    if (display_accum) sedlamat::print(local_max);
 
 	    // if accum_max greatest so far, then sets the best_ params
 	    if (local_max > this->best_accum_val) {
@@ -670,7 +574,7 @@ namespace sedlamat
 		pt.y = sn*x + cs*pt.y;
 		pt = pt * this->best_scale;
 		pt = pt + this->best_ref_pt;
-		if (this->src_area.contains(pt)) {
+		if (this->src_img_rect.contains(pt)) {
 		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
 		}
 	    }

@@ -33,26 +33,26 @@ int main(int argc, char *argv[])
 	cv::Point ref_point(ref_point_loc.at<int>(0,0),
 			ref_point_loc.at<int>(0,1));
 
-	//~ std::string file_name = "Tg59800.jpg";
-	//~ std::string imgs_path = path + "/Images/Tortoises/";
-	//~ std::string img_path = imgs_path + file_name;
-	std::string img_path = argv[1];
+	std::string file_name = "Tg59800.jpg";
+	std::string imgs_path = path + "/Images/Tortoises/";
+	std::string img_path = imgs_path + file_name;
+	//std::string img_path = argv[1];
 	cv::Mat img = cv::imread(img_path,1);
 
 	//sedlamat::display(img);
 	sedlamat::GeneralHough general_hough(img, templ, ref_point,
 				cv::Mat(), cv::Mat(), 4, 15, 100,
-				1.0, 0.3, 20, 50, 0);
+				1.0, 0.3, 20, 50, 1);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
 	general_hough.run();
-	//~ sedlamat::display(general_hough.get_result_img());
+	sedlamat::display(general_hough.get_result_img());
 	//~ sedlamat::display(general_hough.get_template_edges());
 	//~ sedlamat::display(general_hough.get_src_edges());
 	//~ sedlamat::display(general_hough.get_src_img());
 	//~ sedlamat::display(general_hough.get_template_img());
 	//~ sedlamat::print("hotovo");
-	cv::imwrite(argv[2],general_hough.get_result_img());
+	//cv::imwrite(argv[2],general_hough.get_result_img());
     } catch (std::string e) {
 	std::cout << "Error when processing " << argv[1] << std::endl;
 	std::cout << " " << e << std::endl;
