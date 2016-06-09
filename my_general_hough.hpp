@@ -47,7 +47,7 @@ namespace sedlamat
     class GeneralHough {
 	/*** constructor input parameters: ***/
 	// source(with objects to be detected) and template images
-	cv::Mat src_img, tmpl_img, src_edges, tmpl_edges;
+	cv::Mat src_img_orig, src_img, tmpl_img, src_edges, tmpl_edges;
 	// template reference point
 	const cv::Point ref_pt;
 	// number of possible orientations of the object in src_img
@@ -60,14 +60,14 @@ namespace sedlamat
 	const double max_tmpl_scale;
 	const double min_tmpl_scale;
 	// thresholds for creating edge images(lower values->more edges)
-	const int canny_low_thresh;
-	const int canny_high_thresh;
+	const int canny_low_thresh = 25;
+	const int canny_high_thresh = 50;
 
 	/*** other parameters set up in contructor: ***/
 	// kernel for smoothing the accumulator
 	cv::Mat gauss;
 	// Size and Rectangle are of the src/tmpl_img
-	cv::Size src_size, tmpl_img_size;
+	cv::Size src_img_size, tmpl_img_size;
 	cv::Rect src_img_rect, tmpl_img_rect;
 	// scaling step in the accumulator
 	float scale_step;
@@ -104,15 +104,11 @@ namespace sedlamat
 	GeneralHough(const cv::Mat &source_image,
 		     const cv::Mat &template_image,
 		     const cv::Point reference_point,
-		     const cv::Mat &source_edges = cv::Mat(),
-		     const cv::Mat &template_edges = cv::Mat(),
 		     const int number_of_directions = 4,
 		     const int number_of_scales = 20,
 		     const int maximum_image_size = 150,
 		     const double maximum_template_scale = 1.0,
 		     const double minimum_template_scale = 0.3,
-		     const int canny_lower_threshold = 20,
-		     const int canny_higher_threshold = 50,
 		     const bool display_accumulator = 0);
 
 	~GeneralHough() {}
@@ -135,6 +131,7 @@ namespace sedlamat
 				const cv::Mat &img_edges);
 	void set_rotated_r_table(double rot_step_rad,
 					int num_table_shift);
+	bool tmpl_inside_src(cv::Point refer_pt);
 	void accumulate();
     };
 
@@ -148,28 +145,20 @@ namespace sedlamat
     GeneralHough::GeneralHough(const cv::Mat &source_image,
 			    const cv::Mat &template_image,
 			    const cv::Point reference_point,
-			    const cv::Mat &source_edges,
-			    const cv::Mat &template_edges,
 			    const int number_of_directions,
 			    const int number_of_scales,
 			    const int maximum_image_size,
 			    const double maximum_template_scale,
 			    const double minimum_template_scale,
-			    const int canny_lower_threshold,
-			    const int canny_higher_threshold,
 			    const bool display_accumulator):
-			    src_img(source_image),
+			    src_img_orig(source_image),
 			    tmpl_img(template_image),
-			    src_edges(source_edges),
-			    tmpl_edges(template_edges),
 			    ref_pt(reference_point),
 			    num_quant_directions(number_of_directions),
 			    num_scales(number_of_scales),
 			    max_img_size(maximum_image_size),
 			    max_tmpl_scale(maximum_template_scale),
 			    min_tmpl_scale(minimum_template_scale),
-			    canny_low_thresh(canny_lower_threshold),
-			    canny_high_thresh(canny_higher_threshold),
 			    display_accum(display_accumulator)
     {
 	// checks num_quant_directions AND sets num_quant_neighbours
@@ -189,104 +178,86 @@ namespace sedlamat
 	}
 
 	// checks max_img_size
-	if ( ! (1 <= >max_img_size && max_img_size <= 1000) ) {
+	if ( ! (1 <= max_img_size && max_img_size <= 1000) ) {
 	    throw "Wrong: max_img_size must be in [1,1000]";
 	}
 
-	/* checks src/tempalate_img AND resizes src_img
-	   AND sets src/templ_size/area */
-	if (!src_img.empty() && !tmpl_img.empty()) {
+	/* checks src/tempalate_img AND resizes src_img_orig
+	   AND sets src/templ_size/rect */
+	if (!src_img_orig.empty() && !tmpl_img.empty()) {
 	    tmpl_img_size = tmpl_img.size();
 	    tmpl_img_rect = cv::Rect(cv::Point(0,0), tmpl_img_size);
 
 	    // Warns if ref_pt outside template_img
 	    if (!ref_pt.inside(tmpl_img_rect)) {
-		throw "Wrong: Reference point outside template image. \
-		       If it has to be outside, make changes in the  \
-		       GeneralHough constructor and in the \
-		       accumulator() method.";
+		throw "Wrong: Reference point outside template image.";
 	    }
 
-	    // Resizes the source image
-	    int src_w = src_img.cols;
-	    int src_h = src_img.rows;
+	    // Resizes the original source image
+	    int src_w = src_img_orig.cols;
+	    int src_h = src_img_orig.rows;
 	    double resize_koef = max_img_size * 1.0 /
 					         std::max(src_w,src_h);
-	    cv::resize(src_img, src_img, cv::Size(0,0), resize_koef,
-							  resize_koef);
+	    cv::resize(src_img_orig, src_img, cv::Size(0,0),
+					     resize_koef, resize_koef);
 
-	    src_size = src_img.size();
-	    src_img_rect = cv::Rect(cv::Point(0,0), src_size);
+	    src_img_size = src_img.size();
+	    src_img_rect = cv::Rect(cv::Point(0,0), src_img_size);
 	} else {
 	    throw "Source and/or template image is empty!";
 	}
 
-	// checks canny_low/high_thresh
-	if ( ! (this->canny_low_thresh <= this->canny_high_thresh
-		&& this->canny_low_thresh >= 0
-		&& this->canny_high_thresh <= 1000) ) {
-	    throw "Wrong: canny_low_thresh param must be <= then \
-			  canny_high_thresh and both in [0,1000].";
+	// sets the src_edges
+	CV_Assert(src_img.channels() == 3 || src_img.channels() == 1);
+	if (src_img.channels() == 3) {
+	    cv::cvtColor(src_img, src_edges, cv::COLOR_BGR2GRAY);
+	} else {
+	    src_img.copyTo(src_edges);
 	}
+	cv::Canny(src_edges, src_edges,	canny_low_thresh,
+						    canny_high_thresh);
 
-	// checks and sets the src_edges
-	if (this->src_edges.empty()) {
-	    cv::cvtColor(this->src_img, this->src_edges,
-						cv::COLOR_BGR2GRAY);
-	    cv::Canny(this->src_edges, this->src_edges,
-				canny_low_thresh, canny_high_thresh);
-	} else if (this->src_edges.size() != this->src_size) {
-	    throw "Size of src image and src edges is not equal";
+	// sets the tmpl_edges
+	CV_Assert(tmpl_img.channels() == 3 || tmpl_img.channels() == 1);
+	if (tmpl_img.channels() == 3) {
+	    cv::cvtColor(tmpl_img, tmpl_edges, cv::COLOR_BGR2GRAY);
+	} else {
+	    tmpl_img.copyTo(tmpl_edges);
 	}
-
-	// checks and sets the tmpl_edges
-	if (this->tmpl_edges.empty()) {
-	    if (this->tmpl_img.channels() == 3) {
-		cv::cvtColor(this->tmpl_img, this->tmpl_edges,
-						cv::COLOR_BGR2GRAY);
-	    } else {
-		this->tmpl_img.copyTo(this->tmpl_edges);
-	    }
-	    cv::Canny(this->tmpl_edges, this->tmpl_edges,
-				canny_low_thresh, canny_high_thresh);
-	} else if (this->tmpl_edges.size()
-				    != this->tmpl_img_size) {
-	    throw "Size of src image and src edges is not equal";
-	}
+	cv::Canny(tmpl_edges, tmpl_edges, canny_low_thresh,
+						    canny_high_thresh);
 
 	// checks min/max_tmpl_scale AND sets min/max_scale
-	if (this->min_tmpl_scale < this->max_tmpl_scale
-	    && 0 < this->min_tmpl_scale
-	    && this->max_tmpl_scale <= 1)
-	{
+	if (min_tmpl_scale < max_tmpl_scale && 0 < min_tmpl_scale
+					     && max_tmpl_scale <= 1) {
+
 	    cv::Mat tmpl_pts;
-	    cv::findNonZero(this->tmpl_img, tmpl_pts);
-	    this->tmpl_bound_rect = cv::boundingRect(tmpl_pts);
-	    this->tmpl_size = this->tmpl_bound_rect.size();
-	    double src_templ_size_koef = this->max_img_size*1.0 /
-			std::max(this->tmpl_size.width,this->tmpl_size.height);
-	    this->max_scale = max_tmpl_scale * src_templ_size_koef;
-	    this->min_scale = min_tmpl_scale * src_templ_size_koef;
+	    cv::findNonZero(tmpl_img, tmpl_pts);
+	    tmpl_bound_rect = cv::boundingRect(tmpl_pts);
+	    tmpl_size = tmpl_bound_rect.size();
+	    double src_templ_size_koef = max_img_size*1.0 /
+			    std::max(tmpl_size.width,tmpl_size.height);
+	    max_scale = max_tmpl_scale * src_templ_size_koef;
+	    min_scale = min_tmpl_scale * src_templ_size_koef;
 	} else {
 	    throw "Wrong: min_tmpl_scale param must be < then \
 			  max_tmpl_scale and both in (0,1].";
 	}
 	// checks num_scales AND sets scale_step
-	if (1 < this->num_scales && this->num_scales <= 1000) {
-	    this->scale_step = (this->max_scale - this->min_scale) /
-						(this->num_scales - 1);
-	} else if (this->num_scales == 1) {
-	    this->scale_step = 0;
-	    this->min_scale = this->max_scale;
+	if (1 < num_scales && num_scales <= 1000) {
+	    scale_step = (max_scale - min_scale) / (num_scales - 1);
+	} else if (num_scales == 1) {
+	    scale_step = 0;
+	    min_scale = max_scale;
 	} else {
 	    throw "Wrong: num_scales must be in [1,1000].";
 	}
 
 	// sets the values of the best fit
-	this->best_accum_val = MIN_DOUBLE;
-	this->best_scale = MIN_DOUBLE;
-	this->best_angle = MIN_DOUBLE;
-	this->best_ref_pt = cv::Point(MIN_INT, MIN_INT);
+	best_accum_val = MIN_DOUBLE;
+	best_scale = MIN_DOUBLE;
+	best_angle = MIN_DOUBLE;
+	best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
 	// prepares gaussian kernel for smothing of the accumulator
 	int gauss_size = 9.0*max_img_size/100;
@@ -296,7 +267,7 @@ namespace sedlamat
 	gauss = gauss * gauss.t();
 
 	// initialize the rotation step
-	this->rot_rad = 0;
+	rot_rad = 0;
     }
 
 
@@ -314,7 +285,7 @@ namespace sedlamat
 					    const cv::Mat &img,
 					    const cv::Mat &img_edges)
     {
-	hough_points = HoughTable(this->num_quant_directions);
+	hough_points = HoughTable(num_quant_directions);
 
 	// changes gradient orientations to gradient directions
 	cv::Mat orient, orient_adjust, directions;
@@ -323,7 +294,7 @@ namespace sedlamat
 	orient_adjust.convertTo(orient_adjust, orient.depth());
 	directions = orient + orient_adjust * -180;
 	//my::display(directions);
-	float quant_width = 180.0 / this->num_quant_directions;
+	float quant_width = 180.0 / num_quant_directions;
 	//prt(quant_width/2);
 	// goes through all edge pixels
 	for (int yy = 0; yy < img_edges.rows; yy++) {
@@ -370,13 +341,12 @@ namespace sedlamat
     */
     void GeneralHough::fill_r_table()
     {
-	this->set_hough_points(this->r_table, this->tmpl_img,
-						this->tmpl_edges);
+	set_hough_points(r_table, tmpl_img, tmpl_edges);
 
 	// shifts all points in HoughTable from the reference point
-	for(auto & pts : this->r_table) {
+	for(auto & pts : r_table) {
 	    for(auto & pt : pts) {
-		pt -= this->ref_pt;
+		pt -= ref_pt;
 	    }
 	}
     }
@@ -390,8 +360,7 @@ namespace sedlamat
     */
     void GeneralHough::fill_src_hough_pts()
     {
-	this->set_hough_points(this->src_hough_pts, this->src_img,
-						this->src_edges);
+	set_hough_points(src_hough_pts, src_img, src_edges);
     }
 
 
@@ -408,22 +377,22 @@ namespace sedlamat
     void GeneralHough::set_rotated_r_table(double rot_step_rad,
 					    int num_table_shift)
     {
-	this->rotated_r_table = this->r_table;
+	rotated_r_table = r_table;
 
 	// shifts the R-Table quants, last-becomes-first shifting
 	for (int shift = 0; shift < num_table_shift; ++shift) {
 	    std::vector<cv::Point> table_quant;
-	    table_quant = this->rotated_r_table.back();
-	    this->rotated_r_table.pop_back();
-	    HoughTable::iterator it = this->rotated_r_table.begin();
-	    this->rotated_r_table.insert(it, table_quant);
+	    table_quant = rotated_r_table.back();
+	    rotated_r_table.pop_back();
+	    HoughTable::iterator it = rotated_r_table.begin();
+	    rotated_r_table.insert(it, table_quant);
 	}
 
 	// rotates the R-Table points by angle_rad (counter-clockwise)
 	double cs = std::cos(rot_step_rad);
 	double sn = std::sin(rot_step_rad);
 
-	for(auto & table_quant : this->rotated_r_table) {
+	for(auto & table_quant : rotated_r_table) {
 	    for(auto & pt : table_quant) {
 		int x = pt.x;
 		pt.x = cs*pt.x - sn*pt.y;
@@ -443,36 +412,34 @@ namespace sedlamat
     void GeneralHough::accumulate()
     {
 	// for all scales
-	for (int scale_idx = 0; scale_idx < this->num_scales;
-						    ++scale_idx) {
-	    cv::Mat accum = cv::Mat(this->src_size, CV_32F,
+	for (int scale_idx = 0; scale_idx < num_scales; ++scale_idx) {
+	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
-	    double s = this->min_scale + scale_idx * this->scale_step;
+	    double s = min_scale + scale_idx * scale_step;
 	    // for all quantified directions
-	    for(int quant_idx = 0;
-		quant_idx < this->num_quant_directions;
-		++quant_idx) {
-		cv::Mat quant_accum = cv::Mat(this->src_size, CV_32F,
-					    cv::Scalar_<float>(0.0));
+	    for(int quant_idx = 0; quant_idx < num_quant_directions;
+							++quant_idx) {
+		cv::Mat quant_accum = cv::Mat(src_img_size, CV_32F,
+					      cv::Scalar_<float>(0.0));
 		std::vector<cv::Point> r_table_pts, src_pts;
 
 		// pooling with neighbouring quants
-		for (int quant_shift = -this->num_quant_neighbours;
-		     quant_shift <= this->num_quant_neighbours;
-		     ++quant_shift) {
+		for (int quant_shift = -num_quant_neighbours;
+				quant_shift <= num_quant_neighbours;
+						      ++quant_shift) {
 		    int idx = quant_idx + quant_shift;
 		    if (idx < 0) {
-			idx = idx + this->num_quant_directions;
+			idx = idx + num_quant_directions;
 		    }
-		    if (idx >= this->num_quant_directions) {
-			idx = idx - this->num_quant_directions;
+		    if (idx >= num_quant_directions) {
+			idx = idx - num_quant_directions;
 		    }
 		    r_table_pts.insert(r_table_pts.end(),
-				    this->rotated_r_table[idx].begin(),
-				    this->rotated_r_table[idx].end());
+				    rotated_r_table[idx].begin(),
+				    rotated_r_table[idx].end());
 		    src_pts.insert(src_pts.end(),
-				   this->src_hough_pts[idx].begin(),
-				   this->src_hough_pts[idx].end());
+				   src_hough_pts[idx].begin(),
+				   src_hough_pts[idx].end());
 		}
 
 		float num_quant_pts = r_table_pts.size();
@@ -483,7 +450,8 @@ namespace sedlamat
 			// increments accumulator
 			cv::Point refer_pt(src_pt - (pt_diff*s));
 			// only if inside source image area
-			if (this->src_img_rect.contains(refer_pt)) {
+			if (src_img_rect.contains(refer_pt) &&
+					tmpl_inside_src(refer_pt) ) {
 			    float &accum_pt =
 					quant_accum.at<float>(refer_pt);
 			    // should not be more that points in r_table
@@ -499,10 +467,9 @@ namespace sedlamat
 		    accum += quant_accum/num_quant_pts;
 		}
 	    }
-	    //if (display_accum) sedlamat::display(accum);
 
 	    // smooths the accumulator
-	    cv::filter2D(accum, accum, CV_32F, this->gauss);
+	    cv::filter2D(accum, accum, CV_32F, gauss);
 
 	    if (display_accum) sedlamat::display(accum);
 
@@ -515,12 +482,12 @@ namespace sedlamat
 	    if (display_accum) sedlamat::print(local_max);
 
 	    // if accum_max greatest so far, then sets the best_ params
-	    if (local_max > this->best_accum_val) {
-		this->best_accum_val = local_max;
-		this->best_scale = s;
-		this->best_angle = this->rot_rad;
-		this->best_ref_pt.x = local_max_pt.x;
-		this->best_ref_pt.y = local_max_pt.y;
+	    if (local_max > best_accum_val) {
+		best_accum_val = local_max;
+		best_scale = s;
+		best_angle = rot_rad;
+		best_ref_pt.x = local_max_pt.x;
+		best_ref_pt.y = local_max_pt.y;
 	    }
 	}
     }
@@ -542,12 +509,12 @@ namespace sedlamat
 	this->fill_r_table();
 	this->fill_src_hough_pts();
 	// accumulate for all rotated r-tables
-	const int num_of_rot = this->num_quant_directions * 2;
+	const int num_of_rot = num_quant_directions * 2;
 	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
-	    this->rot_rad = rot_idx * rot_step_rad;
-	    this->set_rotated_r_table(rot_rad, rot_idx);
-	    this->accumulate();
+	    rot_rad = rot_idx * rot_step_rad;
+	    set_rotated_r_table(rot_rad, rot_idx);
+	    accumulate();
 	}
     }
 
@@ -561,20 +528,20 @@ namespace sedlamat
     {
 	cv::Mat dst;
 	//make a deep copy
-	this->src_img.copyTo(dst);
+	src_img.copyTo(dst);
 
 	// rotates and shift the R-Table points
-	double cs = std::cos(this->best_angle);
-	double sn = std::sin(this->best_angle);
+	double cs = std::cos(best_angle);
+	double sn = std::sin(best_angle);
 
-	for(auto table_quant : this->r_table) {
+	for(auto table_quant : r_table) {
 	    for(auto pt : table_quant) {
 		int x = pt.x;
 		pt.x = cs*pt.x - sn*pt.y;
 		pt.y = sn*x + cs*pt.y;
-		pt = pt * this->best_scale;
-		pt = pt + this->best_ref_pt;
-		if (this->src_img_rect.contains(pt)) {
+		pt = pt * best_scale;
+		pt = pt + best_ref_pt;
+		if (src_img_rect.contains(pt)) {
 		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
 		}
 	    }
