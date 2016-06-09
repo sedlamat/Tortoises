@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	cv::Point ref_point(ref_point_loc.at<int>(0,0),
 			ref_point_loc.at<int>(0,1));
 
-	std::string file_name = "Tg59800.jpg";
+	std::string file_name = "Tg55900.jpg";
 	std::string imgs_path = path + "/Images/Tortoises/";
 	std::string img_path = imgs_path + file_name;
 	//std::string img_path = argv[1];
@@ -41,9 +41,10 @@ int main(int argc, char *argv[])
 
 	//sedlamat::display(img);
 	sedlamat::GeneralHough general_hough(img, templ, ref_point,
-					 4, 15, 100, 1.0, 0.3, 1);
+					 4, 25, 300, 1.0, 0.3, 0);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
+	sedlamat::display(general_hough.get_src_edges());
 	general_hough.run();
 	sedlamat::display(general_hough.get_result_img());
 	//~ sedlamat::display(general_hough.get_template_edges());

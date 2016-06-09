@@ -76,6 +76,8 @@ namespace sedlamat
 	// template size in pixels (area with non-zero pixels)
 	cv::Rect tmpl_bound_rect;
 	cv::Size tmpl_size;
+	// resize coefficient from original source image
+	double resize_coeff;
 	// min/max_scaling of the template
 	double max_scale;
 	double min_scale;
@@ -131,7 +133,7 @@ namespace sedlamat
 				const cv::Mat &img_edges);
 	void set_rotated_r_table(double rot_step_rad,
 					int num_table_shift);
-	bool tmpl_inside_src(cv::Point refer_pt);
+	bool tmpl_inside_src(cv::Point refer_pt) {return 1;}
 	void accumulate();
     };
 
@@ -196,13 +198,13 @@ namespace sedlamat
 	    // Resizes the original source image
 	    int src_w = src_img_orig.cols;
 	    int src_h = src_img_orig.rows;
-	    double resize_koef = max_img_size * 1.0 /
-					         std::max(src_w,src_h);
+	    resize_coeff = max_img_size * 1.0 / std::max(src_w,src_h);
 	    cv::resize(src_img_orig, src_img, cv::Size(0,0),
-					     resize_koef, resize_koef);
+					    resize_coeff, resize_coeff);
 
 	    src_img_size = src_img.size();
 	    src_img_rect = cv::Rect(cv::Point(0,0), src_img_size);
+	    cv::GaussianBlur(src_img, src_img, cv::Size(0,0), 1.0);
 	} else {
 	    throw "Source and/or template image is empty!";
 	}
@@ -516,6 +518,13 @@ namespace sedlamat
 	    set_rotated_r_table(rot_rad, rot_idx);
 	    accumulate();
 	}
+
+	double inv_resize_coeff = 1.0 / resize_coeff;
+	best_scale *= inv_resize_coeff;
+	best_ref_pt *= inv_resize_coeff;
+	sedlamat::print(best_ref_pt);
+	sedlamat::print(best_scale);
+	sedlamat::print(best_angle);
     }
 
     /**
@@ -528,7 +537,8 @@ namespace sedlamat
     {
 	cv::Mat dst;
 	//make a deep copy
-	src_img.copyTo(dst);
+	src_img_orig.copyTo(dst);
+	cv::Rect src_img_orig_rect(cv::Point(0,0), src_img_orig.size());
 
 	// rotates and shift the R-Table points
 	double cs = std::cos(best_angle);
@@ -541,12 +551,11 @@ namespace sedlamat
 		pt.y = sn*x + cs*pt.y;
 		pt = pt * best_scale;
 		pt = pt + best_ref_pt;
-		if (src_img_rect.contains(pt)) {
+		if (src_img_orig_rect.contains(pt)) {
 		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
 		}
 	    }
 	}
-	cv::resize(dst, dst, cv::Size(0,0), 4.0, 4.0);
 	return dst;
     }
 
