@@ -29,32 +29,13 @@
 
 namespace sedlamat
 {
-    std::map<std::string, cv::Vec3b> color;
-
-    color["red"] = cv::Vec3b(0,0,255);
-    color["green"] = cv::Vec3b(0,255,0);
-    color["blue"] = cv::Vec3b(255,0,0);
-    color["white"] = cv::Vec3b(255,255,255);
-    color["black"] = cv::Vec3b(0,0,0);
-    color["yellow"] = cv::Vec3b(0,255,255);
-    color["purple"] = cv::Vec3b(255,0,255);
-    color["cyan"] = cv::Vec3b(255,255,0);
-
-    //~ color["j1Head"] = color["red"];
-    //~ color["j2GulToHum"] = color["green"];
-    //~ color["j3HumToPec"] = color["blue"];
-    //~ color["j4PecToAbd"] = color["white"];
-    //~ color["j5AbdToFem"] = color["yellow"];
-    //~ color["j6FemToAna"] = color["purple"];
-    //~ color["j7Tail"] = color["cyan"];
-
     /**
 	Print message to console. Short version for debugging.
 
 	@param msg - Message to be printed.
 	@return void
     */
-    template <typename T> void print(T msg)
+    template<typename T> void print(T msg)
     {
 	std::cout << msg << std::endl;
     }

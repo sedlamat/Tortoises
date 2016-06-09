@@ -35,9 +35,15 @@
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
 
+/*
+    Beware:
+	cv::Point is alias for cv::Point_<int>
+	cv::Size is alias for cv::Size_<int>
+	cv::Rect is alias for cv::Rect_<int>
+*/
+
 namespace sedlamat
 {
-
     class HoughTemplate {
 	cv::Mat template_img, template_edges;
 	cv::Point ref_pt;
@@ -47,13 +53,8 @@ namespace sedlamat
 		      cv::Mat template_edges = cv::Mat(),
 		      std::vector<cv::Point> interest_pts = std::vector<cv::Point>()) {}
 	~HoughTemplate() {}
-    }
-    /*
-	Beware:
-	    cv::Point is alias for cv::Point_<int>
-	    cv::Size is alias for cv::Size_<int>
-	    cv::Rect is alias for cv::Rect_<int>
-    */
+    };
+
     class GeneralHough {
 	/*** constructor input parameters: ***/
 	// source(with objects to be detected) and template images
