@@ -39,9 +39,20 @@ int main(int argc, char *argv[])
 	//std::string img_path = argv[1];
 	cv::Mat img = cv::imread(img_path,1);
 
+
+	//plastronJunctions sContourJunctions = {{64,58},{64,74},{64,97},{64,105},{64,155},{64,168},{64,185}};
+	std::map<std::string, cv::Point> map_tempate_junctions;
+	map_tempate_junctions["1"] = cv::Point(64,58);
+	map_tempate_junctions["2"] = cv::Point(64,74);
+	map_tempate_junctions["3"] = cv::Point(64,97);
+	map_tempate_junctions["4"] = cv::Point(64,105);
+	map_tempate_junctions["5"] = cv::Point(64,155);
+	map_tempate_junctions["6"] = cv::Point(64,168);
+	map_tempate_junctions["7"] = cv::Point(64,185);
 	//sedlamat::display(img);
 	sedlamat::GeneralHough general_hough(img, templ, ref_point,
-					 4, 25, 300, 1.0, 0.3, 0);
+					 4, 25, 300, 1.0, 0.3, 0,
+					 map_tempate_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
 	sedlamat::display(general_hough.get_src_edges());

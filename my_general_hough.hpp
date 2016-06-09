@@ -47,7 +47,8 @@ namespace sedlamat
     class GeneralHough {
 	/*** constructor input parameters: ***/
 	// source(with objects to be detected) and template images
-	cv::Mat src_img_orig, src_img, tmpl_img, src_edges, tmpl_edges;
+	const cv::Mat src_img_orig, tmpl_img;
+	cv::Mat src_img, src_edges, tmpl_edges;
 	// template reference point
 	const cv::Point ref_pt;
 	// number of possible orientations of the object in src_img
@@ -85,6 +86,8 @@ namespace sedlamat
 	double rot_rad;
 	// flag - if 1 then all accumulators will be displayed
 	const bool display_accum;
+	// interest point to be located after GeneralHough run
+	std::map<std::string, cv::Point> tmpl_interest_pts;
 
 	/*** Declarations for Hough R-table and src Hough points: ***/
 	// alias used to store points grouped by gradient direction
@@ -104,14 +107,16 @@ namespace sedlamat
 
     public:
 	GeneralHough(const cv::Mat &source_image,
-		     const cv::Mat &template_image,
-		     const cv::Point reference_point,
-		     const int number_of_directions = 4,
-		     const int number_of_scales = 20,
-		     const int maximum_image_size = 150,
-		     const double maximum_template_scale = 1.0,
-		     const double minimum_template_scale = 0.3,
-		     const bool display_accumulator = 0);
+	     const cv::Mat &template_image,
+	     const cv::Point reference_point,
+	     const int number_of_directions = 4,
+	     const int number_of_scales = 20,
+	     const int maximum_image_size = 150,
+	     const double maximum_template_scale = 1.0,
+	     const double minimum_template_scale = 0.3,
+	     const bool display_accumulator = 0,
+	     std::map<std::string, cv::Point> template_interest_points
+			= std::map<std::string, cv::Point>());
 
 	~GeneralHough() {}
 	void run();
@@ -145,23 +150,25 @@ namespace sedlamat
 	@return void.
     */
     GeneralHough::GeneralHough(const cv::Mat &source_image,
-			    const cv::Mat &template_image,
-			    const cv::Point reference_point,
-			    const int number_of_directions,
-			    const int number_of_scales,
-			    const int maximum_image_size,
-			    const double maximum_template_scale,
-			    const double minimum_template_scale,
-			    const bool display_accumulator):
-			    src_img_orig(source_image),
-			    tmpl_img(template_image),
-			    ref_pt(reference_point),
-			    num_quant_directions(number_of_directions),
-			    num_scales(number_of_scales),
-			    max_img_size(maximum_image_size),
-			    max_tmpl_scale(maximum_template_scale),
-			    min_tmpl_scale(minimum_template_scale),
-			    display_accum(display_accumulator)
+	    const cv::Mat &template_image,
+	    const cv::Point reference_point,
+	    const int number_of_directions,
+	    const int number_of_scales,
+	    const int maximum_image_size,
+	    const double maximum_template_scale,
+	    const double minimum_template_scale,
+	    const bool display_accumulator,
+	    std::map<std::string, cv::Point> template_interest_points):
+	    src_img_orig(source_image),
+	    tmpl_img(template_image),
+	    ref_pt(reference_point),
+	    num_quant_directions(number_of_directions),
+	    num_scales(number_of_scales),
+	    max_img_size(maximum_image_size),
+	    max_tmpl_scale(maximum_template_scale),
+	    min_tmpl_scale(minimum_template_scale),
+	    display_accum(display_accumulator),
+	    tmpl_interest_pts(template_interest_points)
     {
 	// checks num_quant_directions AND sets num_quant_neighbours
 	switch (num_quant_directions) {
@@ -507,7 +514,6 @@ namespace sedlamat
     */
     void GeneralHough::run()
     {
-
 	this->fill_r_table();
 	this->fill_src_hough_pts();
 	// accumulate for all rotated r-tables
@@ -522,9 +528,21 @@ namespace sedlamat
 	double inv_resize_coeff = 1.0 / resize_coeff;
 	best_scale *= inv_resize_coeff;
 	best_ref_pt *= inv_resize_coeff;
-	sedlamat::print(best_ref_pt);
-	sedlamat::print(best_scale);
-	sedlamat::print(best_angle);
+
+	double cs = std::cos(best_angle);
+	double sn = std::sin(best_angle);
+
+	std::map<std::string, cv::Point>::iterator it, it_end;
+	it = tmpl_interest_pts.begin();
+	it_end = tmpl_interest_pts.end();
+	while (it != it_end) {
+	    it->second -= ref_pt;
+	    int x = it->second.x;
+	    it->second.x = cs*it->second.x - sn*it->second.y;
+	    it->second.y = sn*x + cs*it->second.y;
+	    it->second *= best_scale;
+	    it->second += best_ref_pt;
+	}
     }
 
     /**
@@ -559,8 +577,18 @@ namespace sedlamat
 				  pt-shift_pt,
 				  pt+shift_pt,
 				  cv::Scalar(0,0,255), CV_FILLED);
-		    dst.at<cv::Vec3b>(pt) = cv::Vec3b(0,0,255);
 		}
+	    }
+	}
+	std::map<std::string, cv::Point>::const_iterator it, it_end;
+	it = tmpl_interest_pts.cbegin();
+	it_end = tmpl_interest_pts.cend();
+	while (it != it_end) {
+	    if (src_img_orig_rect.contains(it->second)) {
+		cv::rectangle(dst,
+			      it->second-shift_pt,
+			      it->second+shift_pt,
+			      cv::Scalar(0,255,0), CV_FILLED);
 	    }
 	}
 	return dst;
