@@ -353,8 +353,8 @@ namespace sedlamat
 	set_hough_points(r_table, tmpl_img, tmpl_edges);
 
 	// shifts all points in HoughTable from the reference point
-	for(auto & pts : r_table) {
-	    for(auto & pt : pts) {
+	for(auto &pts : r_table) {
+	    for(auto &pt : pts) {
 		pt -= ref_pt;
 	    }
 	}
@@ -393,7 +393,7 @@ namespace sedlamat
 	    std::vector<cv::Point> table_quant;
 	    table_quant = rotated_r_table.back();
 	    rotated_r_table.pop_back();
-	    HoughTable::iterator it = rotated_r_table.begin();
+	    auto it = rotated_r_table.begin();
 	    rotated_r_table.insert(it, table_quant);
 	}
 
