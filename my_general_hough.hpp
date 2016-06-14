@@ -302,7 +302,7 @@ namespace sedlamat
 	orient_adjust = (orient >= 180)/255;
 	orient_adjust.convertTo(orient_adjust, orient.depth());
 	directions = orient + orient_adjust * -180;
-	//my::display(directions);
+	sedlamat::display(directions);
 	float quant_width = 180.0 / num_quant_directions;
 	//prt(quant_width/2);
 	// goes through all edge pixels
@@ -431,7 +431,7 @@ namespace sedlamat
 		cv::Mat quant_accum = cv::Mat(src_img_size, CV_32F,
 					      cv::Scalar_<float>(0.0));
 		std::vector<cv::Point> r_table_pts, src_pts;
-
+		num_quant_neighbours = 0;
 		// pooling with neighbouring quants
 		for (int quant_shift = -num_quant_neighbours;
 				quant_shift <= num_quant_neighbours;
