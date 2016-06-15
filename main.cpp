@@ -19,12 +19,11 @@
 int main(int argc, char *argv[])
 {
     try {
-	std::cout << -11 % 10 << std::endl;
 	time_t t0 = clock();
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
 //~ //~
-	std::string file_name = "Tg33200.jpg";
+	std::string file_name = "Tg58400.jpg";
 	std::string imgs_path = path + "/Images/Tortoises/";
 	std::string img_path = imgs_path + file_name;
 	//~ std::string img_path = argv[1];
@@ -35,6 +34,8 @@ int main(int argc, char *argv[])
 	cv::Mat plastron_template = cv::imread(templ_path, 0);
 
 	cv::Point reference_point(65,125);
+
+	std::vector<int> angles = {0,84,180,-96};
 
 
 	//~ std::map<std::string, cv::Point> map_template_junctions;
@@ -49,7 +50,8 @@ int main(int argc, char *argv[])
 	sedlamat::GeneralHough general_hough(plastron_img,
 					     plastron_template,
 					     reference_point,
-					     4, 25, 100, 1.0, 0.3, 0);
+					     angles,
+					     20, 200, 1.0, 0.3, 0);
 					     //map_template_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
@@ -57,15 +59,16 @@ int main(int argc, char *argv[])
 	general_hough.detect();
 	//~ time_t t1 = clock();
 	std::cout << general_hough.get_best_accum_val() << std::endl;
-	sedlamat::display(general_hough.get_result_img());
+
 	//~ sedlamat::display(general_hough.get_template_edges());
-	//~ sedlamat::display(general_hough.get_src_edges());
+	sedlamat::display(general_hough.get_src_edges());
 	//~ sedlamat::display(general_hough.get_src_img());
 	//~ sedlamat::display(general_hough.get_template_img());
 	//~ sedlamat::print("hotovo");
 	//~ cv::imwrite(argv[2],general_hough.get_result_img());
 	time_t t1 = clock();
 	std::cout << (t1-t0)*1.0/CLOCKS_PER_SEC << std::endl;
+	sedlamat::display(general_hough.get_result_img());
     } catch (std::string e) {
 	std::cout << "Error when processing " << argv[1] << std::endl;
 	std::cout << " " << e << std::endl;

@@ -46,36 +46,29 @@
 namespace sedlamat
 {
     /* deque with negative indexing and rotation of elements */
-    template < typename T >
-    class DequeNegIdx {
-	std::deque<T> deq;
-	size_t size;
+    template <typename T> class DequeNegIdx: public std::deque<T> {
     public:
-	DequeNegIdx(const std::deque<T> &deq = std::deque<T>()) : deq(deq),
-						    size(deq.size()) {}
+	DequeNegIdx(): std::deque<T>() {}
+	DequeNegIdx(size_t size): std::deque<T>(size) {}
 	~DequeNegIdx() {};
-
-	void push_back(const T &val) { deq.push_back(val); ++size; }
-	void push_front(const T &val) { deq.push_front(val); ++size; }
-	void pop_back() { deq.pop_back(); --size; }
-	void pop_front() { deq.pop_front(); --size; }
 
 	T &operator[](int idx)
 	{
+	    size_t size = this->size();
 	    idx = idx % size;
 	    if (idx < 0) idx += size;
-	    return deq.at(idx);
+	    return this->at(idx);
 	}
 	// only prefix increment and decrement operators are defined
 	void operator++()
 	{
-	    deq.push_front(deq.back());
-	    deq.pop_back();
+	    this->push_front(this->back());
+	    this->pop_back();
 	}
 	void operator--()
 	{
-	    deq.push_back(deq.front());
-	    deq.pop_front();
+	    this->push_back(this->front());
+	    this->pop_front();
 	}
 	void shift(int num_shifts)
 	{
@@ -88,11 +81,10 @@ namespace sedlamat
 		    operator++();
 		}
 	    }
-
-
+	}
     };
 
-
+    typedef DequeNegIdx<std::vector<cv::Point>> HoughTable;
 
 
     class GeneralHough {
@@ -102,18 +94,18 @@ namespace sedlamat
 	cv::Mat src_img, src_edges, tmpl_edges;
 	// template reference point
 	const cv::Point ref_pt;
-	// number of possible orientations of the object in src_img
-	const int num_quant_directions;
+
+	std::vector<int> angles;
+	std::vector<float> scales;
 	// number of possible scales of the object
 	const int num_scales;
 	// size to which the src_img is resized
 	const int max_img_size;
-	// min/max size of the object in percents of the src_img (0..1]
-	const double max_tmpl_scale;
-	const double min_tmpl_scale;
 	// thresholds for creating edge images(lower values->more edges)
-	const int canny_low_thresh = 25;
-	const int canny_high_thresh = 50;
+	const int canny_low_thresh = 50;
+	const int canny_high_thresh = 150;
+
+
 
 	/*** other parameters set up in contructor: ***/
 	// kernel for smoothing the accumulator
@@ -133,18 +125,13 @@ namespace sedlamat
 	// min/max_scaling of the template
 	double max_scale;
 	double min_scale;
-	// rotation step of the rotated_r_table in radians
-	double rot_rad;
 	// flag - if 1 then all accumulators will be displayed
 	const bool display_accum;
 	// interest point to be located after GeneralHough run
 	std::map<std::string, cv::Point> tmpl_interest_pts;
 
-	/*** Declarations for Hough R-table and src Hough points: ***/
-	// alias used to store points grouped by gradient direction
-	typedef std::vector<std::vector<cv::Point> > HoughTable;
-	// cv::Points grouped by orientation
-	HoughTable r_table, rotated_r_table, src_hough_pts;
+	// cv::Points grouped by edge directions
+	HoughTable r_table, src_hough_table;
 
 	/*** constants with int and double minima: ***/
 	const double MIN_DOUBLE = -std::numeric_limits<double>::max();
@@ -160,7 +147,7 @@ namespace sedlamat
 	GeneralHough(const cv::Mat &source_image,
 	     const cv::Mat &template_image,
 	     const cv::Point reference_point,
-	     const int number_of_directions = 4,
+	     const std::vector<int> &angles_vec,
 	     const int number_of_scales = 20,
 	     const int maximum_image_size = 150,
 	     const double maximum_template_scale = 1.0,
@@ -183,14 +170,14 @@ namespace sedlamat
 
     private:
 	void fill_r_table();
-	void fill_src_hough_pts();
-	void set_hough_points(HoughTable &hough_points,
-				const cv::Mat &img,
-				const cv::Mat &img_edges);
-	void set_rotated_r_table(double rot_step_rad,
-					int num_table_shift);
-	bool tmpl_inside_src(cv::Point refer_pt) {return 1;}
-	void accumulate();
+	void fill_src_hough_table();
+	HoughTable get_hough_table(const cv::Mat &img,
+				   const cv::Mat &img_edges);
+	HoughTable get_rotated_r_table(const int angle);
+	void accumulate(HoughTable &rotated_r_table, const int angle);
+	HoughTable get_quanted_table(HoughTable &table,
+				     const int angle,
+				     const int num_quants = 4);
     };
 
     /**
@@ -203,7 +190,7 @@ namespace sedlamat
     GeneralHough::GeneralHough(const cv::Mat &source_image,
 	    const cv::Mat &template_image,
 	    const cv::Point reference_point,
-	    const int number_of_directions,
+	    const std::vector<int> &angles_vec,
 	    const int number_of_scales,
 	    const int maximum_image_size,
 	    const double maximum_template_scale,
@@ -213,30 +200,12 @@ namespace sedlamat
 	    src_img_orig(source_image),
 	    tmpl_img(template_image),
 	    ref_pt(reference_point),
-	    num_quant_directions(number_of_directions),
+	    angles(angles_vec),
 	    num_scales(number_of_scales),
 	    max_img_size(maximum_image_size),
-	    max_tmpl_scale(maximum_template_scale),
-	    min_tmpl_scale(minimum_template_scale),
 	    display_accum(display_accumulator),
 	    tmpl_interest_pts(template_interest_points)
     {
-	// checks num_quant_directions AND sets num_quant_neighbours
-	switch (num_quant_directions) {
-	    case 4:
-		num_quant_neighbours = 0;
-		break;
-	    case 12:
-		num_quant_neighbours = 1;
-		break;
-	    case 36:
-		num_quant_neighbours = 4;
-		break;
-	    default:
-		throw "Wrong num_quant_directions. \
-						Can be 4, 12 or 36.";
-	}
-
 	// checks max_img_size
 	if ( ! (1 <= max_img_size && max_img_size <= 1000) ) {
 	    throw "Wrong: max_img_size must be in [1,1000]";
@@ -287,9 +256,11 @@ namespace sedlamat
 	cv::Canny(tmpl_edges, tmpl_edges, canny_low_thresh,
 						    canny_high_thresh);
 
+
 	// checks min/max_tmpl_scale AND sets min/max_scale
-	if (min_tmpl_scale < max_tmpl_scale && 0 < min_tmpl_scale
-					     && max_tmpl_scale <= 1) {
+	if (minimum_template_scale < maximum_template_scale &&
+				0 < minimum_template_scale &&
+					maximum_template_scale <= 1) {
 
 	    cv::Mat tmpl_pts;
 	    cv::findNonZero(tmpl_img, tmpl_pts);
@@ -297,13 +268,20 @@ namespace sedlamat
 	    tmpl_size = tmpl_bound_rect.size();
 	    double src_templ_size_koef = max_img_size*1.0 /
 			    std::max(tmpl_size.width,tmpl_size.height);
-	    max_scale = max_tmpl_scale * src_templ_size_koef;
-	    min_scale = min_tmpl_scale * src_templ_size_koef;
+
+	    //~ for (int scale_idx = 0; scale_idx < num_scales; ++scale_idx) {
+	    //~ cv::Mat accum = cv::Mat(src_img_size, CV_32F,
+					    //~ cv::Scalar_<float>(0.0));
+	    //~ double s = min_scale + scale_idx * scale_step;
+	    max_scale = maximum_template_scale * src_templ_size_koef;
+	    min_scale = minimum_template_scale * src_templ_size_koef;
 	} else {
 	    throw "Wrong: min_tmpl_scale param must be < then \
 			  max_tmpl_scale and both in (0,1].";
 	}
+
 	// checks num_scales AND sets scale_step
+	double scale_step;
 	if (1 < num_scales && num_scales <= 1000) {
 	    scale_step = (max_scale - min_scale) / (num_scales - 1);
 	} else if (num_scales == 1) {
@@ -311,6 +289,10 @@ namespace sedlamat
 	    min_scale = max_scale;
 	} else {
 	    throw "Wrong: num_scales must be in [1,1000].";
+	}
+
+	for (int ii = 0; ii < num_scales; ++ii) {
+	    scales.push_back(min_scale + ii * scale_step);
 	}
 
 	// sets the values of the best fit
@@ -326,71 +308,11 @@ namespace sedlamat
 	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
 	gauss = gauss * gauss.t();
 
-	// initialize the rotation step
-	rot_rad = 0;
+
+
     }
 
 
-    /**
-	Fills in the hough_points container with Hough points (edge
-	points with their orientation.
-
-	@param hough_points - HoughTable container to be filled.
-	@param img - Image which will provide edge points and
-		     orientations.
-	@param img_edges - Edge image of img parameter.
-	@return void.
-    */
-    void GeneralHough::set_hough_points(HoughTable &hough_points,
-					    const cv::Mat &img,
-					    const cv::Mat &img_edges)
-    {
-	hough_points = HoughTable(num_quant_directions);
-
-	// changes gradient orientations to gradient directions
-	cv::Mat orient, orient_adjust, directions;
-	orient = sedlamat::get_gradient_orientation(img);
-	orient_adjust = (orient >= 180)/255;
-	orient_adjust.convertTo(orient_adjust, orient.depth());
-	directions = orient + orient_adjust * -180;
-	//~ directions.convertTo(directions, CV_8UC1);
-	//~ sedlamat::print(directions);
-	//~ sedlamat::display(directions);
-	float quant_width = 180.0 / num_quant_directions;
-	//prt(quant_width/2);
-	// goes through all edge pixels
-	for (int yy = 0; yy < img_edges.rows; yy++) {
-	    const uchar *ptr_src_edges_irow = img_edges.ptr<uchar>(yy);
-	    for (int xx = 0; xx < img_edges.cols; xx++) {
-		if (ptr_src_edges_irow[xx]) {
-		    cv::Point pt(xx, yy);
-		    // quantizes the edge direction
-		    float phi = directions.at<float>(pt);
-		    int quant_idx = -1;
-		    int idx = 0;
-		    if (phi >= 180 - quant_width/2.0 ||
-			phi < quant_width/2.0) {
-			quant_idx = idx;
-		    } else {
-			++idx;
-			for (float quant_low_bound = quant_width/2.0;
-			     quant_low_bound < 180.0 - quant_width;
-			     quant_low_bound += quant_width) {
-			    //prt(quant_low_bound);
-			    if (phi >= quant_low_bound &&
-				phi < quant_low_bound + quant_width) {
-				quant_idx = idx;
-				break;
-			    }
-			    ++idx;
-			}
-		    }
-		    // fills the HoughTable
-		    hough_points[quant_idx].push_back(pt);
-		}
-	    }
-	}
-    }
 
 
     /**
@@ -407,7 +329,7 @@ namespace sedlamat
 					    //~ const cv::Mat &img,
 					    //~ const cv::Mat &img_edges)
     //~ {
-	//~ hough_points = HoughTable(180); // 0...179
+	//~ hough_points = HoughTable(num_quant_directions);
 //~
 	//~ // changes gradient orientations to gradient directions
 	//~ cv::Mat orient, orient_adjust, directions;
@@ -421,18 +343,13 @@ namespace sedlamat
 	//~ float quant_width = 180.0 / num_quant_directions;
 	//~ //prt(quant_width/2);
 	//~ // goes through all edge pixels
-	//~ int yy = 0;
-	//~ int xx = 0;
-	//~ for (; yy < img_edges.rows; ++yy) {
-	    //~ for (; xx < img_edges.cols; ++xx) {
-		//~ if (img_edges.at<uchar>(yy, xx)) {
+	//~ for (int yy = 0; yy < img_edges.rows; yy++) {
+	    //~ const uchar *ptr_src_edges_irow = img_edges.ptr<uchar>(yy);
+	    //~ for (int xx = 0; xx < img_edges.cols; xx++) {
+		//~ if (ptr_src_edges_irow[xx]) {
 		    //~ cv::Point pt(xx, yy);
 		    //~ // quantizes the edge direction
-		    //~ unsigned char phi = directions.at<uchar>(pt);
-		    //~ int ii = -5;
-		    //~ for(; ii < 5; ++ii) {
-//~
-		    //~ hough_points[phi].push_back(pt);
+		    //~ float phi = directions.at<float>(pt);
 		    //~ int quant_idx = -1;
 		    //~ int idx = 0;
 		    //~ if (phi >= 180 - quant_width/2.0 ||
@@ -459,6 +376,46 @@ namespace sedlamat
 	//~ }
     //~ }
 
+
+    /**
+	Fills in the hough_points container with Hough points (edge
+	points with their orientation.
+
+	@param hough_points - HoughTable container to be filled.
+	@param img - Image which will provide edge points and
+		     orientations.
+	@param img_edges - Edge image of img parameter.
+	@return void.
+    */
+    HoughTable GeneralHough::get_hough_table(const cv::Mat &img,
+					      const cv::Mat &img_edges)
+    {
+	HoughTable hough_table(180); // 0...179
+//~ //~
+	// changes gradient orientations to gradient directions
+	cv::Mat orient, orient_adjust, directions;
+	orient = sedlamat::get_gradient_orientation(img);
+	orient_adjust = (orient >= 180)/255;
+	orient_adjust.convertTo(orient_adjust, orient.depth());
+	directions = orient + orient_adjust * -180;
+	directions.convertTo(directions, CV_8UC1);
+	// goes through all edge pixels
+	for (int yy = 0; yy < img_edges.rows; ++yy) {
+	    for (int xx = 0; xx < img_edges.cols; ++xx) {
+		if (img_edges.at<uchar>(yy, xx)) {
+		    cv::Point pt(xx, yy);
+		    int phi = directions.at<uchar>(pt);
+		    hough_table[phi].push_back(pt);
+		}
+	    }
+	}
+	//~ for (int ii = 0; ii < 180; ++ii) {
+	//~ sedlamat::visualize_points(hough_table[ii], cv::Size(500,500), cv::Point(150,150));
+	//~ }
+	//sedlamat::display(directions);
+	return hough_table;
+    }
+
     /**
 	Fills the R-table. First fills the r_table with hough points
 	from tmpl_img and tmpl_edges and then shifts them by
@@ -469,7 +426,7 @@ namespace sedlamat
     */
     void GeneralHough::fill_r_table()
     {
-	set_hough_points(r_table, tmpl_img, tmpl_edges);
+	r_table = get_hough_table(tmpl_img, tmpl_edges);
 
 	// shifts all points in HoughTable from the reference point
 	for(auto &pts : r_table) {
@@ -486,9 +443,9 @@ namespace sedlamat
 	@param void.
 	@return void.
     */
-    void GeneralHough::fill_src_hough_pts()
+    void GeneralHough::fill_src_hough_table()
     {
-	set_hough_points(src_hough_pts, src_img, src_edges);
+	src_hough_table = get_hough_table(src_img, src_edges);
     }
 
 
@@ -502,31 +459,24 @@ namespace sedlamat
 				 are shifted.
 	@return void.
     */
-    void GeneralHough::set_rotated_r_table(double rot_step_rad,
-					    int num_table_shift)
+    HoughTable GeneralHough::get_rotated_r_table(const int angle)
     {
-	rotated_r_table = r_table;
+	HoughTable rotated_r_table = r_table;
 
-	// shifts the R-Table quants, last-becomes-first shifting
-	for (int shift = 0; shift < num_table_shift; ++shift) {
-	    std::vector<cv::Point> table_quant;
-	    table_quant = rotated_r_table.back();
-	    rotated_r_table.pop_back();
-	    auto it = rotated_r_table.begin();
-	    rotated_r_table.insert(it, table_quant);
-	}
+	rotated_r_table.shift(angle);
 
-	// rotates the R-Table points by angle_rad (counter-clockwise)
-	double cs = std::cos(rot_step_rad);
-	double sn = std::sin(rot_step_rad);
+	// rotates the R-Table points by angle in rad(counter-clockwise)
+	double cs = std::cos(angle * M_PI / 180.0);
+	double sn = std::sin(angle * M_PI / 180.0);
 
-	for(auto & table_quant : rotated_r_table) {
-	    for(auto & pt : table_quant) {
+	for(auto &pts : rotated_r_table) {
+	    for(auto &pt : pts) {
 		int x = pt.x;
 		pt.x = cs*pt.x - sn*pt.y;
 		pt.y = sn*x + cs*pt.y;
 	    }
 	}
+	return rotated_r_table;
     }
 
 
@@ -537,49 +487,33 @@ namespace sedlamat
 	@param void.
 	@return void.
     */
-    void GeneralHough::accumulate()
+    void GeneralHough::accumulate(HoughTable &rotated_r_table,
+				  const int angle)
     {
-	// for all scales
-	for (int scale_idx = 0; scale_idx < num_scales; ++scale_idx) {
+
+	HoughTable quanted_rotated_r_table, quanted_src_hough_table;
+	quanted_rotated_r_table = get_quanted_table(rotated_r_table,
+						    angle);
+	quanted_src_hough_table = get_quanted_table(src_hough_table,
+						    angle);
+	int num_quant = quanted_src_hough_table.size();
+
+	for (auto &s : scales) {
 	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
-	    double s = min_scale + scale_idx * scale_step;
-	    // for all quantified directions
-	    for(int quant_idx = 0; quant_idx < num_quant_directions;
-							++quant_idx) {
+	    for (int quant = 0; quant < num_quant; ++quant) {
+		//sedlamat::visualize_points(quanted_src_hough_table[quant], cv::Size(200,200));
+		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
+		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
+
 		cv::Mat quant_accum = cv::Mat(src_img_size, CV_32F,
 					      cv::Scalar_<float>(0.0));
-		std::vector<cv::Point> r_table_pts, src_pts;
-		num_quant_neighbours = 0;
-		// pooling with neighbouring quants
-		for (int quant_shift = -num_quant_neighbours;
-				quant_shift <= num_quant_neighbours;
-						      ++quant_shift) {
-		    int idx = quant_idx + quant_shift;
-		    if (idx < 0) {
-			idx = idx + num_quant_directions;
-		    }
-		    if (idx >= num_quant_directions) {
-			idx = idx - num_quant_directions;
-		    }
-		    r_table_pts.insert(r_table_pts.end(),
-				    rotated_r_table[idx].begin(),
-				    rotated_r_table[idx].end());
-		    src_pts.insert(src_pts.end(),
-				   src_hough_pts[idx].begin(),
-				   src_hough_pts[idx].end());
-		}
-
-		float num_quant_pts = r_table_pts.size();
-		// for all points in the r_table quant
-		for(auto & pt_diff : r_table_pts) {
-		    // for all points in the src_hough_points quant
-		    for(auto & src_pt : src_pts) {
-			// increments accumulator
+		double num_quant_pts
+				= quanted_rotated_r_table[quant].size();
+		for(const auto &pt_diff : quanted_rotated_r_table[quant]) {
+		    for(const auto &src_pt : quanted_src_hough_table[quant]) {
 			cv::Point refer_pt(src_pt - (pt_diff*s));
-			// only if inside source image area
-			if (src_img_rect.contains(refer_pt) &&
-					tmpl_inside_src(refer_pt) ) {
+			if (src_img_rect.contains(refer_pt)) {
 			    float &accum_pt =
 					quant_accum.at<float>(refer_pt);
 			    // should not be more that points in r_table
@@ -592,7 +526,7 @@ namespace sedlamat
 		// divide by the total number of points in the quant
 		// big quants are not more important
 		if (num_quant_pts > 0) {
-		    accum += quant_accum/num_quant_pts;
+		    accum += quant_accum*1.0/num_quant_pts;
 		}
 	    }
 
@@ -602,8 +536,8 @@ namespace sedlamat
 	    if (display_accum) sedlamat::display(accum);
 
 	    // finds accumulator maximum
-	    double local_max = 0, local_min = 0;
-	    cv::Point local_max_pt(0,0), local_min_pt(0,0);
+	    double local_max, local_min;
+	    cv::Point local_max_pt, local_min_pt;
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
 
@@ -613,13 +547,48 @@ namespace sedlamat
 	    if (local_max > best_accum_val) {
 		best_accum_val = local_max;
 		best_scale = s;
-		best_angle = rot_rad;
+		best_angle = angle;
 		best_ref_pt.x = local_max_pt.x;
 		best_ref_pt.y = local_max_pt.y;
 	    }
 	}
     }
 
+    HoughTable GeneralHough::get_quanted_table(HoughTable &table,
+					       const int angle,
+					       const int num_quants)
+    {
+	//~ for (int ii = 0; ii < 180; ++ii) {
+	    //~ sedlamat::visualize_points(table[ii], cv::Size(500,500), cv::Point(150,150));
+	//~ }
+	HoughTable quanted_table(num_quants);
+	int quant_idx = 0;
+	const int quant_size = 180 / num_quants;
+	int idx = angle < 0 ? angle % 180 + 180 : angle % 180;
+	idx -= quant_size / 2;
+	for (int ii = 1; ii <= 180; ++ii) {
+	    //sedlamat::visualize_points(table[ii], cv::Size(500,500), cv::Point(150,150));
+	    //std::cout << idx << std::endl;
+	    if (!(ii % quant_size)) {
+		++quant_idx;
+		//std::cout << quanted_table[quant_idx-1] << std::endl;
+ 		//sedlamat::visualize_points(quanted_table[quant_idx-1], cv::Size(500,500), cv::Point(150,150));
+
+	    }
+	    //std::cout << table[idx] << std::endl;
+	    quanted_table[quant_idx].insert(
+				    quanted_table[quant_idx].end(),
+				    table[idx].begin(),
+				    table[idx].end());
+	    //std::cout << quanted_table[quant_idx] << std::endl;
+	    ++idx;
+	}
+	//~ for (int ii = 0; ii < 180; ++ii) {
+	    //~ sedlamat::visualize_points(quanted_table[ii], cv::Size(500,500), cv::Point(150,150));
+	//~ }
+	//std::cout << quant_size << std::endl;
+	return quanted_table;
+    }
 
     /**
 	Finds and sets the best_ params of the Hough transform
@@ -634,23 +603,26 @@ namespace sedlamat
     void GeneralHough::detect()
     {
 	this->fill_r_table();
-	this->fill_src_hough_pts();
+	this->fill_src_hough_table();
 	// accumulate for all rotated r-tables
-	const int num_of_rot = num_quant_directions * 2;
-	const double rot_step_rad = 2.0 * M_PI / num_of_rot;
-	for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
-	    rot_rad = rot_idx * rot_step_rad;
-	    set_rotated_r_table(rot_rad, rot_idx);
-	    accumulate();
+	for (auto angle : angles) { //all angles in degrees integers!!
+	    HoughTable rotated_r_table(get_rotated_r_table(angle));
+	    accumulate(rotated_r_table, angle);
 	}
+
+	//~ const int num_of_rot = num_quant_directions * 2;
+	//~ const double rot_step_rad = 2.0 * M_PI / num_of_rot;
+	//~ for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
+	    //~ rot_rad = rot_idx * rot_step_rad;
+	//~ }
 
 	double inv_resize_coeff = 1.0 / resize_coeff;
 	best_scale *= inv_resize_coeff;
 	best_ref_pt *= inv_resize_coeff;
 
 	if (!tmpl_interest_pts.empty()) {
-	    double cs = std::cos(best_angle);
-	    double sn = std::sin(best_angle);
+	    double cs = std::cos(best_angle*M_PI/180.0);
+	    double sn = std::sin(best_angle*M_PI/180.0);
 
 	    std::map<std::string, cv::Point>::iterator it, it_end;
 	    it = tmpl_interest_pts.begin();
@@ -681,8 +653,8 @@ namespace sedlamat
 	cv::Rect src_img_orig_rect(cv::Point(0,0), src_img_orig.size());
 
 	// rotates and shift the R-Table points
-	double cs = std::cos(best_angle);
-	double sn = std::sin(best_angle);
+	double cs = std::cos(best_angle*M_PI/180.0);
+	double sn = std::sin(best_angle*M_PI/180.0);
 
 	double inv_resize_coeff = 1.0 / resize_coeff;
 	cv::Point shift_pt(inv_resize_coeff,inv_resize_coeff);
