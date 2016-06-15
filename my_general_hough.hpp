@@ -51,12 +51,45 @@ namespace sedlamat
 	std::deque<T> deq;
 	size_t size;
     public:
-	DequeNegIdx(std::deque<T> deq = std::deque<T>()) : deq(deq),
+	DequeNegIdx(const std::deque<T> &deq = std::deque<T>()) : deq(deq),
 						    size(deq.size()) {}
 	~DequeNegIdx() {};
-	T &operator[](int i)
+
+	void push_back(const T &val) { deq.push_back(val); ++size; }
+	void push_front(const T &val) { deq.push_front(val); ++size; }
+	void pop_back() { deq.pop_back(); --size; }
+	void pop_front() { deq.pop_front(); --size; }
+
+	T &operator[](int idx)
 	{
+	    idx = idx % size;
+	    if (idx < 0) idx += size;
+	    return deq.at(idx);
 	}
+	// only prefix increment and decrement operators are defined
+	void operator++()
+	{
+	    deq.push_front(deq.back());
+	    deq.pop_back();
+	}
+	void operator--()
+	{
+	    deq.push_back(deq.front());
+	    deq.pop_front();
+	}
+	void shift(int num_shifts)
+	{
+	    if (num_shifts < 0) {
+		for (; num_shifts < 0; ++num_shifts) {
+		    operator--();
+		}
+	    } else {
+		for (; num_shifts > 0; --num_shifts) {
+		    operator++();
+		}
+	    }
+
+
     };
 
 
