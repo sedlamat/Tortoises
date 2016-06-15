@@ -26,6 +26,7 @@
 #include <cmath>
 #include <ctime>
 #include <limits>
+#include <deque>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -48,8 +49,15 @@ namespace sedlamat
     template < typename T >
     class DequeNegIdx {
 	std::deque<T> deq;
+	size_t size;
     public:
-	DequeNegIdx(std::deque<T> deq = std::deque<T>()) : deq(deq) {}
+	DequeNegIdx(std::deque<T> deq = std::deque<T>()) : deq(deq),
+						    size(deq.size()) {}
+	~DequeNegIdx() {};
+	T &operator[](int i)
+	{
+	}
+    };
 
 
 
@@ -362,61 +370,61 @@ namespace sedlamat
 	@param img_edges - Edge image of img parameter.
 	@return void.
     */
-    void GeneralHough::set_hough_points(HoughTable &hough_points,
-					    const cv::Mat &img,
-					    const cv::Mat &img_edges)
-    {
-	hough_points = HoughTable(180); // 0...179
-
-	// changes gradient orientations to gradient directions
-	cv::Mat orient, orient_adjust, directions;
-	orient = sedlamat::get_gradient_orientation(img);
-	orient_adjust = (orient >= 180)/255;
-	orient_adjust.convertTo(orient_adjust, orient.depth());
-	directions = orient + orient_adjust * -180;
-	directions.convertTo(directions, CV_8UC1);
+    //~ void GeneralHough::set_hough_points(HoughTable &hough_points,
+					    //~ const cv::Mat &img,
+					    //~ const cv::Mat &img_edges)
+    //~ {
+	//~ hough_points = HoughTable(180); // 0...179
+//~
+	//~ // changes gradient orientations to gradient directions
+	//~ cv::Mat orient, orient_adjust, directions;
+	//~ orient = sedlamat::get_gradient_orientation(img);
+	//~ orient_adjust = (orient >= 180)/255;
+	//~ orient_adjust.convertTo(orient_adjust, orient.depth());
+	//~ directions = orient + orient_adjust * -180;
+	//~ directions.convertTo(directions, CV_8UC1);
 	//~ sedlamat::print(directions);
 	//~ sedlamat::display(directions);
-	float quant_width = 180.0 / num_quant_directions;
-	//prt(quant_width/2);
-	// goes through all edge pixels
-	int yy = 0;
-	int xx = 0;
-	for (; yy < img_edges.rows; ++yy) {
-	    for (; xx < img_edges.cols; ++xx) {
-		if (img_edges.at<uchar>(yy, xx)) {
-		    cv::Point pt(xx, yy);
-		    // quantizes the edge direction
-		    unsigned char phi = directions.at<uchar>(pt);
-		    int ii = -5;
-		    for(; ii < 5; ++ii) {
-
-		    hough_points[phi].push_back(pt);
-		    int quant_idx = -1;
-		    int idx = 0;
-		    if (phi >= 180 - quant_width/2.0 ||
-			phi < quant_width/2.0) {
-			quant_idx = idx;
-		    } else {
-			++idx;
-			for (float quant_low_bound = quant_width/2.0;
-			     quant_low_bound < 180.0 - quant_width;
-			     quant_low_bound += quant_width) {
-			    //prt(quant_low_bound);
-			    if (phi >= quant_low_bound &&
-				phi < quant_low_bound + quant_width) {
-				quant_idx = idx;
-				break;
-			    }
-			    ++idx;
-			}
-		    }
-		    // fills the HoughTable
-		    hough_points[quant_idx].push_back(pt);
-		}
-	    }
-	}
-    }
+	//~ float quant_width = 180.0 / num_quant_directions;
+	//~ //prt(quant_width/2);
+	//~ // goes through all edge pixels
+	//~ int yy = 0;
+	//~ int xx = 0;
+	//~ for (; yy < img_edges.rows; ++yy) {
+	    //~ for (; xx < img_edges.cols; ++xx) {
+		//~ if (img_edges.at<uchar>(yy, xx)) {
+		    //~ cv::Point pt(xx, yy);
+		    //~ // quantizes the edge direction
+		    //~ unsigned char phi = directions.at<uchar>(pt);
+		    //~ int ii = -5;
+		    //~ for(; ii < 5; ++ii) {
+//~
+		    //~ hough_points[phi].push_back(pt);
+		    //~ int quant_idx = -1;
+		    //~ int idx = 0;
+		    //~ if (phi >= 180 - quant_width/2.0 ||
+			//~ phi < quant_width/2.0) {
+			//~ quant_idx = idx;
+		    //~ } else {
+			//~ ++idx;
+			//~ for (float quant_low_bound = quant_width/2.0;
+			     //~ quant_low_bound < 180.0 - quant_width;
+			     //~ quant_low_bound += quant_width) {
+			    //~ //prt(quant_low_bound);
+			    //~ if (phi >= quant_low_bound &&
+				//~ phi < quant_low_bound + quant_width) {
+				//~ quant_idx = idx;
+				//~ break;
+			    //~ }
+			    //~ ++idx;
+			//~ }
+		    //~ }
+		    //~ // fills the HoughTable
+		    //~ hough_points[quant_idx].push_back(pt);
+		//~ }
+	    //~ }
+	//~ }
+    //~ }
 
     /**
 	Fills the R-table. First fills the r_table with hough points
