@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	sedlamat::GeneralHough general_hough(plastron_img,
 					     plastron_template,
 					     reference_point,
-					     4, 25, 300, 1.0, 0.3, 0);
+					     4, 25, 200, 1.0, 0.3, 0);
 					     //map_template_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
