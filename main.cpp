@@ -19,12 +19,13 @@
 int main(int argc, char *argv[])
 {
     try {
-	time_t t0 = clock();
+	time_t t0, t1;
+	std::time(&t0);
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
 //~ //~
-	std::string file_name = "Tg58400.jpg";
-	std::string imgs_path = path + "/Images/Tortoises/";
+	std::string file_name = R"(Tg58400.jpg)";
+	std::string imgs_path = path + R"(/Images/Tortoises/)";
 	std::string img_path = imgs_path + file_name;
 	//~ std::string img_path = argv[1];
 	cv::Mat plastron_img = cv::imread(img_path,1);
@@ -61,13 +62,13 @@ int main(int argc, char *argv[])
 	std::cout << general_hough.get_best_accum_val() << std::endl;
 
 	//~ sedlamat::display(general_hough.get_template_edges());
-	sedlamat::display(general_hough.get_src_edges());
+	//sedlamat::display(general_hough.get_src_edges());
 	//~ sedlamat::display(general_hough.get_src_img());
 	//~ sedlamat::display(general_hough.get_template_img());
 	//~ sedlamat::print("hotovo");
 	//~ cv::imwrite(argv[2],general_hough.get_result_img());
-	time_t t1 = clock();
-	std::cout << (t1-t0)*1.0/CLOCKS_PER_SEC << std::endl;
+	std::time(&t1);
+	std::cout << difftime(t1,t0) <<std::endl;
 	sedlamat::display(general_hough.get_result_img());
     } catch (std::string e) {
 	std::cout << "Error when processing " << argv[1] << std::endl;

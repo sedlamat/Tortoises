@@ -27,6 +27,7 @@
 #include <ctime>
 #include <limits>
 #include <deque>
+#include <thread>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -45,6 +46,8 @@
 
 namespace sedlamat
 {
+    void nothing( int i ) { }
+
     /* deque with negative indexing and rotation of elements */
     template <typename T> class DequeNegIdx: public std::deque<T> {
     public:
@@ -174,7 +177,7 @@ namespace sedlamat
 	HoughTable get_hough_table(const cv::Mat &img,
 				   const cv::Mat &img_edges);
 	HoughTable get_rotated_r_table(const int angle);
-	void accumulate(HoughTable &rotated_r_table, const int angle);
+	void accumulate(int angle);
 	HoughTable get_quanted_table(HoughTable &table,
 				     const int angle,
 				     const int num_quants = 4);
@@ -487,17 +490,16 @@ namespace sedlamat
 	@param void.
 	@return void.
     */
-    void GeneralHough::accumulate(HoughTable &rotated_r_table,
-				  const int angle)
+    void GeneralHough::accumulate(int angle)
     {
-
+	HoughTable rotated_r_table(get_rotated_r_table(angle));
 	HoughTable quanted_rotated_r_table, quanted_src_hough_table;
 	quanted_rotated_r_table = get_quanted_table(rotated_r_table,
 						    angle);
 	quanted_src_hough_table = get_quanted_table(src_hough_table,
 						    angle);
 	int num_quant = quanted_src_hough_table.size();
-
+	std::cout << angle << std::endl;
 	for (auto &s : scales) {
 	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
@@ -605,11 +607,14 @@ namespace sedlamat
 	this->fill_r_table();
 	this->fill_src_hough_table();
 	// accumulate for all rotated r-tables
+	std::vector<std::thread> threads;
 	for (auto angle : angles) { //all angles in degrees integers!!
-	    HoughTable rotated_r_table(get_rotated_r_table(angle));
-	    accumulate(rotated_r_table, angle);
+	    threads.push_back(std::thread(&GeneralHough::accumulate,this,angle));
+	    //accumulate(angle);
 	}
-
+	for (auto &t : threads) {
+	    t.join();
+	}
 	//~ const int num_of_rot = num_quant_directions * 2;
 	//~ const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	//~ for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
