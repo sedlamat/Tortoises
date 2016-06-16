@@ -499,7 +499,7 @@ namespace sedlamat
 	quanted_src_hough_table = get_quanted_table(src_hough_table,
 						    angle);
 	int num_quant = quanted_src_hough_table.size();
-	std::cout << angle << std::endl;
+
 	for (auto &s : scales) {
 	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
@@ -615,6 +615,9 @@ namespace sedlamat
 	for (auto &t : threads) {
 	    t.join();
 	}
+	//~ for (auto angle : angles) {
+	    //~ accumulate(angle);
+	//~ }
 	//~ const int num_of_rot = num_quant_directions * 2;
 	//~ const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	//~ for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
