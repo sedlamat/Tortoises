@@ -142,6 +142,8 @@ namespace sedlamat
 	/*** constants with int and double minima: ***/
 	const double MIN_DOUBLE = -std::numeric_limits<double>::max();
 	const int MIN_INT = -std::numeric_limits<int>::max();
+	const double MAX_DOUBLE = std::numeric_limits<double>::max();
+	const int MAX_INT = std::numeric_limits<int>::max();
 
 	/*** Variables for the best fit of the hough transform: ***/
 	double best_accum_val;
@@ -311,7 +313,7 @@ namespace sedlamat
 	int gauss_size = 9.0*max_img_size/100;
 	double gauss_sigma = 1.0*max_img_size/100;
 	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
-	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
+	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_64F);
 	gauss = gauss * gauss.t();
 
 
@@ -505,15 +507,15 @@ namespace sedlamat
 	int num_quant = quanted_src_hough_table.size();
 	double total_num_r_table_pts = 0;
 	for (auto &s : scales) {
-	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
-					    cv::Scalar_<float>(0.0));
+	    cv::Mat accum = cv::Mat(src_img_size, CV_64F,
+					    cv::Scalar_<double>(0.0));
 	    for (int quant = 0; quant < num_quant; ++quant) {
 		//sedlamat::visualize_points(quanted_src_hough_table[quant], cv::Size(200,200));
 		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
 		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
 
-		cv::Mat quant_accum = cv::Mat(src_img_size, CV_32F,
-					      cv::Scalar_<float>(0.0));
+		cv::Mat quant_accum = cv::Mat(src_img_size, CV_64F,
+					      cv::Scalar_<double>(0.0));
 		double num_quant_pts
 				= quanted_rotated_r_table[quant].size();
 		total_num_r_table_pts += num_quant_pts;
@@ -521,8 +523,8 @@ namespace sedlamat
 		    for(const auto &src_pt : quanted_src_hough_table[quant]) {
 			cv::Point refer_pt(src_pt - (pt_diff*s));
 			if (src_img_rect.contains(refer_pt)) {
-			    float &accum_pt =
-					quant_accum.at<float>(refer_pt);
+			    double &accum_pt =
+				    quant_accum.at<double>(refer_pt);
 			    // should not be more that points in r_table
 			    if (accum_pt < num_quant_pts) {
 				accum_pt += 1.0;
@@ -533,30 +535,51 @@ namespace sedlamat
 		// divide by the total number of points in the quant
 		// big quants are not more important
 		if (num_quant_pts > 0) {
-		    accum += quant_accum*1.0/num_quant_pts;
+		    accum += quant_accum*1.0/(num_quant_pts);
 		}
 	    }
 
 	    // smooths the accumulator
-	    //sedlamat::display(gauss);
+	    //sedlamat::display(gauss*total_num_r_table_pts);
 	    //sedlamat::print(gauss);
+	    //sedlamat::print(accum);
+	    //sedlamat::display(accum);
 	    cv::filter2D(accum, accum, CV_32F, gauss);
+	    //sedlamat::print(accum);
+	    //sedlamat::display(accum);
 	    //cv::filter2D(accum, accum, CV_32F, gauss);
 	    //cv::filter2D(accum, accum, CV_32F, gauss);
-	    //cv::matchTemplate(accum, gauss*total_num_r_table_pts, accum, CV_TM_SQDIFF);
+	    //sedlamat::print(accum);
+
+	    cv::Mat dst;
+	    double min_val, max_val;
+	    cv::minMaxLoc(accum, &min_val, &max_val);
+	    double alpha = 1.0 / (max_val - min_val);
+	    double beta = - min_val * alpha;
+	    accum.convertTo(dst, CV_64F, alpha, beta);
+	    //cv::normalize(accum, dst, 0.0, 1.0);
+	    //sedlamat::print(dst);
+
+	    cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
+	    //sedlamat::print(accum);
+	    sedlamat::display(dst);
 	    cv::Point lpt, rpt;
 	    lpt = cv::Point(gauss.size().width, gauss.size().height);
 	    rpt = cv::Point(accum.size().width, accum.size().height);
 	    rpt -= lpt;
 	    cv::Rect accum_insides(lpt, rpt);
+	    //sedlamat::print(lpt);
+	    //sedlamat::print(rpt);
 	    cv::Mat accum_mask(accum.size(), CV_8UC1, cv::Scalar_<uchar>(0));
-	    cv::rectangle(accum_mask, accum_insides, cv::Scalar_<uchar>(1), CV_FILLED);
+	    cv::rectangle(accum_mask, accum_insides,
+					    cv::Scalar_<uchar>(255),
+					    CV_FILLED);
 	    //sedlamat::display(accum_mask);
 	    // finds accumulator maximum
 	    double local_max, local_min;
 	    cv::Point local_max_pt, local_min_pt;
 	    cv::minMaxLoc(accum, &local_min, &local_max,
-					&local_min_pt, &local_max_pt, accum_mask);
+					&local_min_pt, &local_max_pt);//, accum_mask);
 		std::lock_guard<std::mutex> guarding(mutualexec);
 		if (display_accum) sedlamat::display(accum);
 		if (display_accum) sedlamat::print(local_max);
