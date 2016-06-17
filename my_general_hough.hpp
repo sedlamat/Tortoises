@@ -106,8 +106,8 @@ namespace sedlamat
 	// size to which the src_img is resized
 	const int max_img_size;
 	// thresholds for creating edge images(lower values->more edges)
-	const int canny_low_thresh = 50;
-	const int canny_high_thresh = 150;
+	const int canny_low_thresh = 20;
+	const int canny_high_thresh = 50;
 
 
 
@@ -133,6 +133,8 @@ namespace sedlamat
 	const bool display_accum;
 	// interest point to be located after GeneralHough run
 	std::map<std::string, cv::Point> tmpl_interest_pts;
+
+	std::mutex mutualexec;
 
 	// cv::Points grouped by edge directions
 	HoughTable r_table, src_hough_table;
@@ -493,6 +495,7 @@ namespace sedlamat
     */
     void GeneralHough::accumulate(int angle)
     {
+	std::mutex mutualexec;
 	HoughTable rotated_r_table(get_rotated_r_table(angle));
 	HoughTable quanted_rotated_r_table, quanted_src_hough_table;
 	quanted_rotated_r_table = get_quanted_table(rotated_r_table,
@@ -534,7 +537,7 @@ namespace sedlamat
 	    }
 
 	    // smooths the accumulator
-	    cv::filter2D(accum, accum, CV_32F, gauss);
+	    //cv::filter2D(accum, accum, CV_32F, gauss);
 
 
 
@@ -543,19 +546,19 @@ namespace sedlamat
 	    cv::Point local_max_pt, local_min_pt;
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
+		std::lock_guard<std::mutex> guarding(mutualexec);
+		if (display_accum) sedlamat::display(accum);
+		if (display_accum) sedlamat::print(local_max);
+	    {
+		// if accum_max greatest so far, then sets the best_ params
+		if (local_max > best_accum_val) {
 
-	    std::mutex mutualexec;
-	    std::lock_guard<std::mutex> guarding(mutualexec);
-	    if (display_accum) sedlamat::display(accum);
-	    if (display_accum) sedlamat::print(local_max);
-
-	    // if accum_max greatest so far, then sets the best_ params
-	    if (local_max > best_accum_val) {
-		best_accum_val = local_max;
-		best_scale = s;
-		best_angle = angle;
-		best_ref_pt.x = local_max_pt.x;
-		best_ref_pt.y = local_max_pt.y;
+		    best_accum_val = local_max;
+		    best_scale = s;
+		    best_angle = angle;
+		    best_ref_pt.x = local_max_pt.x;
+		    best_ref_pt.y = local_max_pt.y;
+		}
 	    }
 	}
     }
@@ -596,6 +599,7 @@ namespace sedlamat
 	return quanted_table;
     }
 
+
     /**
 	Finds and sets the best_ params of the Hough transform
 	by rotating the r_table and filling the Hough accumulator.
@@ -611,17 +615,20 @@ namespace sedlamat
 	this->fill_r_table();
 	this->fill_src_hough_table();
 	// accumulate for all rotated r-tables
-	std::vector<std::thread> threads;
-	for (auto angle : angles) { //all angles in degrees integers!!
-	    threads.push_back(std::thread(&GeneralHough::accumulate,this,angle));
-	    //accumulate(angle);
+	if (!display_accum) {
+	    std::vector<std::thread> threads;
+	    for (auto angle : angles) { //all angles in degrees integers!!
+		threads.push_back(std::thread(&GeneralHough::accumulate,this,angle));
+		//accumulate(angle);
+	    }
+	    for (auto &t : threads) {
+		t.join();
+	    }
+	} else {
+	    for (auto angle : angles) {
+		accumulate(angle);
+	    }
 	}
-	for (auto &t : threads) {
-	    t.join();
-	}
-	//~ for (auto angle : angles) {
-	    //~ accumulate(angle);
-	//~ }
 	//~ const int num_of_rot = num_quant_directions * 2;
 	//~ const double rot_step_rad = 2.0 * M_PI / num_of_rot;
 	//~ for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
