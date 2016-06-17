@@ -541,16 +541,22 @@ namespace sedlamat
 	    //sedlamat::display(gauss);
 	    //sedlamat::print(gauss);
 	    cv::filter2D(accum, accum, CV_32F, gauss);
-	    cv::filter2D(accum, accum, CV_32F, gauss);
-	    cv::filter2D(accum, accum, CV_32F, gauss);
-	    //cv::matchTemplate(accum, gauss*total_num_r_table_pts/2, accum, CV_TM_SQDIFF);
-
-	    //cv::Rect//
+	    //cv::filter2D(accum, accum, CV_32F, gauss);
+	    //cv::filter2D(accum, accum, CV_32F, gauss);
+	    //cv::matchTemplate(accum, gauss*total_num_r_table_pts, accum, CV_TM_SQDIFF);
+	    cv::Point lpt, rpt;
+	    lpt = cv::Point(gauss.size().width, gauss.size().height);
+	    rpt = cv::Point(accum.size().width, accum.size().height);
+	    rpt -= lpt;
+	    cv::Rect accum_insides(lpt, rpt);
+	    cv::Mat accum_mask(accum.size(), CV_8UC1, cv::Scalar_<uchar>(0));
+	    cv::rectangle(accum_mask, accum_insides, cv::Scalar_<uchar>(1), CV_FILLED);
+	    //sedlamat::display(accum_mask);
 	    // finds accumulator maximum
 	    double local_max, local_min;
 	    cv::Point local_max_pt, local_min_pt;
 	    cv::minMaxLoc(accum, &local_min, &local_max,
-					&local_min_pt, &local_max_pt);
+					&local_min_pt, &local_max_pt, accum_mask);
 		std::lock_guard<std::mutex> guarding(mutualexec);
 		if (display_accum) sedlamat::display(accum);
 		if (display_accum) sedlamat::print(local_max);
