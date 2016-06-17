@@ -16,8 +16,25 @@
 /* FIRST PARTY LIBRARIES */
 #include "tortoise.hpp"
 
+class Animal {
+public:
+    void bar();
+private:
+    virtual void eat() = 0;
+};
+
+class Dog: public Animal {
+public:
+    void bar() {}
+    virtual void eat() {}
+
+};
+
+
+
 int main(int argc, char *argv[])
 {
+    Dog d;
     try {
 	time_t t0, t1;
 	std::time(&t0);

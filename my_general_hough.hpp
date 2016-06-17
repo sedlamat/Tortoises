@@ -28,6 +28,7 @@
 #include <limits>
 #include <deque>
 #include <thread>
+#include <mutex>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -535,7 +536,7 @@ namespace sedlamat
 	    // smooths the accumulator
 	    cv::filter2D(accum, accum, CV_32F, gauss);
 
-	    if (display_accum) sedlamat::display(accum);
+
 
 	    // finds accumulator maximum
 	    double local_max, local_min;
@@ -543,6 +544,9 @@ namespace sedlamat
 	    cv::minMaxLoc(accum, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);
 
+	    std::mutex mutualexec;
+	    std::lock_guard<std::mutex> guarding(mutualexec);
+	    if (display_accum) sedlamat::display(accum);
 	    if (display_accum) sedlamat::print(local_max);
 
 	    // if accum_max greatest so far, then sets the best_ params
