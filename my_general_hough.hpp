@@ -568,7 +568,7 @@ namespace sedlamat
 
 	    //cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
 	    //sedlamat::print(accum);
-	    sedlamat::display(dst);
+	    //sedlamat::display(dst);
 	    cv::Point lpt, rpt;
 	    lpt = cv::Point(gauss.size().width, gauss.size().height);
 	    rpt = cv::Point(accum.size().width, accum.size().height);
