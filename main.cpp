@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
 //~ //~
-	std::string file_name = R"(Tg09609.jpg)";
+	std::string file_name = R"(Tg07301.jpg)";
 	std::string imgs_path = path + R"(/Images/Tortoises/)";
 	std::string img_path = imgs_path + file_name;
 	//~ std::string img_path = argv[1];
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	cv::Point reference_point(65,125);
 
 	//std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
-	std::vector<int> angles = {0};
+	std::vector<int> angles = {-5};
 
 
 	//~ std::map<std::string, cv::Point> map_template_junctions;

@@ -503,7 +503,7 @@ namespace sedlamat
 	quanted_src_hough_table = get_quanted_table(src_hough_table,
 						    angle);
 	int num_quant = quanted_src_hough_table.size();
-
+	double total_num_r_table_pts = 0;
 	for (auto &s : scales) {
 	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
@@ -516,6 +516,7 @@ namespace sedlamat
 					      cv::Scalar_<float>(0.0));
 		double num_quant_pts
 				= quanted_rotated_r_table[quant].size();
+		total_num_r_table_pts += num_quant_pts;
 		for(const auto &pt_diff : quanted_rotated_r_table[quant]) {
 		    for(const auto &src_pt : quanted_src_hough_table[quant]) {
 			cv::Point refer_pt(src_pt - (pt_diff*s));
@@ -537,10 +538,14 @@ namespace sedlamat
 	    }
 
 	    // smooths the accumulator
-	    //cv::filter2D(accum, accum, CV_32F, gauss);
+	    //sedlamat::display(gauss);
+	    //sedlamat::print(gauss);
+	    cv::filter2D(accum, accum, CV_32F, gauss);
+	    cv::filter2D(accum, accum, CV_32F, gauss);
+	    cv::filter2D(accum, accum, CV_32F, gauss);
+	    //cv::matchTemplate(accum, gauss*total_num_r_table_pts/2, accum, CV_TM_SQDIFF);
 
-
-
+	    //cv::Rect//
 	    // finds accumulator maximum
 	    double local_max, local_min;
 	    cv::Point local_max_pt, local_min_pt;
