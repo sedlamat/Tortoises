@@ -304,18 +304,20 @@ namespace sedlamat
 	}
 
 	// sets the values of the best fit
-	best_accum_val = MIN_DOUBLE;
+	best_accum_val = MAX_DOUBLE;
 	best_scale = MIN_DOUBLE;
 	best_angle = MIN_DOUBLE;
 	best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
 	// prepares gaussian kernel for smothing of the accumulator
-	int gauss_size = 9.0*max_img_size/100;
-	double gauss_sigma = 1.0*max_img_size/100;
+	int gauss_size = 5.0*max_img_size/100;
+	double gauss_sigma = 0.8*max_img_size/100;
 	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
-	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_64F);
+	//gauss_size = 2;
+	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
 	gauss = gauss * gauss.t();
-
+	//sedlamat::print(gauss);
+	//sedlamat::display(gauss);
 
 
     }
@@ -507,15 +509,15 @@ namespace sedlamat
 	int num_quant = quanted_src_hough_table.size();
 	double total_num_r_table_pts = 0;
 	for (auto &s : scales) {
-	    cv::Mat accum = cv::Mat(src_img_size, CV_64F,
-					    cv::Scalar_<double>(0.0));
+	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
+					    cv::Scalar_<float>(0.0));
 	    for (int quant = 0; quant < num_quant; ++quant) {
 		//sedlamat::visualize_points(quanted_src_hough_table[quant], cv::Size(200,200));
 		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
 		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
 
-		cv::Mat quant_accum = cv::Mat(src_img_size, CV_64F,
-					      cv::Scalar_<double>(0.0));
+		cv::Mat quant_accum = cv::Mat(src_img_size, CV_32F,
+					      cv::Scalar_<float>(0.0));
 		double num_quant_pts
 				= quanted_rotated_r_table[quant].size();
 		total_num_r_table_pts += num_quant_pts;
@@ -523,8 +525,8 @@ namespace sedlamat
 		    for(const auto &src_pt : quanted_src_hough_table[quant]) {
 			cv::Point refer_pt(src_pt - (pt_diff*s));
 			if (src_img_rect.contains(refer_pt)) {
-			    double &accum_pt =
-				    quant_accum.at<double>(refer_pt);
+			    float &accum_pt =
+				    quant_accum.at<float>(refer_pt);
 			    // should not be more that points in r_table
 			    if (accum_pt < num_quant_pts) {
 				accum_pt += 1.0;
@@ -556,11 +558,15 @@ namespace sedlamat
 	    cv::minMaxLoc(accum, &min_val, &max_val);
 	    double alpha = 1.0 / (max_val - min_val);
 	    double beta = - min_val * alpha;
-	    accum.convertTo(dst, CV_64F, alpha, beta);
+	    accum.convertTo(dst, CV_32F, alpha, beta);
 	    //cv::normalize(accum, dst, 0.0, 1.0);
 	    //sedlamat::print(dst);
+	    //sedlamat::display(dst);
+	    //sedlamat::display(gauss);
+	    //sedlamat::display(1.0/(gauss+1) -1);
+	    //sedlamat::print(1.0/(gauss+1) -1);
 
-	    cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
+	    //cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
 	    //sedlamat::print(accum);
 	    sedlamat::display(dst);
 	    cv::Point lpt, rpt;
@@ -578,20 +584,24 @@ namespace sedlamat
 	    // finds accumulator maximum
 	    double local_max, local_min;
 	    cv::Point local_max_pt, local_min_pt;
-	    cv::minMaxLoc(accum, &local_min, &local_max,
+	    cv::minMaxLoc(dst, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);//, accum_mask);
+	    cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
+	    sedlamat::display(dst);
+	    double minimum = dst.at<float>(local_max_pt)/max_val;
+	    sedlamat::print(minimum);
 		std::lock_guard<std::mutex> guarding(mutualexec);
-		if (display_accum) sedlamat::display(accum);
-		if (display_accum) sedlamat::print(local_max);
+		//if (display_accum) sedlamat::display(accum);
+		//if (display_accum) sedlamat::print(local_max);
 	    {
 		// if accum_max greatest so far, then sets the best_ params
-		if (local_max > best_accum_val) {
+		if (minimum < best_accum_val) {
 
-		    best_accum_val = local_max;
+		    best_accum_val = minimum;
 		    best_scale = s;
 		    best_angle = angle;
-		    best_ref_pt.x = local_max_pt.x;
-		    best_ref_pt.y = local_max_pt.y;
+		    best_ref_pt.x = local_max_pt.x; //+ gauss.size().width -1;
+		    best_ref_pt.y = local_max_pt.y; //+ gauss.size().height -1;
 		}
 	    }
 	}
