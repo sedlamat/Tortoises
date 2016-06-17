@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	cv::Point reference_point(65,125);
 
 	//std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
-	std::vector<int> angles = {-5};
+	std::vector<int> angles = {0};
 
 
 	//~ std::map<std::string, cv::Point> map_template_junctions;

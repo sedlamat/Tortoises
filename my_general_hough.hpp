@@ -310,8 +310,8 @@ namespace sedlamat
 	best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
 	// prepares gaussian kernel for smothing of the accumulator
-	int gauss_size = 5.0*max_img_size/100;
-	double gauss_sigma = 0.8*max_img_size/100;
+	int gauss_size = 8.0*max_img_size/100;
+	double gauss_sigma = 1.0*max_img_size/100;
 	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
 	//gauss_size = 2;
 	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
@@ -499,7 +499,7 @@ namespace sedlamat
     */
     void GeneralHough::accumulate(int angle)
     {
-	std::mutex mutualexec;
+	std::cout << "processing angle " << angle << std::endl;
 	HoughTable rotated_r_table(get_rotated_r_table(angle));
 	HoughTable quanted_rotated_r_table, quanted_src_hough_table;
 	quanted_rotated_r_table = get_quanted_table(rotated_r_table,
@@ -574,30 +574,52 @@ namespace sedlamat
 	    rpt = cv::Point(accum.size().width, accum.size().height);
 	    rpt -= lpt;
 	    cv::Rect accum_insides(lpt, rpt);
+	    cv::Rect gauss_rect(cv::Point(0,0), gauss.size());
+
 	    //sedlamat::print(lpt);
 	    //sedlamat::print(rpt);
-	    cv::Mat accum_mask(accum.size(), CV_8UC1, cv::Scalar_<uchar>(0));
-	    cv::rectangle(accum_mask, accum_insides,
-					    cv::Scalar_<uchar>(255),
-					    CV_FILLED);
-	    //sedlamat::display(accum_mask);
+	    //cv::Mat accum_mask(accum.size(), CV_32F, cv::Scalar_<float>(1));
+	    //cv::rectangle(accum_mask, gauss_rect,
+					    //~ cv::Scalar_<float>(0),
+					    //~ CV_FILLED);
+	//    sedlamat::display(accum_mask);
 	    // finds accumulator maximum
 	    double local_max, local_min;
 	    cv::Point local_max_pt, local_min_pt;
 	    cv::minMaxLoc(dst, &local_min, &local_max,
 					&local_min_pt, &local_max_pt);//, accum_mask);
 	    cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
-	    sedlamat::display(dst);
+	    //sedlamat::display(dst);
 	    double minimum = dst.at<float>(local_max_pt)/max_val;
-	    sedlamat::print(minimum);
+	    std::cout << minimum << " " << dst.at<float>(local_max_pt) << " " << max_val << std::endl;
+	    cv::Mat accum_mask(accum.size(), CV_32F, cv::Scalar_<float>(1));
+	    gauss_rect += local_max_pt;
+	    gauss_rect -= lpt;
+	    cv::rectangle(accum_mask, gauss_rect,
+					    cv::Scalar_<float>(0),
+					    CV_FILLED);
+	    //sedlamat::display(accum);
+	    cv::Mat accum_mask_inverse;
+	    accum_mask.copyTo(accum_mask_inverse);
+	    accum_mask_inverse -= 1;
+	    //sedlamat::display(accum_mask);
+	    accum_mask_inverse = cv::Mat(cv::abs(accum_mask_inverse));
+	    //sedlamat::display(accum_mask);
+	    //sedlamat::display(accum_mask);
+	    //sedlamat::display(accum_mask_inverse);
+	    double sum_outer = cv::sum(accum_mask.mul(accum))[0];
+	    double sum_inner = cv::sum(accum_mask_inverse.mul(accum))[0];
+
+	    sedlamat::print(sum_outer/sum_inner);
+	    //~ sedlamat::print(sum_inner);
 		std::lock_guard<std::mutex> guarding(mutualexec);
 		//if (display_accum) sedlamat::display(accum);
 		//if (display_accum) sedlamat::print(local_max);
 	    {
 		// if accum_max greatest so far, then sets the best_ params
-		if (minimum < best_accum_val) {
+		if (sum_outer/sum_inner < best_accum_val) {
 
-		    best_accum_val = minimum;
+		    best_accum_val = sum_outer/sum_inner;
 		    best_scale = s;
 		    best_angle = angle;
 		    best_ref_pt.x = local_max_pt.x; //+ gauss.size().width -1;
