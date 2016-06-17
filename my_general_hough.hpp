@@ -310,14 +310,14 @@ namespace sedlamat
 	best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
 	// prepares gaussian kernel for smothing of the accumulator
-	int gauss_size = 8.0*max_img_size/100;
+	int gauss_size = 9.0*max_img_size/100;
 	double gauss_sigma = 1.0*max_img_size/100;
 	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
 	//gauss_size = 2;
 	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
 	gauss = gauss * gauss.t();
 	//sedlamat::print(gauss);
-	//sedlamat::display(gauss);
+	sedlamat::display(gauss);
 
 
     }
@@ -552,6 +552,10 @@ namespace sedlamat
 	    //cv::filter2D(accum, accum, CV_32F, gauss);
 	    //cv::filter2D(accum, accum, CV_32F, gauss);
 	    //sedlamat::print(accum);
+	    double local_max, local_min;
+	    cv::Point local_max_pt, local_min_pt;
+	    cv::minMaxLoc(accum, &local_min, &local_max,
+					&local_min_pt, &local_max_pt);
 
 	    cv::Mat dst;
 	    double min_val, max_val;
@@ -570,11 +574,11 @@ namespace sedlamat
 	    //sedlamat::print(accum);
 	    //sedlamat::display(dst);
 	    cv::Point lpt, rpt;
-	    lpt = cv::Point(gauss.size().width, gauss.size().height);
+	    lpt = cv::Point(gauss.size().width/2, gauss.size().height/2);
 	    rpt = cv::Point(accum.size().width, accum.size().height);
 	    rpt -= lpt;
 	    cv::Rect accum_insides(lpt, rpt);
-	    cv::Rect gauss_rect(cv::Point(0,0), gauss.size());
+	    cv::Rect gauss_rect(cv::Point(0,0), cv::Size(lpt.x,lpt.y));
 
 	    //sedlamat::print(lpt);
 	    //sedlamat::print(rpt);
@@ -584,17 +588,14 @@ namespace sedlamat
 					    //~ CV_FILLED);
 	//    sedlamat::display(accum_mask);
 	    // finds accumulator maximum
-	    double local_max, local_min;
-	    cv::Point local_max_pt, local_min_pt;
-	    cv::minMaxLoc(dst, &local_min, &local_max,
-					&local_min_pt, &local_max_pt);//, accum_mask);
 	    cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
 	    //sedlamat::display(dst);
-	    double minimum = dst.at<float>(local_max_pt)/max_val;
-	    std::cout << minimum << " " << dst.at<float>(local_max_pt) << " " << max_val << std::endl;
-	    cv::Mat accum_mask(accum.size(), CV_32F, cv::Scalar_<float>(1));
+	    //double minimum = dst.at<float>(local_max_pt)/max_val;
+	    //std::cout << minimum << " " << dst.at<float>(local_max_pt) << " " << max_val << std::endl;
+	    cv::Mat accum_mask(dst.size(), CV_32F, cv::Scalar_<float>(1));
 	    gauss_rect += local_max_pt;
 	    gauss_rect -= lpt;
+	    gauss_rect -= cv::Point(lpt.x/2, lpt.y/2);
 	    cv::rectangle(accum_mask, gauss_rect,
 					    cv::Scalar_<float>(0),
 					    CV_FILLED);
@@ -607,19 +608,19 @@ namespace sedlamat
 	    //sedlamat::display(accum_mask);
 	    //sedlamat::display(accum_mask);
 	    //sedlamat::display(accum_mask_inverse);
-	    double sum_outer = cv::sum(accum_mask.mul(accum))[0];
-	    double sum_inner = cv::sum(accum_mask_inverse.mul(accum))[0];
-
-	    sedlamat::print(sum_outer/sum_inner);
+	    double sum_outer = cv::sum(accum_mask.mul(dst))[0];
+	    double sum_inner = cv::sum(accum_mask_inverse.mul(dst))[0];
+	    double minimum = sum_outer/sum_inner/local_max;
+	    if(display_accum) sedlamat::print(minimum);
 	    //~ sedlamat::print(sum_inner);
 		std::lock_guard<std::mutex> guarding(mutualexec);
-		//if (display_accum) sedlamat::display(accum);
+		if (display_accum) sedlamat::display(accum);
 		//if (display_accum) sedlamat::print(local_max);
 	    {
 		// if accum_max greatest so far, then sets the best_ params
-		if (sum_outer/sum_inner < best_accum_val) {
+		if ( minimum < best_accum_val) {
 
-		    best_accum_val = sum_outer/sum_inner;
+		    best_accum_val = minimum;
 		    best_scale = s;
 		    best_angle = angle;
 		    best_ref_pt.x = local_max_pt.x; //+ gauss.size().width -1;

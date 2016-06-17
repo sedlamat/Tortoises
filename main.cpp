@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
 //~ //~
-	std::string file_name = R"(Tg07301.jpg)";
+	std::string file_name = R"(Tg57800.jpg)";
 	std::string imgs_path = path + R"(/Images/Tortoises/)";
 	std::string img_path = imgs_path + file_name;
 	//~ std::string img_path = argv[1];
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 	std::cout << general_hough.get_best_accum_val() << std::endl;
 
 	//~ sedlamat::display(general_hough.get_template_edges());
-	sedlamat::display(general_hough.get_src_edges());
+	//sedlamat::display(general_hough.get_src_edges());
 	//~ sedlamat::display(general_hough.get_src_img());
 	//~ sedlamat::display(general_hough.get_template_img());
 	//~ sedlamat::print("hotovo");
