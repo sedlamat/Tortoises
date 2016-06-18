@@ -106,8 +106,8 @@ namespace sedlamat
 	// size to which the src_img is resized
 	const int max_img_size;
 	// thresholds for creating edge images(lower values->more edges)
-	const int canny_low_thresh = 20;
-	const int canny_high_thresh = 50;
+	const int canny_low_thresh = 50;
+	const int canny_high_thresh = 100;
 
 
 
@@ -310,13 +310,16 @@ namespace sedlamat
 	best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
 	// prepares gaussian kernel for smothing of the accumulator
-	int gauss_size = 9.0*max_img_size/100;
-	double gauss_sigma = 1.0*max_img_size/100;
+	int gauss_size = 2.0*max_img_size/100;
+	double gauss_sigma = 1*max_img_size/100;
 	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
 	//gauss_size = 2;
 	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
 	gauss = gauss * gauss.t();
 	//sedlamat::print(gauss);
+	//gauss = ((cv::Mat_<float>(3,3) << 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1));
+	//gauss.convertTo(gauss, CV_32FC1);
+	std::cout << gauss << std::endl;
 	sedlamat::display(gauss);
 
 
@@ -499,6 +502,7 @@ namespace sedlamat
     */
     void GeneralHough::accumulate(int angle)
     {
+	cv::Size accum_size(src_img_size.width/2, src_img_size.height/2);
 	std::cout << "processing angle " << angle << std::endl;
 	HoughTable rotated_r_table(get_rotated_r_table(angle));
 	HoughTable quanted_rotated_r_table, quanted_src_hough_table;
@@ -509,14 +513,14 @@ namespace sedlamat
 	int num_quant = quanted_src_hough_table.size();
 	double total_num_r_table_pts = 0;
 	for (auto &s : scales) {
-	    cv::Mat accum = cv::Mat(src_img_size, CV_32F,
+	    cv::Mat accum = cv::Mat(accum_size, CV_32F,
 					    cv::Scalar_<float>(0.0));
 	    for (int quant = 0; quant < num_quant; ++quant) {
 		//sedlamat::visualize_points(quanted_src_hough_table[quant], cv::Size(200,200));
 		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
 		//sedlamat::visualize_points(quanted_rotated_r_table[quant], cv::Size(200,200));
 
-		cv::Mat quant_accum = cv::Mat(src_img_size, CV_32F,
+		cv::Mat quant_accum = cv::Mat(accum_size, CV_32F,
 					      cv::Scalar_<float>(0.0));
 		double num_quant_pts
 				= quanted_rotated_r_table[quant].size();
@@ -526,7 +530,7 @@ namespace sedlamat
 			cv::Point refer_pt(src_pt - (pt_diff*s));
 			if (src_img_rect.contains(refer_pt)) {
 			    float &accum_pt =
-				    quant_accum.at<float>(refer_pt);
+				    quant_accum.at<float>(cv::Point(refer_pt.x/2, refer_pt.y/2));
 			    // should not be more that points in r_table
 			    if (accum_pt < num_quant_pts) {
 				accum_pt += 1.0;
@@ -552,6 +556,7 @@ namespace sedlamat
 	    //cv::filter2D(accum, accum, CV_32F, gauss);
 	    //cv::filter2D(accum, accum, CV_32F, gauss);
 	    //sedlamat::print(accum);
+	     if (display_accum) sedlamat::display(accum);
 	    double local_max, local_min;
 	    cv::Point local_max_pt, local_min_pt;
 	    cv::minMaxLoc(accum, &local_min, &local_max,
@@ -610,11 +615,11 @@ namespace sedlamat
 	    //sedlamat::display(accum_mask_inverse);
 	    double sum_outer = cv::sum(accum_mask.mul(dst))[0];
 	    double sum_inner = cv::sum(accum_mask_inverse.mul(dst))[0];
-	    double minimum = sum_outer/sum_inner/local_max;
+	    double minimum = sum_outer/1000.0/local_max;
 	    if(display_accum) sedlamat::print(minimum);
 	    //~ sedlamat::print(sum_inner);
 		std::lock_guard<std::mutex> guarding(mutualexec);
-		if (display_accum) sedlamat::display(accum);
+
 		//if (display_accum) sedlamat::print(local_max);
 	    {
 		// if accum_max greatest so far, then sets the best_ params
@@ -623,8 +628,8 @@ namespace sedlamat
 		    best_accum_val = minimum;
 		    best_scale = s;
 		    best_angle = angle;
-		    best_ref_pt.x = local_max_pt.x; //+ gauss.size().width -1;
-		    best_ref_pt.y = local_max_pt.y; //+ gauss.size().height -1;
+		    best_ref_pt.x = local_max_pt.x*2; //+ gauss.size().width -1;
+		    best_ref_pt.y = local_max_pt.y*2; //+ gauss.size().height -1;
 		}
 	    }
 	}
