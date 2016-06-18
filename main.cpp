@@ -22,13 +22,13 @@ int main(int argc, char *argv[])
     try {
 	time_t t0, t1;
 	std::time(&t0);
-	passwd *pw = getpwuid(getuid());
-	std::string path(pw->pw_dir);
-//~ //~
-	std::string file_name = R"(Tg38100.jpg)";
-	std::string imgs_path = path + R"(/Images/Tortoises/)";
-	std::string img_path = imgs_path + file_name;
-	//~ std::string img_path = argv[1];
+	//~ passwd *pw = getpwuid(getuid());
+	//~ std::string path(pw->pw_dir);
+//~
+	//~ std::string file_name = R"(Tg36400.jpg)";
+	//~ std::string imgs_path = path + R"(/Images/Tortoises/)";
+	//~ std::string img_path = imgs_path + file_name;
+	std::string img_path = argv[1];
 	cv::Mat plastron_img = cv::imread(img_path,1);
 
 
@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
 
 	cv::Point reference_point(65,125);
 
-	//std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
-	std::vector<int> angles = {0};
+	std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
+	//std::vector<int> angles = {0};
 
 
 	//~ std::map<std::string, cv::Point> map_template_junctions;
@@ -54,28 +54,30 @@ int main(int argc, char *argv[])
 					     plastron_template,
 					     reference_point,
 					     angles,
-					     20, 200, 1.0, 0.25, 1);
+					     20, 200, 1.0, 0.25, 0);
 					     //map_template_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
 	//sedlamat::display(general_hough.get_src_edges());
 	general_hough.detect();
 	//~ time_t t1 = clock();
-	std::cout << general_hough.get_best_accum_val() << std::endl;
+	//std::cout << general_hough.get_best_accum_val() << std::endl;
 
 	//~ sedlamat::display(general_hough.get_template_edges());
-	sedlamat::display(general_hough.get_src_edges());
+	//sedlamat::display(general_hough.get_src_edges());
 	//~ sedlamat::display(general_hough.get_src_img());
 	//~ sedlamat::display(general_hough.get_template_img());
 	//~ sedlamat::print("hotovo");
-	//~ cv::imwrite(argv[2],general_hough.get_result_img());
+	cv::imwrite(argv[2],general_hough.get_result_img());
 	std::time(&t1);
 	std::cout << difftime(t1,t0) <<std::endl;
-	sedlamat::display(general_hough.get_result_img());
+	//sedlamat::display(general_hough.get_result_img());
     } catch (std::string e) {
 	std::cout << "Error when processing " << argv[1] << std::endl;
 	std::cout << " " << e << std::endl;
 	exit(1);
+    } catch (...) {
+	std::cout << "Error when processing " << argv[1] << std::endl;
     }
     return 0;
 }

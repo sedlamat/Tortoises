@@ -311,7 +311,7 @@ namespace sedlamat
 
 	// prepares gaussian kernel for smothing of the accumulator
 	int gauss_size = 2.0*max_img_size/100;
-	double gauss_sigma = 1*max_img_size/100;
+	double gauss_sigma = 0.8*max_img_size/100;
 	gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
 	//gauss_size = 2;
 	gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
@@ -319,8 +319,8 @@ namespace sedlamat
 	//sedlamat::print(gauss);
 	//gauss = ((cv::Mat_<float>(3,3) << 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1));
 	//gauss.convertTo(gauss, CV_32FC1);
-	std::cout << gauss << std::endl;
-	sedlamat::display(gauss);
+	//std::cout << gauss << std::endl;
+	//sedlamat::display(gauss);
 
 
     }
@@ -502,8 +502,9 @@ namespace sedlamat
     */
     void GeneralHough::accumulate(int angle)
     {
-	cv::Size accum_size(src_img_size.width/2, src_img_size.height/2);
-	std::cout << "processing angle " << angle << std::endl;
+	int down_size = 2;
+	cv::Size accum_size(src_img_size.width/down_size + 1, src_img_size.height/down_size + 1 );
+	//std::cout << "processing angle " << angle << std::endl;
 	HoughTable rotated_r_table(get_rotated_r_table(angle));
 	HoughTable quanted_rotated_r_table, quanted_src_hough_table;
 	quanted_rotated_r_table = get_quanted_table(rotated_r_table,
@@ -530,7 +531,7 @@ namespace sedlamat
 			cv::Point refer_pt(src_pt - (pt_diff*s));
 			if (src_img_rect.contains(refer_pt)) {
 			    float &accum_pt =
-				    quant_accum.at<float>(cv::Point(refer_pt.x/2, refer_pt.y/2));
+				    quant_accum.at<float>(cv::Point(refer_pt.x/down_size, refer_pt.y/down_size));
 			    // should not be more that points in r_table
 			    if (accum_pt < num_quant_pts) {
 				accum_pt += 1.0;
@@ -614,8 +615,10 @@ namespace sedlamat
 	    //sedlamat::display(accum_mask);
 	    //sedlamat::display(accum_mask_inverse);
 	    double sum_outer = cv::sum(accum_mask.mul(dst))[0];
-	    double sum_inner = cv::sum(accum_mask_inverse.mul(dst))[0];
-	    double minimum = sum_outer/1000.0/local_max;
+	    //double sum_inner = cv::sum(accum_mask_inverse.mul(dst))[0];
+	    double minimum;
+	    if (local_max)
+	    minimum = sum_outer/1000.0/local_max;
 	    if(display_accum) sedlamat::print(minimum);
 	    //~ sedlamat::print(sum_inner);
 		std::lock_guard<std::mutex> guarding(mutualexec);
@@ -628,8 +631,8 @@ namespace sedlamat
 		    best_accum_val = minimum;
 		    best_scale = s;
 		    best_angle = angle;
-		    best_ref_pt.x = local_max_pt.x*2; //+ gauss.size().width -1;
-		    best_ref_pt.y = local_max_pt.y*2; //+ gauss.size().height -1;
+		    best_ref_pt.x = local_max_pt.x*down_size; //+ gauss.size().width -1;
+		    best_ref_pt.y = local_max_pt.y*down_size; //+ gauss.size().height -1;
 		}
 	    }
 	}
