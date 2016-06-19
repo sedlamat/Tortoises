@@ -55,7 +55,7 @@ class GeneralHough {
     };
 
     /**
-	Class HoughTable - deque of vectors of points
+	Class HoughTable - DequeNegIdx (deque) of vectors of points
     */
     struct HoughTable: public DequeNegIdx<std::vector<cv::Point>> {
 	HoughTable(): DequeNegIdx<std::vector<cv::Point>>() {}
@@ -66,7 +66,7 @@ class GeneralHough {
 	void rotate_points(const int angle);
     };
 
-    /** GeneralHough members */
+    /** GeneralHough data members */
 
     // source(with objects to be detected) and template images
     const cv::Mat _src_img_orig, _tmpl_img;
@@ -127,6 +127,8 @@ class GeneralHough {
     cv::Point best_ref_pt;
 
 public:
+    /** GeneralHough public member functions */
+
     GeneralHough(const cv::Mat &source_image,
 	 const cv::Mat &template_image,
 	 const cv::Point reference_point,
@@ -152,6 +154,8 @@ public:
     cv::Mat get_src_edges() const { return src_edges; }
 
 private:
+    /** GeneralHough private member functions */
+
     void fill_r_table();
     void fill_src_hough_table();
     HoughTable get_hough_table(const cv::Mat &img,
