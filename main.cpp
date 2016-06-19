@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
 //~ //~
-	std::string file_name = R"(Tg44200.jpg)";
+	std::string file_name = R"(Tg30200.jpg)";
 	std::string imgs_path = path + R"(/Images/Tortoises/)";
 	std::string img_path = imgs_path + file_name;
 	//~ std::string img_path = argv[1];
@@ -39,8 +39,8 @@ int main(int argc, char *argv[])
 
 	//std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
 	//std::vector<int> angles = {-5,0,5};
-	std::vector<int> angles = {85,90,95};
-	//std::vector<int> angles = {-85,-90,-95};
+	//std::vector<int> angles = {85,90,95};
+	std::vector<int> angles = {-85,-90,-95};
 	//std::vector<int> angles = {0};
 
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	//~ map_template_junctions["6"] = cv::Point(64,168);
 	//~ map_template_junctions["7"] = cv::Point(64,185);
 	//sedlamat::display(img);
-	sedlamat::GeneralHough general_hough(plastron_img,
+	GeneralHough general_hough(plastron_img,
 					     plastron_template,
 					     reference_point,
 					     angles,

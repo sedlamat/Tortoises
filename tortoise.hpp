@@ -31,7 +31,7 @@
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
-#include "my_general_hough.hpp"
+#include "general_hough.hpp"
 
 
 
