@@ -63,23 +63,7 @@ class GeneralHough {
 			    DequeNegIdx<std::vector<cv::Point>>(size){}
 	~HoughTable() {};
 
-	/**
-	    Rotating the table points by angle in degrees.
-	*/
-	void rotate_points(const int angle)
-	{
-	    double cs = std::cos(angle * M_PI / 180.0);
-	    double sn = std::sin(angle * M_PI / 180.0);
-
-	    const auto it_start = this->begin(), it_end = this->end();
-	    for (auto it = it_start; it != it_end; ++it) {
-		for(auto &pt : *it) {
-		    int x = pt.x;
-		    pt.x = cs*pt.x - sn*pt.y;
-		    pt.y = sn*x + cs*pt.y;
-		}
-	    }
-	}
+	void rotate_points(const int angle);
     };
 
     /** GeneralHough members */
@@ -194,7 +178,7 @@ T &GeneralHough::DequeNegIdx<T>::operator[](int idx)
     if (idx < 0) idx += size;
     return this->at(idx);
 }
-// only prefix increment and decrement operators are defined
+
 /**
     Rotating the elements of the deque to the right.
 */
@@ -213,6 +197,7 @@ void GeneralHough::DequeNegIdx<T>::operator--()
     this->push_back(this->front());
     this->pop_front();
 }
+
 /**
     Rotating the elements of the deque by num_shifts, to the
     left or to the right depending on the sign of num_shifts.
@@ -230,6 +215,28 @@ void GeneralHough::DequeNegIdx<T>::shift(int num_shifts)
 	}
     }
 }
+
+/********* class HoughTable members' declaration ********************/
+
+/**
+    Rotating the table points by angle in degrees.
+*/
+void GeneralHough::HoughTable::rotate_points(const int angle)
+{
+    double cs = std::cos(angle * M_PI / 180.0);
+    double sn = std::sin(angle * M_PI / 180.0);
+
+    const auto it_start = this->begin(), it_end = this->end();
+    for (auto it = it_start; it != it_end; ++it) {
+	for(auto &pt : *it) {
+	    int x = pt.x;
+	    pt.x = cs*pt.x - sn*pt.y;
+	    pt.y = sn*x + cs*pt.y;
+	}
+    }
+}
+
+/********* class GeneralHough members' declaration ******************/
 
 /**
     GeneralHough constructor. Sets various parameters, see
