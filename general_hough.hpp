@@ -121,7 +121,7 @@ class GeneralHough {
     const int MAX_INT = std::numeric_limits<int>::max();
 
     /*** Variables for the best fit of the hough transform: ***/
-    double best_accum_val;
+    double best_accum_val = -1.0;
     double best_scale;
     double best_angle;
     cv::Point best_ref_pt;
