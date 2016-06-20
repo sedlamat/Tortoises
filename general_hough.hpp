@@ -45,7 +45,7 @@ class GeneralHough {
     template <typename T> struct DequeNegIdx: public std::deque<T> {
 	DequeNegIdx(): std::deque<T>() {}
 	DequeNegIdx(size_t size): std::deque<T>(size) {}
-	~DequeNegIdx() {};
+	virtual ~DequeNegIdx() {};
 
 	T & operator[](int idx);
 	void operator++();
@@ -61,103 +61,81 @@ class GeneralHough {
 	HoughTable(): DequeNegIdx<std::vector<cv::Point>>() {}
 	HoughTable(size_t size):
 			    DequeNegIdx<std::vector<cv::Point>>(size){}
-	~HoughTable() {};
+	virtual ~HoughTable() {};
 
 	void rotate_points(const int angle);
     };
 
-    /** GeneralHough data members */
+    /** GeneralHough data members **/
 
-    // source(with objects to be detected) and template images
-    const cv::Mat _src_img_orig, _tmpl_img;
-    cv::Mat _src_img, src_edges, tmpl_edges;
+    // source image
+    const cv::Mat _src_img;
+
+    // Hough table for the _src_img
+    HoughTable _src_hough_table;
+
+    // Hough R-table
+    HoughTable r_table;
+
     // template reference point
-    const cv::Point ref_pt;
+    const cv::Point _ref_pt;
 
-    std::vector<int> angles;
-    std::vector<float> scales;
-    // number of possible scales of the object
-    const int num_scales;
-    // size to which the _src_img is resized
-    const int max_img_size;
-    // thresholds for creating edge images(lower values->more edges)
-    const int canny_low_thresh = 50;
-    const int canny_high_thresh = 100;
+    // angles and scales of the template to be tried
+    std::vector<int> _angles;
+    std::vector<float> _scales;
 
-
-
-    /*** other parameters set up in contructor: ***/
     // kernel for smoothing the accumulator
-    cv::Mat gauss;
-    // Size and Rectangle are of the src/_tmpl_img
-    cv::Size src_img_size, tmpl_img_size;
-    cv::Rect src_img_rect, tmpl_img_rect;
-    // scaling step in the accumulator
-    float scale_step;
-    // number of neighbouring quants for pooling in the accumulator
-    int num_quant_neighbours;
-    // template size in pixels (area with non-zero pixels)
-    cv::Rect tmpl_bound_rect;
-    cv::Size tmpl_size;
+    cv::Mat _gauss;
+
     // resize coefficient from original source image
-    double resize_coeff;
-    // min/max_scaling of the template
-    double max_scale;
-    double min_scale;
-    // flag - if 1 then all accumulators will be displayed
-    const bool display_accum;
-    // interest point to be located after GeneralHough run
-    std::map<std::string, cv::Point> tmpl_interest_pts;
+    double _resize_coeff;
 
-    std::mutex mutualexec;
+    // boundary rectangle of the resized source image
+    cv::Rect _resized_src_img_rect;
 
-    // cv::Points grouped by edge directions
-    HoughTable r_table, src_hough_table;
+    // if 1 then all accumulators will be displayed and only one thread
+    const bool _display_accum;
 
-    /*** constants with int and double minima: ***/
-    const double MIN_DOUBLE = -std::numeric_limits<double>::max();
-    const int MIN_INT = -std::numeric_limits<int>::max();
-    const double MAX_DOUBLE = std::numeric_limits<double>::max();
-    const int MAX_INT = std::numeric_limits<int>::max();
+    // interest point to be located after GeneralHough detection
+    std::map<std::string, cv::Point> _tmpl_interest_pts;
 
-    /*** Variables for the best fit of the hough transform: ***/
-    double best_accum_val = -1.0;
-    double best_scale;
-    double best_angle;
-    cv::Point best_ref_pt;
+    // object for safe mutual execution of threads over parts of code
+    std::mutex _mutualexec;
 
-public:
-    /** GeneralHough public member functions */
+    // variables for the best fit of the hough transform
+    double _best_accum_val;
+    double _best_scale;
+    int _best_angle;
+    cv::Point _best_ref_pt;
 
-    GeneralHough(const cv::Mat &source_image,
-	 const cv::Mat &template_image,
-	 const cv::Point reference_point,
-	 const std::vector<int> &angles_vec,
-	 const int number_of_scales = 20,
-	 const int maximum_image_size = 150,
-	 const double maximum_template_scale = 1.0,
-	 const double minimum_template_scale = 0.3,
-	 const bool display_accumulator = 0,
-	 std::map<std::string, cv::Point> template_interest_points
-		    = std::map<std::string, cv::Point>());
+public: /** GeneralHough public member functions */
 
-    ~GeneralHough() {}
+    GeneralHough(
+	    const cv::Mat &src_img,
+	    const cv::Mat &tmpl_img,
+	    const cv::Point ref_pt,
+	    const std::vector<int> &angles,
+	    const int num_scales = 20,
+	    const int max_img_size = 150,
+	    const double max_scale = 1.0,
+	    const double min_scale = 0.3,
+	    const int canny_low_thresh = 50,
+	    const int canny_high_thresh = 100,
+	    const double blur_sigma = 0.5,
+	    const bool display_accum = 0,
+	    const std::map<std::string, cv::Point> tmpl_interest_pts
+				= std::map<std::string, cv::Point>());
+    virtual ~GeneralHough() {}
     void detect();
     cv::Mat get_result_img() const;
-    double get_best_accum_val() const { return best_accum_val; }
-    double get_best_angle() const { return best_angle; }
-    double get_best_scale() const { return best_scale; }
-    cv::Point get_best_ref_pt() const { return best_ref_pt; }
+    double get_best_accum_val() const { return _best_accum_val; }
+    double get_best_angle() const { return _best_angle; }
+    double get_best_scale() const { return _best_scale; }
+    cv::Point get_best_ref_pt() const { return _best_ref_pt; }
     cv::Mat get_src_img() const { return _src_img; }
-    cv::Mat get_tmpl_img() const { return _tmpl_img; }
-    cv::Mat get_tmpl_edges() const { return tmpl_edges;}
-    cv::Mat get_src_edges() const { return src_edges; }
 
-private:
-    /** GeneralHough private member functions */
+private: /** GeneralHough private member functions */
 
-    void fill_r_table();
-    void fill_src_hough_table();
     HoughTable get_hough_table(const cv::Mat &img,
 			       const cv::Mat &img_edges);
     HoughTable get_rotated_r_table(const int angle) const;
@@ -167,6 +145,7 @@ private:
 				 const int num_quants = 4);
     cv::Mat get_gradient_orientation(const cv::Mat& src);
 };
+
 
 /********* class DequeNegIdx members' declaration *******************/
 
@@ -249,73 +228,112 @@ void GeneralHough::HoughTable::rotate_points(const int angle)
     @param see class declaration.
     @return void.
 */
-GeneralHough::GeneralHough(const cv::Mat &source_image,
-	const cv::Mat &template_image,
-	const cv::Point reference_point,
-	const std::vector<int> &angles_vec,
-	const int number_of_scales,
-	const int maximum_image_size,
-	const double maximum_template_scale,
-	const double minimum_template_scale,
-	const bool display_accumulator,
-	std::map<std::string, cv::Point> template_interest_points):
-	_src_img_orig(source_image),
-	_tmpl_img(template_image),
-	ref_pt(reference_point),
-	angles(angles_vec),
-	num_scales(number_of_scales),
-	max_img_size(maximum_image_size),
-	display_accum(display_accumulator),
-	tmpl_interest_pts(template_interest_points)
+GeneralHough::GeneralHough(
+	const cv::Mat &src_img,
+	const cv::Mat &tmpl_img,
+	const cv::Point ref_pt,
+	const std::vector<int> &angles,
+	const int num_scales,
+	const int max_img_size,
+	const double max_scale,
+	const double min_scale,
+	const int canny_low_thresh,
+	const int canny_high_thresh,
+	const double blur_sigma,
+	const bool display_accum,
+	const std::map<std::string, cv::Point> tmpl_interest_pts)
+	:
+	_src_img(src_img),
+	_ref_pt(ref_pt),
+	_angles(angles),
+	_display_accum(display_accum),
+	_tmpl_interest_pts(tmpl_interest_pts),
+	_best_accum_val(-1.0),
+	_best_scale(-1.0),
+	_best_angle(-1),
+	_best_ref_pt(cv::Point(-1,-1)
 {
     // checks max_img_size
     if ( ! (1 <= max_img_size && max_img_size <= 1000) ) {
 	throw "Wrong: max_img_size must be in [1,1000]";
     }
 
-    /* checks src/tempalate_img AND resizes _src_img_orig
-       AND sets src/templ_size/rect */
-    if (!_src_img_orig.empty() && !_tmpl_img.empty()) {
-	tmpl_img_size = _tmpl_img.size();
-	tmpl_img_rect = cv::Rect(cv::Point(0,0), tmpl_img_size);
+    // checks tmpl_img
+    if (tmpl_img.empty()) {
+	throw "Template image is empty!";
+    }
 
-	// Warns if ref_pt outside template_img
-	if (!ref_pt.inside(tmpl_img_rect)) {
+    //checks _ref_pt
+    if (!_ref_pt.inside(cv::Rect(cv::Point(0,0), tmpl_img.size()))) {
 	    throw "Wrong: Reference point outside template image.";
-	}
-
-	// Resizes the original source image
-	int src_w = _src_img_orig.cols;
-	int src_h = _src_img_orig.rows;
-	resize_coeff = max_img_size * 1.0 / std::max(src_w,src_h);
-	cv::resize(_src_img_orig, _src_img, cv::Size(0,0),
-					resize_coeff, resize_coeff);
-
-	src_img_size = _src_img.size();
-	src_img_rect = cv::Rect(cv::Point(0,0), src_img_size);
-	cv::GaussianBlur(_src_img, _src_img, cv::Size(0,0), 0.5);
-    } else {
-	throw "Source and/or template image is empty!";
     }
 
-    // sets the src_edges
-    CV_Assert(_src_img.channels() == 3 || _src_img.channels() == 1);
-    if (_src_img.channels() == 3) {
-	cv::cvtColor(_src_img, src_edges, cv::COLOR_BGR2GRAY);
-    } else {
-	_src_img.copyTo(src_edges);
+     // checks _src_img
+    if (_src_img.empty()) {
+	throw "Source image is empty!";
     }
-    cv::Canny(src_edges, src_edges,	canny_low_thresh,
+
+    // resizes _src_img into src_img_resized
+    cv::Mat src_img_resized;
+
+    int src_w = _src_img.cols;
+    int src_h = _src_img.rows;
+
+    _resize_coeff = max_img_size * 1.0 / std::max(src_w,src_h);
+    cv::resize(_src_img, src_img_resized, cv::Size(0,0),
+				    _resize_coeff, _resize_coeff);
+
+    // sets _resized_src_img_rect
+    _resized_src_img_rect = cv::Rect(cv::Point(0,0),
+					src_img_resized.size());
+
+    // blurs the src_img_resized
+    cv::GaussianBlur(src_img_resized, src_img_resized, cv::Size(0,0),
+							blur_sigma);
+
+    // sets source image edges
+    cv::Mat src_edges;
+
+    // sets the _src_edges
+    CV_Assert(src_img_resized.channels() == 3 || src_img_resized.channels() == 1);
+    if (src_img_resized.channels() == 3) {
+	cv::cvtColor(src_img_resized, _src_edges, cv::COLOR_BGR2GRAY);
+    } else if (src_img_resized.channels() == 1) {
+	src_img_resized.copyTo(_src_edges);
+    } else {
+	throw "Wrong: Source image has to have 1 or 3 channels.";
+    }
+
+    cv::Canny(_src_edges, _src_edges,	canny_low_thresh,
 						canny_high_thresh);
 
-    // sets the tmpl_edges
+    // scaling step in the accumulator
+    float scale_step;
+
+    // template size in pixels (area with non-zero pixels)
+    cv::Rect tmpl_bound_rect;
+    cv::Size tmpl_size;
+
+    // thresholds for creating edge images(lower values->more edges)
+
+
+    cv::Mat src_img_resized, _src_edges, _tmpl_edges, _tmpl_img;
+
+
+
+
+
+
+
+
+    // sets the _tmpl_edges
     CV_Assert(_tmpl_img.channels() == 3 || _tmpl_img.channels() == 1);
     if (_tmpl_img.channels() == 3) {
-	cv::cvtColor(_tmpl_img, tmpl_edges, cv::COLOR_BGR2GRAY);
+	cv::cvtColor(_tmpl_img, _tmpl_edges, cv::COLOR_BGR2GRAY);
     } else {
-	_tmpl_img.copyTo(tmpl_edges);
+	_tmpl_img.copyTo(_tmpl_edges);
     }
-    cv::Canny(tmpl_edges, tmpl_edges, canny_low_thresh,
+    cv::Canny(_tmpl_edges, _tmpl_edges, canny_low_thresh,
 						canny_high_thresh);
 
 
@@ -331,7 +349,7 @@ GeneralHough::GeneralHough(const cv::Mat &source_image,
 	double src_templ_size_koef = max_img_size*1.0 /
 			std::max(tmpl_size.width,tmpl_size.height);
 
-	//~ for (int scale_idx = 0; scale_idx < num_scales; ++scale_idx) {
+	//~ for (int scale_idx = 0; scale_idx < _num_scales; ++scale_idx) {
 	//~ cv::Mat accum = cv::Mat(src_img_size, CV_32F,
 					//~ cv::Scalar_<float>(0.0));
 	//~ double s = min_scale + scale_idx * scale_step;
@@ -342,33 +360,45 @@ GeneralHough::GeneralHough(const cv::Mat &source_image,
 		      max_tmpl_scale and both in (0,1].";
     }
 
-    // checks num_scales AND sets scale_step
+    // checks _num_scales AND sets scale_step
     double scale_step;
-    if (1 < num_scales && num_scales <= 1000) {
-	scale_step = (max_scale - min_scale) / (num_scales - 1);
-    } else if (num_scales == 1) {
+    if (1 < _num_scales && _num_scales <= 1000) {
+	scale_step = (max_scale - min_scale) / (_num_scales - 1);
+    } else if (_num_scales == 1) {
 	scale_step = 0;
 	min_scale = max_scale;
     } else {
 	throw "Wrong: num_scales must be in [1,1000].";
     }
 
-    for (int ii = 0; ii < num_scales; ++ii) {
-	scales.push_back(min_scale + ii * scale_step);
+    for (int ii = 0; ii < _num_scales; ++ii) {
+	_scales.push_back(min_scale + ii * scale_step);
     }
 
     // sets the values of the best fit
-    best_accum_val = MAX_DOUBLE;
-    best_scale = MIN_DOUBLE;
-    best_angle = MIN_DOUBLE;
-    best_ref_pt = cv::Point(MIN_INT, MIN_INT);
+    _best_accum_val = MAX_DOUBLE;
+    _best_scale = MIN_DOUBLE;
+    _best_angle = MIN_DOUBLE;
+    _best_ref_pt = cv::Point(MIN_INT, MIN_INT);
 
     // prepares gaussian kernel for smothing of the accumulator
     int gauss_size = 2.0*max_img_size/100;
     double gauss_sigma = 0.8*max_img_size/100;
     gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
-    gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
-    gauss = gauss * gauss.t();
+    _gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
+    _gauss = _gauss * _gauss.t();
+
+
+    r_table = this->get_hough_table(_tmpl_img, _tmpl_edges);
+
+    // shifts all points in HoughTable from the reference point
+    for(auto &pts : r_table) {
+	for(auto &pt : pts) {
+	    pt -= _ref_pt;
+	}
+    }
+
+    _src_hough_table = get_hough_table(src_img_resized, _src_edges);
 }
 
 /**
@@ -446,38 +476,6 @@ GeneralHough::HoughTable GeneralHough::get_hough_table(const cv::Mat &img,
 	return grad_orient;
     }
 
-/**
-    Fills the R-table. First fills the r_table with hough points
-    from tmpl_img and tmpl_edges and then shifts them by
-    the reference point.
-
-    @param void.
-    @return void.
-*/
-void GeneralHough::fill_r_table()
-{
-    r_table = this->get_hough_table(_tmpl_img, tmpl_edges);
-
-    // shifts all points in HoughTable from the reference point
-    for(auto &pts : r_table) {
-	for(auto &pt : pts) {
-	    pt -= ref_pt;
-	}
-    }
-}
-
-
-/**
-    Fills the src_hough_pts using _src_img and src_edges.
-
-    @param void.
-    @return void.
-*/
-void GeneralHough::fill_src_hough_table()
-{
-    src_hough_table = get_hough_table(_src_img, src_edges);
-}
-
 
 /**
     Sets rotated_r_table by shifting the r_table by num_table_shift
@@ -514,11 +512,11 @@ void GeneralHough::accumulate(const int angle)
     HoughTable quanted_rotated_r_table, quanted_src_hough_table;
     quanted_rotated_r_table = get_quanted_table(rotated_r_table,
 						angle);
-    quanted_src_hough_table = get_quanted_table(src_hough_table,
+    quanted_src_hough_table = get_quanted_table(_src_hough_table,
 						angle);
     int num_quant = quanted_src_hough_table.size();
     double total_num_r_table_pts = 0;
-    for (auto &s : scales) {
+    for (auto &s : _scales) {
 	cv::Mat accum = cv::Mat(accum_size, CV_32F,
 					cv::Scalar_<float>(0.0));
 	for (int quant = 0; quant < num_quant; ++quant) {
@@ -530,7 +528,7 @@ void GeneralHough::accumulate(const int angle)
 	    for(const auto &pt_diff : quanted_rotated_r_table[quant]) {
 		for(const auto &src_pt : quanted_src_hough_table[quant]) {
 		    cv::Point refer_pt(src_pt - (pt_diff*s));
-		    if (src_img_rect.contains(refer_pt)) {
+		    if (_resized_src_img_rect.contains(refer_pt)) {
 			float &accum_pt =
 				quant_accum.at<float>(cv::Point(refer_pt.x/down_size, refer_pt.y/down_size));
 			// should not be more that points in r_table
@@ -548,9 +546,9 @@ void GeneralHough::accumulate(const int angle)
 	}
 
 	// smooths the accumulator
-	cv::filter2D(accum, accum, CV_32F, gauss);
+	cv::filter2D(accum, accum, CV_32F, _gauss);
 
-	if (display_accum) sedlamat::display(accum);
+	if (_display_accum) sedlamat::display(accum);
 
 	double local_max, local_min;
 	cv::Point local_max_pt, local_min_pt;
@@ -579,7 +577,7 @@ void GeneralHough::accumulate(const int angle)
 					//~ CV_FILLED);
     //    sedlamat::display(accum_mask);
 	// finds accumulator maximum
-	cv::matchTemplate(dst, gauss, dst, CV_TM_SQDIFF);
+	cv::matchTemplate(dst, _gauss, dst, CV_TM_SQDIFF);
 	//sedlamat::display(dst);
 	//double minimum = dst.at<float>(local_max_pt)/max_val;
 	//std::cout << minimum << " " << dst.at<float>(local_max_pt) << " " << max_val << std::endl;
@@ -604,20 +602,20 @@ void GeneralHough::accumulate(const int angle)
 	double minimum;
 	if (local_max)
 	minimum = sum_outer/1000.0/local_max;
-	if(display_accum) sedlamat::print(minimum);
+	if(_display_accum) sedlamat::print(minimum);
 	//~ sedlamat::print(sum_inner);
-	    std::lock_guard<std::mutex> guarding(mutualexec);
+	    std::lock_guard<std::mutex> guarding(_mutualexec);
 
-	    //if (display_accum) sedlamat::print(local_max);
+	    //if (_display_accum) sedlamat::print(local_max);
 	{
 	    // if accum_max greatest so far, then sets the best_ params
-	    if ( minimum < best_accum_val) {
+	    if ( minimum < _best_accum_val) {
 
-		best_accum_val = minimum;
-		best_scale = s;
-		best_angle = angle;
-		best_ref_pt.x = local_max_pt.x*down_size;
-		best_ref_pt.y = local_max_pt.y*down_size;
+		_best_accum_val = minimum;
+		_best_scale = s;
+		_best_angle = angle;
+		_best_ref_pt.x = local_max_pt.x*down_size;
+		_best_ref_pt.y = local_max_pt.y*down_size;
 	    }
 	}
     }
@@ -663,7 +661,7 @@ GeneralHough::HoughTable GeneralHough::get_quanted_table(HoughTable &table,
 /**
     Finds and sets the best_ params of the Hough transform
     by rotating the r_table and filling the Hough accumulator.
-    After execution, best_accum_val/angle/ref_pt/scale will
+    After execution, _best_accum_val/angle/_ref_pt/scale will
     hold the information of the estimated location of the
     target object(s).
 
@@ -675,9 +673,9 @@ void GeneralHough::detect()
     this->fill_r_table();
     this->fill_src_hough_table();
     // accumulate for all rotated r-tables
-    if (!display_accum) {
+    if (!_display_accum) {
 	std::vector<std::thread> threads;
-	for (auto angle : angles) { //all angles in degrees integers!!
+	for (auto angle : _angles) { //all angles in degrees integers!!
 	    threads.push_back(std::thread(&GeneralHough::accumulate,this,angle));
 	    //accumulate(angle);
 	}
@@ -685,7 +683,7 @@ void GeneralHough::detect()
 	    t.join();
 	}
     } else {
-	for (auto angle : angles) {
+	for (auto angle : _angles) {
 	    accumulate(angle);
 	}
     }
@@ -695,24 +693,24 @@ void GeneralHough::detect()
 	//~ rot_rad = rot_idx * rot_step_rad;
     //~ }
 
-    double inv_resize_coeff = 1.0 / resize_coeff;
-    best_scale *= inv_resize_coeff;
-    best_ref_pt *= inv_resize_coeff;
+    double inv_resize_coeff = 1.0 / _resize_coeff;
+    _best_scale *= inv_resize_coeff;
+    _best_ref_pt *= inv_resize_coeff;
 
-    if (!tmpl_interest_pts.empty()) {
-	double cs = std::cos(best_angle*M_PI/180.0);
-	double sn = std::sin(best_angle*M_PI/180.0);
+    if (!_tmpl_interest_pts.empty()) {
+	double cs = std::cos(_best_angle*M_PI/180.0);
+	double sn = std::sin(_best_angle*M_PI/180.0);
 
 	std::map<std::string, cv::Point>::iterator it, it_end;
-	it = tmpl_interest_pts.begin();
-	it_end = tmpl_interest_pts.end();
+	it = _tmpl_interest_pts.begin();
+	it_end = _tmpl_interest_pts.end();
 	while (it != it_end) {
-	    it->second -= ref_pt;
+	    it->second -= _ref_pt;
 	    int x = it->second.x;
 	    it->second.x = cs*it->second.x - sn*it->second.y;
 	    it->second.y = sn*x + cs*it->second.y;
-	    it->second *= best_scale;
-	    it->second += best_ref_pt;
+	    it->second *= _best_scale;
+	    it->second += _best_ref_pt;
 	    ++it;
 	}
     }
@@ -728,14 +726,14 @@ cv::Mat GeneralHough::get_result_img() const
 {
     cv::Mat dst;
     //make a deep copy
-    _src_img_orig.copyTo(dst);
-    cv::Rect src_img_orig_rect(cv::Point(0,0), _src_img_orig.size());
+    _src_img.copyTo(dst);
+    cv::Rect src_img_orig_rect(cv::Point(0,0), _src_img.size());
 
     // rotates and shift the R-Table points
-    double cs = std::cos(best_angle*M_PI/180.0);
-    double sn = std::sin(best_angle*M_PI/180.0);
+    double cs = std::cos(_best_angle*M_PI/180.0);
+    double sn = std::sin(_best_angle*M_PI/180.0);
 
-    double inv_resize_coeff = 1.0 / resize_coeff;
+    double inv_resize_coeff = 1.0 / _resize_coeff;
     cv::Point shift_pt(inv_resize_coeff,inv_resize_coeff);
 
     for(auto table_quant : r_table) {
@@ -743,8 +741,8 @@ cv::Mat GeneralHough::get_result_img() const
 	    int x = pt.x;
 	    pt.x = cs*pt.x - sn*pt.y;
 	    pt.y = sn*x + cs*pt.y;
-	    pt = pt * best_scale;
-	    pt = pt + best_ref_pt;
+	    pt = pt * _best_scale;
+	    pt = pt + _best_ref_pt;
 	    if (src_img_orig_rect.contains(pt)) {
 		cv::rectangle(dst,
 			      pt-shift_pt,
@@ -753,10 +751,10 @@ cv::Mat GeneralHough::get_result_img() const
 	    }
 	}
     }
-    if (!tmpl_interest_pts.empty()) {
+    if (!_tmpl_interest_pts.empty()) {
 	std::map<std::string, cv::Point>::const_iterator it, it_end;
-	it = tmpl_interest_pts.cbegin();
-	it_end = tmpl_interest_pts.cend();
+	it = _tmpl_interest_pts.cbegin();
+	it_end = _tmpl_interest_pts.cend();
 	while (it != it_end) {
 	    if (src_img_orig_rect.contains(it->second)) {
 		cv::rectangle(dst,
