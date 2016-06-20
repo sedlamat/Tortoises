@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 					     plastron_template,
 					     reference_point,
 					     angles,
-					     20, 200, 1.0, 0.3, 1);
+					     20, 200, 1.0, 0.3, 50,100,0.5,1);
 					     //map_template_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	//std::cout << general_hough.get_best_accum_val() << std::endl;
 
 	//~ sedlamat::display(general_hough.get_template_edges());
-	sedlamat::display(general_hough.get_src_edges());
+	//sedlamat::display(general_hough.get_src_edges());
 	//~ sedlamat::display(general_hough.get_src_img());
 	//~ sedlamat::display(general_hough.get_template_img());
 	//~ sedlamat::print("hotovo");

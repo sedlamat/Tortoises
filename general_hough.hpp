@@ -75,7 +75,7 @@ class GeneralHough {
     HoughTable _src_hough_table;
 
     // Hough R-table
-    HoughTable r_table;
+    HoughTable _r_table;
 
     // template reference point
     const cv::Point _ref_pt;
@@ -137,13 +137,13 @@ public: /** GeneralHough public member functions */
 private: /** GeneralHough private member functions */
 
     HoughTable get_hough_table(const cv::Mat &img,
-			       const cv::Mat &img_edges);
+			       const cv::Mat &img_edges) const;
     HoughTable get_rotated_r_table(const int angle) const;
     void accumulate(const int angle);
     HoughTable get_quanted_table(HoughTable &table,
 				 const int angle,
 				 const int num_quants = 4);
-    cv::Mat get_gradient_orientation(const cv::Mat& src);
+    cv::Mat get_gradient_orientation(const cv::Mat& src) const;
 };
 
 
@@ -235,8 +235,8 @@ GeneralHough::GeneralHough(
 	const std::vector<int> &angles,
 	const int num_scales,
 	const int max_img_size,
-	const double max_scale,
-	const double min_scale,
+	double max_scale,
+	double min_scale,
 	const int canny_low_thresh,
 	const int canny_high_thresh,
 	const double blur_sigma,
@@ -251,7 +251,7 @@ GeneralHough::GeneralHough(
 	_best_accum_val(-1.0),
 	_best_scale(-1.0),
 	_best_angle(-1),
-	_best_ref_pt(cv::Point(-1,-1)
+	_best_ref_pt(cv::Point(-1,-1))
 {
     // checks max_img_size
     if ( ! (1 <= max_img_size && max_img_size <= 1000) ) {
@@ -264,7 +264,7 @@ GeneralHough::GeneralHough(
     }
 
     //checks _ref_pt
-    if (!_ref_pt.inside(cv::Rect(cv::Point(0,0), tmpl_img.size()))) {
+    if ( ! _ref_pt.inside(cv::Rect(cv::Point(0,0), tmpl_img.size()))) {
 	    throw "Wrong: Reference point outside template image.";
     }
 
@@ -294,125 +294,102 @@ GeneralHough::GeneralHough(
     // sets source image edges
     cv::Mat src_edges;
 
-    // sets the _src_edges
-    CV_Assert(src_img_resized.channels() == 3 || src_img_resized.channels() == 1);
     if (src_img_resized.channels() == 3) {
-	cv::cvtColor(src_img_resized, _src_edges, cv::COLOR_BGR2GRAY);
+	cv::cvtColor(src_img_resized, src_edges, cv::COLOR_BGR2GRAY);
     } else if (src_img_resized.channels() == 1) {
-	src_img_resized.copyTo(_src_edges);
+	src_img_resized.copyTo(src_edges);
     } else {
 	throw "Wrong: Source image has to have 1 or 3 channels.";
     }
 
-    cv::Canny(_src_edges, _src_edges,	canny_low_thresh,
-						canny_high_thresh);
+    cv::Canny(src_edges, src_edges, canny_low_thresh,
+						    canny_high_thresh);
 
-    // scaling step in the accumulator
-    float scale_step;
+    // fills source Hough table
+    _src_hough_table = this->get_hough_table(src_img_resized,
+							    src_edges);
 
-    // template size in pixels (area with non-zero pixels)
-    cv::Rect tmpl_bound_rect;
-    cv::Size tmpl_size;
+    // sets template edges
+    cv::Mat tmpl_edges;
 
-    // thresholds for creating edge images(lower values->more edges)
-
-
-    cv::Mat src_img_resized, _src_edges, _tmpl_edges, _tmpl_img;
-
-
-
-
-
-
-
-
-    // sets the _tmpl_edges
-    CV_Assert(_tmpl_img.channels() == 3 || _tmpl_img.channels() == 1);
-    if (_tmpl_img.channels() == 3) {
-	cv::cvtColor(_tmpl_img, _tmpl_edges, cv::COLOR_BGR2GRAY);
+    if (tmpl_img.channels() == 3) {
+	cv::cvtColor(tmpl_img, tmpl_edges, cv::COLOR_BGR2GRAY);
+    } else if (tmpl_img.channels() == 1) {
+	tmpl_img.copyTo(tmpl_edges);
     } else {
-	_tmpl_img.copyTo(_tmpl_edges);
+	throw "Wrong: Template image has to have 1 or 3 channels.";
     }
-    cv::Canny(_tmpl_edges, _tmpl_edges, canny_low_thresh,
-						canny_high_thresh);
+    cv::Canny(tmpl_edges, tmpl_edges, canny_low_thresh,
+						    canny_high_thresh);
 
+    // fills Hough R-table
+    _r_table = this->get_hough_table(tmpl_img, tmpl_edges);
 
-    // checks min/max_tmpl_scale AND sets min/max_scale
-    if (minimum_template_scale < maximum_template_scale &&
-			    0 < minimum_template_scale &&
-				    maximum_template_scale <= 1) {
+    // shifts all points in the R-table by the reference point
+    for(auto &pts : _r_table) {
+	for(auto &pt : pts) {
+	    pt -= _ref_pt;
+	}
+    }
 
-	cv::Mat tmpl_pts;
-	cv::findNonZero(_tmpl_img, tmpl_pts);
-	tmpl_bound_rect = cv::boundingRect(tmpl_pts);
-	tmpl_size = tmpl_bound_rect.size();
-	double src_templ_size_koef = max_img_size*1.0 /
+    // checks min/max_scale
+    if (min_scale < max_scale && 0 < min_scale && max_scale <= 1) {
+    	throw "Wrong: min_scale must be < then max_scale and both \
+							    in (0,1].";
+    }
+
+    // sets proper min/max_scale based on size of tmpl_img/src_img_res.
+    cv::Mat tmpl_pts;
+    cv::findNonZero(tmpl_img, tmpl_pts);
+    cv::Size tmpl_size = cv::boundingRect(tmpl_pts).size();
+    const double src_templ_size_koef = max_img_size*1.0 /
 			std::max(tmpl_size.width,tmpl_size.height);
 
-	//~ for (int scale_idx = 0; scale_idx < _num_scales; ++scale_idx) {
-	//~ cv::Mat accum = cv::Mat(src_img_size, CV_32F,
-					//~ cv::Scalar_<float>(0.0));
-	//~ double s = min_scale + scale_idx * scale_step;
-	max_scale = maximum_template_scale * src_templ_size_koef;
-	min_scale = minimum_template_scale * src_templ_size_koef;
-    } else {
-	throw "Wrong: min_tmpl_scale param must be < then \
-		      max_tmpl_scale and both in (0,1].";
-    }
+    max_scale *= src_templ_size_koef;
+    min_scale *= src_templ_size_koef;
 
-    // checks _num_scales AND sets scale_step
-    double scale_step;
-    if (1 < _num_scales && _num_scales <= 1000) {
-	scale_step = (max_scale - min_scale) / (_num_scales - 1);
-    } else if (_num_scales == 1) {
-	scale_step = 0;
-	min_scale = max_scale;
-    } else {
+    // checks num_scales
+    if ( ! (1 <= num_scales && num_scales <= 1000) ) {
 	throw "Wrong: num_scales must be in [1,1000].";
     }
 
-    for (int ii = 0; ii < _num_scales; ++ii) {
+    // sets scale_step
+    float scale_step;
+
+    if (num_scales == 1) {
+	scale_step = 0;
+	min_scale = max_scale;
+    } else {
+	scale_step = (max_scale - min_scale) / (num_scales - 1);
+    }
+
+    // fills _scales
+    for (int ii = 0; ii < num_scales; ++ii) {
 	_scales.push_back(min_scale + ii * scale_step);
     }
 
-    // sets the values of the best fit
-    _best_accum_val = MAX_DOUBLE;
-    _best_scale = MIN_DOUBLE;
-    _best_angle = MIN_DOUBLE;
-    _best_ref_pt = cv::Point(MIN_INT, MIN_INT);
-
-    // prepares gaussian kernel for smothing of the accumulator
+    // fills gaussian kernel
     int gauss_size = 2.0*max_img_size/100;
     double gauss_sigma = 0.8*max_img_size/100;
     gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
     _gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
     _gauss = _gauss * _gauss.t();
 
-
-    r_table = this->get_hough_table(_tmpl_img, _tmpl_edges);
-
-    // shifts all points in HoughTable from the reference point
-    for(auto &pts : r_table) {
-	for(auto &pt : pts) {
-	    pt -= _ref_pt;
-	}
-    }
-
-    _src_hough_table = get_hough_table(src_img_resized, _src_edges);
 }
 
 /**
-    Fills in the hough_points container with Hough points (edge
-    points with their orientation.
+    Fills in the HoughTable container with Hough points (edge
+    points with their direction).
 
     @param hough_points - HoughTable container to be filled.
-    @param img - Image which will provide edge points and
-		 orientations.
-    @param img_edges - Edge image of img parameter.
-    @return void.
+    @param img - image which will provide edge points and
+		 directions.
+    @param img_edges - edge image of img.
+    @return filled HoughTable container.
 */
-GeneralHough::HoughTable GeneralHough::get_hough_table(const cv::Mat &img,
-					  const cv::Mat &img_edges)
+GeneralHough::HoughTable GeneralHough::get_hough_table(
+					const cv::Mat &img,
+					const cv::Mat &img_edges) const
 {
     HoughTable hough_table(180); // 0...179
 
@@ -437,44 +414,26 @@ GeneralHough::HoughTable GeneralHough::get_hough_table(const cv::Mat &img,
     return hough_table;
 }
 
-    std::vector<cv::Mat> get_gradient_scharr(const cv::Mat &src)
-    {
-	std::vector<cv::Mat> dxdy(2);
-	cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3,
-					       10, 0,-10,
-					        3, 0, -3);
-	cv::filter2D(src, dxdy[0], CV_32F, kernel);
-	cv::transpose(kernel, kernel);
-	//cv::flip(kernel,kernel,0);
-	/* Flip it if the kernel mask is to be
-	applied on the image as it is displayed (in the same way for y as
-	for x), otherwise as the y coordinate of cv::Mat image goes from
-	top to bottom in an image, it would give results upside down (for
-	dy). Counter-clockwise.*/
-	cv::filter2D(src, dxdy[1], CV_32F, kernel);
-	return dxdy;
+cv::Mat GeneralHough::get_gradient_orientation(const cv::Mat& src) const
+{
+    cv::Mat gray, grad_orient;
+    if (src.channels() == 3) {
+	cv::cvtColor(src, gray, CV_BGR2GRAY);
+    } else if (src.channels() == 1) {
+	gray =  src;
+    } else {
+	throw "Incompatible number of channels";
     }
-
-    cv::Mat GeneralHough::get_gradient_orientation(const cv::Mat& src)
-    {
-	cv::Mat gray, grad_orient;
-	if (src.channels() == 3) {
-	    cv::cvtColor(src, gray, CV_BGR2GRAY);
-	} else if (src.channels() == 1) {
-	    gray =  src;
-	} else {
-	    throw "Incompatible number of channels";
-	}
-	cv::Mat dx, dy;
-	cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3,
-					       10, 0,-10,
-					        3, 0, -3);
-	cv::filter2D(gray, dx, CV_32F, kernel);
-	cv::transpose(kernel, kernel);
-	cv::filter2D(gray, dy, CV_32F, kernel);
-	cv::phase(dx, dy, grad_orient, 1);
-	return grad_orient;
-    }
+    cv::Mat dx, dy;
+    cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3,
+					   10, 0,-10,
+					    3, 0, -3);
+    cv::filter2D(gray, dx, CV_32F, kernel);
+    cv::transpose(kernel, kernel);
+    cv::filter2D(gray, dy, CV_32F, kernel);
+    cv::phase(dx, dy, grad_orient, 1);
+    return grad_orient;
+}
 
 
 /**
@@ -484,9 +443,10 @@ GeneralHough::HoughTable GeneralHough::get_hough_table(const cv::Mat &img,
     @param angle - Angle in degrees by which points are rotated.
     @return void.
 */
-GeneralHough::HoughTable GeneralHough::get_rotated_r_table(const int angle) const
+GeneralHough::HoughTable GeneralHough::get_rotated_r_table(
+						const int angle) const
 {
-    HoughTable rotated_r_table = r_table;
+    HoughTable rotated_r_table = _r_table;
 
     rotated_r_table.shift(angle);
 
@@ -506,6 +466,7 @@ GeneralHough::HoughTable GeneralHough::get_rotated_r_table(const int angle) cons
 void GeneralHough::accumulate(const int angle)
 {
     int down_size = 2;
+    cv::Size src_img_size(_resized_src_img_rect.size());
     cv::Size accum_size(src_img_size.width/down_size + 1,
 			src_img_size.height/down_size + 1 );
     HoughTable rotated_r_table(get_rotated_r_table(angle));
@@ -563,7 +524,7 @@ void GeneralHough::accumulate(const int angle)
 	accum.convertTo(dst, CV_32F, alpha, beta);
 
 	cv::Point lpt, rpt;
-	lpt = cv::Point(gauss.size().width/2, gauss.size().height/2);
+	lpt = cv::Point(_gauss.size().width/2, _gauss.size().height/2);
 	rpt = cv::Point(accum.size().width, accum.size().height);
 	rpt -= lpt;
 	cv::Rect accum_insides(lpt, rpt);
@@ -621,9 +582,10 @@ void GeneralHough::accumulate(const int angle)
     }
 }
 
-GeneralHough::HoughTable GeneralHough::get_quanted_table(HoughTable &table,
-					   const int angle,
-					   const int num_quants)
+GeneralHough::HoughTable GeneralHough::get_quanted_table(
+					    HoughTable &table,
+					    const int angle,
+					    const int num_quants)
 {
     //~ for (int ii = 0; ii < 180; ++ii) {
 	//~ sedlamat::visualize_points(table[ii], cv::Size(500,500), cv::Point(150,150));
@@ -670,8 +632,6 @@ GeneralHough::HoughTable GeneralHough::get_quanted_table(HoughTable &table,
 */
 void GeneralHough::detect()
 {
-    this->fill_r_table();
-    this->fill_src_hough_table();
     // accumulate for all rotated r-tables
     if (!_display_accum) {
 	std::vector<std::thread> threads;
@@ -736,7 +696,7 @@ cv::Mat GeneralHough::get_result_img() const
     double inv_resize_coeff = 1.0 / _resize_coeff;
     cv::Point shift_pt(inv_resize_coeff,inv_resize_coeff);
 
-    for(auto table_quant : r_table) {
+    for(auto table_quant : _r_table) {
 	for(auto pt : table_quant) {
 	    int x = pt.x;
 	    pt.x = cs*pt.x - sn*pt.y;
