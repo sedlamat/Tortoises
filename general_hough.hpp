@@ -22,8 +22,6 @@
 #include <thread>
 #include <mutex>
 #include <cmath>
-#include <ctime>
-#include <limits>
 
 /* THIRD PARTY LIBRARIES */
 #include "opencv2/core/core.hpp"
@@ -116,7 +114,7 @@ public: /** GeneralHough public member functions */
 	    const cv::Point ref_pt,
 	    const std::vector<int> &angles,
 	    const int num_scales = 20,
-	    const int max_img_size = 150,
+	    const int max_img_size = 200,
 	    const double max_scale = 1.0,
 	    const double min_scale = 0.3,
 	    const int canny_low_thresh = 50,
@@ -132,7 +130,6 @@ public: /** GeneralHough public member functions */
     double get_best_angle() const { return _best_angle; }
     double get_best_scale() const { return _best_scale; }
     cv::Point get_best_ref_pt() const { return _best_ref_pt; }
-    cv::Mat get_src_img() const { return _src_img; }
 
 private: /** GeneralHough private member functions */
 
@@ -752,6 +749,7 @@ cv::Mat GeneralHough::get_result_img() const
 	    ++it;
 	}
     }
+
     return dst;
 }
 

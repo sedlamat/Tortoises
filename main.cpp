@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 					     plastron_template,
 					     reference_point,
 					     angles,
-					     20, 200, 1.0, 0.3, 50,100,0.5,0);
+					     20, 200, 1.0, 0.3, 50,100,0.5,1);
 					     //map_template_junctions);
 	//sedlamat::display(img);
 	//sedlamat::print("running");
