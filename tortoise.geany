@@ -24,9 +24,9 @@ long_line_column=72
 
 [files]
 current_page=2
-FILE_NAME_0=716;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
-FILE_NAME_1=1114;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
-FILE_NAME_2=10138;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_general_hough.hpp;0;4
+FILE_NAME_0=10021;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
+FILE_NAME_1=2951;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
+FILE_NAME_2=1391;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
 FILE_NAME_3=55859;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fimgproc%2Fimgproc.hpp;0;4
 FILE_NAME_4=60646;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fcore.hpp;0;4
 FILE_NAME_5=937;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fhighgui%2Fhighgui.hpp;0;4
@@ -34,7 +34,7 @@ FILE_NAME_6=3666;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortois
 FILE_NAME_7=12642;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.cpp;0;4
 FILE_NAME_8=4992;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fbits%2Fstl_numeric.h;0;4
 FILE_NAME_9=2197;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fbits%2Frange_access.h;0;4
-FILE_NAME_10=19408;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fostream;0;4
+FILE_NAME_10=19125;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fostream;0;4
 
 [build-menu]
 EX_00_LB=_Execute
@@ -47,6 +47,18 @@ C++FT_01_LB=_Build
 C++FT_01_CM=g++ -Wall -o  "%e" "%f" `pkg-config --cflags --libs opencv`
 C++FT_01_WD=
 filetypes=C++;
-C++FT_02_LB=
-C++FT_02_CM=
+C++FT_02_LB=DebugBuild
+C++FT_02_CM=g++ -Wall -go "%e" "%f" `pkg-config --cflags --libs opencv`
 C++FT_02_WD=
+
+[VTE]
+last_dir=/home/matej/Files/Projects/Tortoises
+
+[debugger]
+target=/home/matej/Files/Projects/Tortoises/tortoise
+debugger=GDB
+arguments=
+envvar_count=0
+watches_count=1
+watch_0=t0
+breaks_count=0
