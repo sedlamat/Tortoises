@@ -123,7 +123,7 @@ public: /** GeneralHough public member functions */
 	    const int canny_high_thresh = 100,
 	    const double blur_sigma = 0.5,
 	    const bool display_accum = 0,
-	    const std::map<std::string, cv::Point> tmpl_interest_pts
+	    const std::map<std::string, cv::Point> &tmpl_interest_pts
 				= std::map<std::string, cv::Point>());
     virtual ~GeneralHough() {}
     void detect();
@@ -144,6 +144,8 @@ private: /** GeneralHough private member functions */
 				 const int angle,
 				 const int num_quants = 4);
     cv::Mat get_gradient_direction(const cv::Mat& src) const;
+    void display(const cv::Mat &src,
+		    const std::string &window_name="image") const;
 };
 
 
@@ -241,7 +243,7 @@ GeneralHough::GeneralHough(
 	const int canny_high_thresh,
 	const double blur_sigma,
 	const bool display_accum,
-	const std::map<std::string, cv::Point> tmpl_interest_pts)
+	const std::map<std::string, cv::Point> &tmpl_interest_pts)
 	:
 	_src_img(src_img),
 	_ref_pt(ref_pt),
@@ -276,8 +278,8 @@ GeneralHough::GeneralHough(
     // resizes _src_img into src_img_resized
     cv::Mat src_img_resized;
 
-    int src_w = _src_img.cols;
-    int src_h = _src_img.rows;
+    const int src_w = _src_img.cols;
+    const int src_h = _src_img.rows;
 
     _resize_coeff = max_img_size * 1.0 / std::max(src_w,src_h);
     cv::resize(_src_img, src_img_resized, cv::Size(0,0),
@@ -341,7 +343,7 @@ GeneralHough::GeneralHough(
     // sets proper min/max_scale based on size of tmpl_img/src_img_res.
     cv::Mat tmpl_pts;
     cv::findNonZero(tmpl_img, tmpl_pts);
-    cv::Size tmpl_size = cv::boundingRect(tmpl_pts).size();
+    const cv::Size tmpl_size = cv::boundingRect(tmpl_pts).size();
     const double src_templ_size_koef = max_img_size*1.0 /
 			std::max(tmpl_size.width,tmpl_size.height);
 
@@ -370,7 +372,7 @@ GeneralHough::GeneralHough(
 
     // fills gaussian kernel
     int gauss_size = 2.0*max_img_size/100;
-    double gauss_sigma = 0.8*max_img_size/100;
+    const double gauss_sigma = 0.8*max_img_size/100;
     gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
     _gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
     _gauss = _gauss * _gauss.t();
@@ -424,9 +426,9 @@ cv::Mat GeneralHough::get_gradient_direction(const cv::Mat& src) const
 	throw "Incompatible number of channels";
     }
     cv::Mat dx, dy;
-    cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3,
-					   10, 0,-10,
-					    3, 0, -3);
+    const cv::Mat kernel = (cv::Mat_<int>(3,3) << 3, 0, -3,
+						  10, 0,-10,
+						  3, 0, -3);
     cv::filter2D(gray, dx, CV_32F, kernel);
     cv::transpose(kernel, kernel);
     cv::filter2D(gray, dy, CV_32F, kernel);
@@ -467,42 +469,49 @@ GeneralHough::HoughTable GeneralHough::get_rotated_r_table(
 /**
     Computes the hough accumulator for a given angle (rotation of the
     template/R-table. Best results are stored in _best_... variables.
+    Safe for multithreaded access.
 
     @param angle - Rotation angle of the R-table in degrees.
     @return Void.
 */
 void GeneralHough::accumulate(const int angle)
 {
-    // scaling down the accumulator size
-    const double down_size = 2;
-    cv::Size src_img_size(_resized_src_img_rect.size());
-    cv::Size accum_size(src_img_size.width/down_size + 1,
-			src_img_size.height/down_size + 1);
+    // scales down the accumulator size
+    const float down_size = 0.5;
+    const cv::Size src_img_size(_resized_src_img_rect.size());
+    const cv::Size accum_size(src_img_size.width * down_size + 1,
+			      src_img_size.height * down_size + 1);
 
-    HoughTable rotated_r_table(get_rotated_r_table(angle));
+    // prepares the rotated R-table
+    HoughTable rotated_r_table(this->get_rotated_r_table(angle));
+
+    // quantizes the HoughTable containers with respect to the angle
     HoughTable quanted_rotated_r_table, quanted_src_hough_table;
-    quanted_rotated_r_table = get_quanted_table(rotated_r_table,
-						angle);
-    quanted_src_hough_table = get_quanted_table(_src_hough_table,
-						angle);
-    int num_quant = quanted_src_hough_table.size();
-    double total_num_r_table_pts = 0;
+    quanted_rotated_r_table = this->get_quanted_table(rotated_r_table,
+								angle);
+    quanted_src_hough_table = this->get_quanted_table(_src_hough_table,
+								angle);
+
+    // fills the accumulator for all quants and scales
+    const int num_quant = quanted_src_hough_table.size();
+
     for (auto &s : _scales) {
 	cv::Mat accum = cv::Mat(accum_size, CV_32F,
-					cv::Scalar_<float>(0.0));
+					    cv::Scalar_<float>(0.0));
 	for (int quant = 0; quant < num_quant; ++quant) {
 	    cv::Mat quant_accum = cv::Mat(accum_size, CV_32F,
 					  cv::Scalar_<float>(0.0));
-	    double num_quant_pts
+	    const float num_quant_pts
 			    = quanted_rotated_r_table[quant].size();
-	    total_num_r_table_pts += num_quant_pts;
-	    for(const auto &pt_diff : quanted_rotated_r_table[quant]) {
-		for(const auto &src_pt : quanted_src_hough_table[quant]) {
+	    for(auto &pt_diff : quanted_rotated_r_table[quant]) {
+		for(auto &src_pt : quanted_src_hough_table[quant]) {
 		    cv::Point refer_pt(src_pt - (pt_diff*s));
 		    if (_resized_src_img_rect.contains(refer_pt)) {
 			float &accum_pt =
-				quant_accum.at<float>(cv::Point(refer_pt.x/down_size, refer_pt.y/down_size));
-			// should not be more that points in r_table
+			    quant_accum.at<float>(refer_pt * down_size);
+
+			// accum value should not become more than
+			// the number of points in the r_table quant
 			if (accum_pt < num_quant_pts) {
 			    accum_pt += 1.0;
 			}
@@ -512,142 +521,148 @@ void GeneralHough::accumulate(const int angle)
 	    // divide by the total number of points in the quant
 	    // big quants are not more important
 	    if (num_quant_pts > 0) {
-		accum += quant_accum*1.0/(num_quant_pts);
+		accum += quant_accum / num_quant_pts;
 	    }
 	}
 
 	// smooths the accumulator
 	cv::filter2D(accum, accum, CV_32F, _gauss);
 
-	if (_display_accum) sedlamat::display(accum);
+	if (_display_accum) this->display(accum);
 
+	// finds local minimum and maximum
 	double local_max, local_min;
 	cv::Point local_max_pt, local_min_pt;
 	cv::minMaxLoc(accum, &local_min, &local_max,
 				    &local_min_pt, &local_max_pt);
 
+	// gets scaled accumulator for analysis of its distribution
 	cv::Mat dst;
-	double min_val, max_val;
-	cv::minMaxLoc(accum, &min_val, &max_val);
-	double alpha = 1.0 / (max_val - min_val);
-	double beta = - min_val * alpha;
+	const double alpha = 1.0 / (local_max - local_min);
+	const double beta = - local_min * alpha;
 	accum.convertTo(dst, CV_32F, alpha, beta);
-
-	cv::Point lpt, rpt;
-	lpt = cv::Point(_gauss.size().width/2, _gauss.size().height/2);
-	rpt = cv::Point(accum.size().width, accum.size().height);
-	rpt -= lpt;
-	cv::Rect accum_insides(lpt, rpt);
-	cv::Rect gauss_rect(cv::Point(0,0), cv::Size(lpt.x,lpt.y));
-
-	//sedlamat::print(lpt);
-	//sedlamat::print(rpt);
-	//cv::Mat accum_mask(accum.size(), CV_32F, cv::Scalar_<float>(1));
-	//cv::rectangle(accum_mask, gauss_rect,
-					//~ cv::Scalar_<float>(0),
-					//~ CV_FILLED);
-    //    sedlamat::display(accum_mask);
-	// finds accumulator maximum
 	cv::matchTemplate(dst, _gauss, dst, CV_TM_SQDIFF);
-	//sedlamat::display(dst);
-	//double minimum = dst.at<float>(local_max_pt)/max_val;
-	//std::cout << minimum << " " << dst.at<float>(local_max_pt) << " " << max_val << std::endl;
-	cv::Mat accum_mask(dst.size(), CV_32F, cv::Scalar_<float>(1));
+
+	// prepares mask that will cover the area of local maximum
+	cv::Mat dst_mask(dst.size(), CV_32F, cv::Scalar_<float>(1));
+	cv::Rect gauss_rect(cv::Point(0,0), _gauss.size()*2
+						    + cv::Size(1,1));
+	auto size_diff = accum.size() - dst.size();
 	gauss_rect += local_max_pt;
-	gauss_rect -= lpt;
-	gauss_rect -= cv::Point(lpt.x/2, lpt.y/2);
-	cv::rectangle(accum_mask, gauss_rect,
-					cv::Scalar_<float>(0),
-					CV_FILLED);
-	//sedlamat::display(accum);
-	cv::Mat accum_mask_inverse;
-	accum_mask.copyTo(accum_mask_inverse);
-	accum_mask_inverse -= 1;
-	//sedlamat::display(accum_mask);
-	accum_mask_inverse = cv::Mat(cv::abs(accum_mask_inverse));
-	//sedlamat::display(accum_mask);
-	//sedlamat::display(accum_mask);
-	//sedlamat::display(accum_mask_inverse);
-	double sum_outer = cv::sum(accum_mask.mul(dst))[0];
-	//double sum_inner = cv::sum(accum_mask_inverse.mul(dst))[0];
-	double maximum;
-	if (local_max)
-	maximum = local_max*100000.0/sum_outer;
-	if(_display_accum) sedlamat::print(maximum);
-	//~ sedlamat::print(sum_inner);
-	    std::lock_guard<std::mutex> guarding(_mutualexec);
+	gauss_rect -= cv::Point(_gauss.size().width,
+						_gauss.size().height);
+	gauss_rect -= cv::Point(size_diff.width/2, size_diff.height/2);
+	cv::rectangle(dst_mask, gauss_rect, cv::Scalar_<float>(0),
+							    CV_FILLED);
 
-	    //if (_display_accum) sedlamat::print(local_max);
-	{
-	    // if accum_max greatest so far, then sets the best_ params
-	    if ( maximum > _best_accum_val) {
+	// sums pixel values around the area of local maximum
+	const double sum_outer = cv::sum(dst_mask.mul(dst))[0];
+	const double local_accum_max = local_max*100000.0/sum_outer;
 
-		_best_accum_val = maximum;
-		_best_scale = s;
-		_best_angle = angle;
-		_best_ref_pt.x = local_max_pt.x*down_size;
-		_best_ref_pt.y = local_max_pt.y*down_size;
-	    }
+	if(_display_accum) std::cout << local_accum_max << std::endl;
+
+	// safe multithreading acces shared variables _best_...
+	std::lock_guard<std::mutex> guarding(_mutualexec);
+
+	// saves the best-so-far values
+	if (local_accum_max > _best_accum_val) {
+	    _best_accum_val = local_accum_max;
+	    _best_scale = s;
+	    _best_angle = angle;
+	    _best_ref_pt.x = local_max_pt.x / down_size;
+	    _best_ref_pt.y = local_max_pt.y / down_size;
 	}
     }
 }
 
+
+/**
+    Displays an unsigned 8bit (CV_8U) image, values [0...255], the
+    number of channels allowed is 1 and 3. The image is scaled and
+    casted to CV_8U if it is of other type.
+
+    @param src - Image to be displayed.
+    @param window_name - Displayed window name (optional).
+    @return Void.
+*/
+void GeneralHough::display(const cv::Mat &src,
+				const std::string &window_name) const
+{
+    CV_Assert(src.channels() == 1 || src.channels() == 3);
+    cv::Mat dst;
+    // checks if src is CV_8U, if not make it
+    if (src.type() != CV_8UC1 && src.type() != CV_8UC3) {
+	// scales src image into [0,...,255] and converts to CV_8U
+	double min_val, max_val;
+	cv::minMaxLoc(src, &min_val, &max_val);
+	const double alpha = 255 / (max_val - min_val);
+	const double beta = - min_val * alpha;
+	src.convertTo(dst, CV_8U, alpha, beta);
+    } else {
+	dst = src;
+    }
+    // displays the image, exit with ESC key
+    cv::namedWindow(window_name, cv::WINDOW_NORMAL);
+    int k = 1;
+    while (k != 27) {
+	cv::imshow(window_name, dst);
+	k = cv::waitKey(0);
+    }
+}
+
+
+/**
+    Gets HoughTable container with num_quants quanted from [0,...,179]
+    original quants of the r/src_hough_table and the new quants are
+    oriented based on a given angle.
+
+    @param table - A HoughTable to be requanted.
+    @param angle - Angle in degrees defining the offset of the new
+								quants.
+    @param num_quants - Number of new quants.
+    @return Requanted HougTable container.
+*/
 GeneralHough::HoughTable GeneralHough::get_quanted_table(
 					    HoughTable &table,
 					    const int angle,
 					    const int num_quants)
 {
-    //~ for (int ii = 0; ii < 180; ++ii) {
-	//~ sedlamat::visualize_points(table[ii], cv::Size(500,500), cv::Point(150,150));
-    //~ }
     HoughTable quanted_table(num_quants);
     int quant_idx = 0;
     const int quant_size = 180 / num_quants;
     int idx = angle < 0 ? angle % 180 + 180 : angle % 180;
     idx -= quant_size / 2;
-    for (int ii = 1; ii <= 180; ++ii) {
-	//sedlamat::visualize_points(table[ii], cv::Size(500,500), cv::Point(150,150));
-	//std::cout << idx << std::endl;
+
+    for (int ii = 1; ii <= 180; ++ii, ++idx) {
 	if (!(ii % quant_size)) {
 	    ++quant_idx;
-	    //std::cout << quanted_table[quant_idx-1] << std::endl;
-	    //sedlamat::visualize_points(quanted_table[quant_idx-1], cv::Size(500,500), cv::Point(150,150));
-
 	}
-	//std::cout << table[idx] << std::endl;
 	quanted_table[quant_idx].insert(
 				quanted_table[quant_idx].end(),
 				table[idx].begin(),
 				table[idx].end());
-	//std::cout << quanted_table[quant_idx] << std::endl;
-	++idx;
     }
-    //~ for (int ii = 0; ii < 180; ++ii) {
-	//~ sedlamat::visualize_points(quanted_table[ii], cv::Size(500,500), cv::Point(150,150));
-    //~ }
-    //std::cout << quant_size << std::endl;
+
     return quanted_table;
 }
 
 
 /**
-    Finds and sets the best_ params of the Hough transform
-    by rotating the r_table and filling the Hough accumulator.
-    After execution, _best_accum_val/angle/_ref_pt/scale will
-    hold the information of the estimated location of the
-    target object(s).
+    Finds and sets the _best_... params of the GeneralHough class
+    by callling the accumulate member function with all the different
+    angles. If template interest points were specified, then their
+    position is computed here.
 
-    @param void.
-    @return void.
+    @param Void.
+    @return Void.
 */
 void GeneralHough::detect()
 {
-    // accumulate for all rotated r-tables
+    // if no displaying, the processing is done in parallel
     if (!_display_accum) {
 	std::vector<std::thread> threads;
-	for (auto angle : _angles) { //all angles in degrees integers!!
+	for (auto angle : _angles) {
 	    threads.push_back(std::thread(&GeneralHough::accumulate,this,angle));
-	    //accumulate(angle);
 	}
 	for (auto &t : threads) {
 	    t.join();
@@ -657,23 +672,19 @@ void GeneralHough::detect()
 	    accumulate(angle);
 	}
     }
-    //~ const int num_of_rot = num_quant_directions * 2;
-    //~ const double rot_step_rad = 2.0 * M_PI / num_of_rot;
-    //~ for (int rot_idx = 0; rot_idx < num_of_rot; ++rot_idx) {
-	//~ rot_rad = rot_idx * rot_step_rad;
-    //~ }
 
-    double inv_resize_coeff = 1.0 / _resize_coeff;
+    // rescales found _best_... params to the original size
+    const double inv_resize_coeff = 1.0 / _resize_coeff;
     _best_scale *= inv_resize_coeff;
     _best_ref_pt *= inv_resize_coeff;
 
+    // computes template interest points
     if (!_tmpl_interest_pts.empty()) {
-	double cs = std::cos(_best_angle*M_PI/180.0);
-	double sn = std::sin(_best_angle*M_PI/180.0);
+	const double cs = std::cos(_best_angle * M_PI / 180.0);
+	const double sn = std::sin(_best_angle * M_PI / 180.0);
 
-	std::map<std::string, cv::Point>::iterator it, it_end;
-	it = _tmpl_interest_pts.begin();
-	it_end = _tmpl_interest_pts.end();
+	auto it = _tmpl_interest_pts.begin();
+	auto it_end = _tmpl_interest_pts.end();
 	while (it != it_end) {
 	    it->second -= _ref_pt;
 	    int x = it->second.x;
@@ -686,26 +697,31 @@ void GeneralHough::detect()
     }
 }
 
+
 /**
     Gets the source image with the best template match marked on it.
+    It also draws the template interest points if any were specified.
 
-    @param void.
-    @return Image with best template fit.
+    @param Void.
+    @return Image with the best template fit.
 */
 cv::Mat GeneralHough::get_result_img() const
 {
-    cv::Mat dst;
-    //make a deep copy
-    _src_img.copyTo(dst);
+    //make a deep copy of the source image - it would be affected
+    cv::Mat dst =  _src_img.clone();
+
     cv::Rect src_img_orig_rect(cv::Point(0,0), _src_img.size());
 
     // rotates and shift the R-Table points
-    double cs = std::cos(_best_angle*M_PI/180.0);
-    double sn = std::sin(_best_angle*M_PI/180.0);
+    const double cs = std::cos(_best_angle * M_PI / 180.0);
+    const double sn = std::sin(_best_angle * M_PI / 180.0);
 
-    double inv_resize_coeff = 1.0 / _resize_coeff;
+    // points from template will be rectangles in the source image in
+    // order to get resolution-invariant drawing result
+    const double inv_resize_coeff = 1.0 / _resize_coeff;
     cv::Point shift_pt(inv_resize_coeff,inv_resize_coeff);
 
+    // draws the template
     for(auto table_quant : _r_table) {
 	for(auto pt : table_quant) {
 	    int x = pt.x;
@@ -721,10 +737,11 @@ cv::Mat GeneralHough::get_result_img() const
 	    }
 	}
     }
+
+    // draws the position of the template interest points
     if (!_tmpl_interest_pts.empty()) {
-	std::map<std::string, cv::Point>::const_iterator it, it_end;
-	it = _tmpl_interest_pts.cbegin();
-	it_end = _tmpl_interest_pts.cend();
+	auto it = _tmpl_interest_pts.cbegin();
+	auto it_end = _tmpl_interest_pts.cend();
 	while (it != it_end) {
 	    if (src_img_orig_rect.contains(it->second)) {
 		cv::rectangle(dst,
