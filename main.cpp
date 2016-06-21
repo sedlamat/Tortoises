@@ -75,12 +75,12 @@ int main(int argc, char *argv[])
 	std::time(&t1);
 	std::cout << difftime(t1,t0) <<std::endl;
 	sedlamat::display(general_hough.get_result_img());
-    } catch (std::string e) {
-	std::cout << "Error when processing " << argv[1] << std::endl;
-	std::cout << " " << e << std::endl;
+    } catch (const char *e) {
+	std::cout << e << std::endl;
 	exit(1);
-    } catch (...) {
-	std::cout << "Error when processing " << argv[1] << std::endl;
+    }
+    catch (...) {
+	std::cout << "Unexpected error." << std::endl;
     }
     return 0;
 }

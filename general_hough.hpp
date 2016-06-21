@@ -143,7 +143,7 @@ private: /** GeneralHough private member functions */
     HoughTable get_quanted_table(HoughTable &table,
 				 const int angle,
 				 const int num_quants = 4);
-    cv::Mat get_gradient_orientation(const cv::Mat& src) const;
+    cv::Mat get_gradient_direction(const cv::Mat& src) const;
 };
 
 
@@ -222,11 +222,11 @@ void GeneralHough::HoughTable::rotate_points(const int angle)
 /********* class GeneralHough members' declaration ******************/
 
 /**
-    GeneralHough constructor. Sets various parameters, see
-    class declaration.
+    GeneralHough constructor. Sets various parameters, see class
+    declaration.
 
-    @param see class declaration.
-    @return void.
+    @param See class declaration.
+    @return Void.
 */
 GeneralHough::GeneralHough(
 	const cv::Mat &src_img,
@@ -333,9 +333,9 @@ GeneralHough::GeneralHough(
     }
 
     // checks min/max_scale
-    if (min_scale < max_scale && 0 < min_scale && max_scale <= 1) {
-    	throw "Wrong: min_scale must be < then max_scale and both \
-							    in (0,1].";
+    if ( !(min_scale < max_scale && 0 < min_scale && max_scale <= 1)) {
+    	throw "Wrong: min_scale must be < max_scale " \
+						  "and both in (0,1].";
     }
 
     // sets proper min/max_scale based on size of tmpl_img/src_img_res.
@@ -374,18 +374,15 @@ GeneralHough::GeneralHough(
     gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
     _gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
     _gauss = _gauss * _gauss.t();
-
 }
 
 /**
-    Fills in the HoughTable container with Hough points (edge
+    Gets a filled HoughTable container with Hough points (edge
     points with their direction).
 
-    @param hough_points - HoughTable container to be filled.
-    @param img - image which will provide edge points and
-		 directions.
-    @param img_edges - edge image of img.
-    @return filled HoughTable container.
+    @param img - Image which will provide edge points and directions.
+    @param img_edges - Edge image of img.
+    @return Filled HoughTable container.
 */
 GeneralHough::HoughTable GeneralHough::get_hough_table(
 					const cv::Mat &img,
@@ -393,20 +390,15 @@ GeneralHough::HoughTable GeneralHough::get_hough_table(
 {
     HoughTable hough_table(180); // 0...179
 
-    // changes gradient orientations to gradient directions
-    cv::Mat orient, orient_adjust, directions;
-    orient = this->get_gradient_orientation(img);
-    orient_adjust = (orient >= 180)/255;
-    orient_adjust.convertTo(orient_adjust, orient.depth());
-    directions = orient + orient_adjust * -180;
-    directions.convertTo(directions, CV_8UC1);
+    // transforms gradient orientations to gradient directions
+    cv::Mat grad_directions = this->get_gradient_direction(img);
 
     // goes through all edge pixels
     for (int yy = 0; yy < img_edges.rows; ++yy) {
 	for (int xx = 0; xx < img_edges.cols; ++xx) {
 	    if (img_edges.at<uchar>(yy, xx)) {
 		cv::Point pt(xx, yy);
-		int phi = directions.at<uchar>(pt);
+		int phi = grad_directions.at<uchar>(pt);
 		hough_table[phi].push_back(pt);
 	    }
 	}
@@ -414,8 +406,15 @@ GeneralHough::HoughTable GeneralHough::get_hough_table(
     return hough_table;
 }
 
-cv::Mat GeneralHough::get_gradient_orientation(const cv::Mat& src) const
+/**
+    Gets gradient direction image of the source image.
+
+    @param src - Source image.
+    @return Gradient direction image.
+*/
+cv::Mat GeneralHough::get_gradient_direction(const cv::Mat& src) const
 {
+    // gets gradient orientation
     cv::Mat gray, grad_orient;
     if (src.channels() == 3) {
 	cv::cvtColor(src, gray, CV_BGR2GRAY);
@@ -432,16 +431,26 @@ cv::Mat GeneralHough::get_gradient_orientation(const cv::Mat& src) const
     cv::transpose(kernel, kernel);
     cv::filter2D(gray, dy, CV_32F, kernel);
     cv::phase(dx, dy, grad_orient, 1);
-    return grad_orient;
+
+    // transforms the gradient orientation to direction, orientation
+    // angle above 180 is shifted by -180 to get direction
+    cv::Mat orient_adjust, grad_dir;
+    orient_adjust = (grad_orient >= 180)/255;
+    orient_adjust.convertTo(orient_adjust, grad_orient.depth());
+    grad_dir = grad_orient + orient_adjust * -180;
+    grad_dir.convertTo(grad_dir, CV_8UC1);
+
+    return grad_dir;
 }
 
 
 /**
-    Sets rotated_r_table by shifting the r_table by num_table_shift
-    and rotating the points by rot_step_rad.
+    Gets rotated R-table by shifting and rotating the points of
+    R-table by a given angle.
 
-    @param angle - Angle in degrees by which points are rotated.
-    @return void.
+    @param angle - Angle in degrees by which points are rotated and
+		   shifted.
+    @return Rotated R-table (in HoughTable container).
 */
 GeneralHough::HoughTable GeneralHough::get_rotated_r_table(
 						const int angle) const
@@ -449,7 +458,6 @@ GeneralHough::HoughTable GeneralHough::get_rotated_r_table(
     HoughTable rotated_r_table = _r_table;
 
     rotated_r_table.shift(angle);
-
     rotated_r_table.rotate_points(angle);
 
     return rotated_r_table;
@@ -458,17 +466,19 @@ GeneralHough::HoughTable GeneralHough::get_rotated_r_table(
 
 /**
     Computes the hough accumulator for a given angle (rotation of the
-    template/R-table. Best results are stored in best_... variables.
+    template/R-table. Best results are stored in _best_... variables.
 
-    @param angle - rotation angle of the R-table in degrees.
-    @return void.
+    @param angle - Rotation angle of the R-table in degrees.
+    @return Void.
 */
 void GeneralHough::accumulate(const int angle)
 {
-    int down_size = 2;
+    // scaling down the accumulator size
+    const double down_size = 2;
     cv::Size src_img_size(_resized_src_img_rect.size());
     cv::Size accum_size(src_img_size.width/down_size + 1,
-			src_img_size.height/down_size + 1 );
+			src_img_size.height/down_size + 1);
+
     HoughTable rotated_r_table(get_rotated_r_table(angle));
     HoughTable quanted_rotated_r_table, quanted_src_hough_table;
     quanted_rotated_r_table = get_quanted_table(rotated_r_table,
@@ -560,19 +570,19 @@ void GeneralHough::accumulate(const int angle)
 	//sedlamat::display(accum_mask_inverse);
 	double sum_outer = cv::sum(accum_mask.mul(dst))[0];
 	//double sum_inner = cv::sum(accum_mask_inverse.mul(dst))[0];
-	double minimum;
+	double maximum;
 	if (local_max)
-	minimum = sum_outer/1000.0/local_max;
-	if(_display_accum) sedlamat::print(minimum);
+	maximum = local_max*100000.0/sum_outer;
+	if(_display_accum) sedlamat::print(maximum);
 	//~ sedlamat::print(sum_inner);
 	    std::lock_guard<std::mutex> guarding(_mutualexec);
 
 	    //if (_display_accum) sedlamat::print(local_max);
 	{
 	    // if accum_max greatest so far, then sets the best_ params
-	    if ( minimum < _best_accum_val) {
+	    if ( maximum > _best_accum_val) {
 
-		_best_accum_val = minimum;
+		_best_accum_val = maximum;
 		_best_scale = s;
 		_best_angle = angle;
 		_best_ref_pt.x = local_max_pt.x*down_size;
