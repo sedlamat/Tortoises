@@ -117,7 +117,7 @@ class GeneralHough {
     const bool _display_accum;
 
     // interest point to be located after GeneralHough detection
-    std::map<std::string, cv::Point> *_ptr_interest_pts;
+    std::vector<cv::Point> *_ptr_interest_pts;
 
     // object for safe mutual execution of threads over parts of code
     std::mutex _mutualexec;
@@ -142,7 +142,7 @@ public: /** GeneralHough public member functions */
 	    const int canny_high_thresh = 100,
 	    const double blur_sigma = 0.5,
 	    const bool display_accum = 0,
-	    std::map<std::string, cv::Point> *ptr_interest_pts
+	    std::vector<cv::Point> *ptr_interest_pts
 				= nullptr);
     virtual ~GeneralHough() {}
 
@@ -261,7 +261,7 @@ GeneralHough::GeneralHough(
 	const int canny_high_thresh,
 	const double blur_sigma,
 	const bool display_accum,
-	std::map<std::string, cv::Point> *ptr_interest_pts)
+	std::vector<cv::Point> *ptr_interest_pts)
 	:
 	_src_img(src_img),
 	_src_hough_table(),
@@ -707,19 +707,19 @@ void GeneralHough::detect()
     _best_ref_pt *= inv_resize_coeff;
 
     // computes template interest points
-    if (!_ptr_interest_pts->empty()) {
+    if (_ptr_interest_pts != nullptr) {
 	const double cs = std::cos(_best_angle * M_PI / 180.0);
 	const double sn = std::sin(_best_angle * M_PI / 180.0);
 
 	auto it = _ptr_interest_pts->begin();
 	const auto it_end = _ptr_interest_pts->end();
 	while (it != it_end) {
-	    it->second -= _ref_pt;
-	    int x = it->second.x;
-	    it->second.x = cs*it->second.x - sn*it->second.y;
-	    it->second.y = sn*x + cs*it->second.y;
-	    it->second *= _best_scale;
-	    it->second += _best_ref_pt;
+	    *it -= _ref_pt;
+	    int x = it->x;
+	    it->x = cs * it->x - sn * it->y;
+	    it->y = sn * x + cs * it->y;
+	    *it *= _best_scale;
+	    *it += _best_ref_pt;
 	    ++it;
 	}
     }
@@ -767,14 +767,14 @@ cv::Mat GeneralHough::get_result_img() const
     }
 
     // draws the position of the template interest points
-    if (!_ptr_interest_pts->empty()) {
+    if (_ptr_interest_pts != nullptr) {
 	auto it = _ptr_interest_pts->cbegin();
 	const auto it_end = _ptr_interest_pts->cend();
 	while (it != it_end) {
-	    if (src_img_orig_rect.contains(it->second)) {
+	    if (src_img_orig_rect.contains(*it)) {
 		cv::rectangle(dst,
-			      it->second-shift_pt,
-			      it->second+shift_pt,
+			      *it - shift_pt,
+			      *it + shift_pt,
 			      cv::Scalar(0,255,0), CV_FILLED);
 	    }
 	    ++it;

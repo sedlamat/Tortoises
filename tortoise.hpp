@@ -36,79 +36,79 @@
 
 
 class Tortoise {
+    // image of the tortoise plastron
+    const cv::Mat _plastron_img;
 
-    const cv::Mat _plastron_img; // image of the tortoise plastron
-
-    struct Junctions { // plastron junctions
-	cv::Point j1Head, j2GulToHum, j3HumToPec, j4PecToAbd,
-		  j5AbdToFem, j6FemToAna, j7Tail;
-    };
-
-    Junctions l_juncs, r_juncs; // left and right junctions
-//~
-    //~ std::map<std::string, cv::Vec3b> colors;
-    //~ std::cout << colors.size() << std::endl;
-//~
-    //~ colors.insert(std::pair<std::string,
-    //~ cv::Vec3b>("a",cv::Vec3b(0,0,255)) );
-    //~ colors["red"] = cv::Vec3b(0,0,255);
-    //~ color["green"] = cv::Vec3b(0,255,0);
-    //~ color["blue"] = cv::Vec3b(255,0,0);
-    //~ color["white"] = cv::Vec3b(255,255,255);
-    //~ color["black"] = cv::Vec3b(0,0,0);
-    //~ color["yellow"] = cv::Vec3b(0,255,255);
-    //~ color["purple"] = cv::Vec3b(255,0,255);
-    //~ color["cyan"] = cv::Vec3b(255,255,0);
-
-    //~ color["j1Head"] = color["red"];
-    //~ color["j2GulToHum"] = color["green"];
-    //~ color["j3HumToPec"] = color["blue"];
-    //~ color["j4PecToAbd"] = color["white"];
-    //~ color["j5AbdToFem"] = color["yellow"];
-    //~ color["j6FemToAna"] = color["purple"];
-    //~ color["j7Tail"] = color["cyan"];
+    // left and right junctions, 0 - 6, from head to tail,
+    // Head, GulToHum, HumToPec, PecToAbd, AbdToFem, FemToAna, Tail
+    std::vector<cv::Point> _l_juncs, _r_juncs;
 
 public:
-    Tortoise(const cv::Mat &plastron_image,
-	     const cv::Mat &template_image,
-	     const cv::Point &template_reference_point);
+    Tortoise(const cv::Mat &plastron_image);
     virtual ~Tortoise(){}
     void measure(); // locate and measure features
+    void print_juncs() const;
 
 private:
-    void locate_plastron(const cv::Mat template_image,
-			 const cv::Point reference_point);
+    void locate_plastron();
 };
 
-Tortoise::Tortoise(const cv::Mat &plastron_image,
-		   const cv::Mat &template_image,
-		   const cv::Point &template_reference_point)
-		   : _plastron_img(plastron_image)
+void Tortoise::print_juncs() const
 {
-    this->locate_plastron(template_image, template_reference_point);
+    std::cout << "Left junctions:" << std::endl;
+    for (const auto &junc : _l_juncs) {
+	std::cout << junc << std::endl;
+    }
+
+    std::cout << "Right junctions:" << std::endl;
+    for (const auto &junc : _r_juncs) {
+	std::cout << junc << std::endl;
+    }
 }
 
-void Tortoise::locate_plastron(const cv::Mat plastron_template,
-			       const cv::Point reference_point)
+Tortoise::Tortoise(const cv::Mat &plastron_image)
+		   : _plastron_img(plastron_image),
+		     _l_juncs(std::vector<cv::Point>(7)),
+		     _r_juncs(std::vector<cv::Point>(7))
 {
+    this->locate_plastron();
+}
+
+void Tortoise::locate_plastron()
+{
+    time_t t0, t1;
+    std::time(&t0);
+
+    cv::Mat plastron_template = cv::imread("plastron_template.bmp", 0);
+    if (plastron_template.empty()) {
+	std::cout << "Error: plastron_template.bmp image is not" \
+	" inside the directory of the executable file."
+	<< std::endl;
+	exit(1);
+    }
+
     std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
 
-    std::map<std::string, cv::Point> template_junctions_map;
-    template_junctions_map["j1Head"] = cv::Point(64,58);
-    template_junctions_map["j2GulToHum"] = cv::Point(64,74);
-    template_junctions_map["j3HumToPec"] = cv::Point(64,97);
-    template_junctions_map["j4PecToAbd"] = cv::Point(64,105);
-    template_junctions_map["j5AbdToFem"] = cv::Point(64,155);
-    template_junctions_map["j6FemToAna"] = cv::Point(64,168);
-    template_junctions_map["j7Tail"] = cv::Point(64,185);
+    cv::Point reference_point(65,125);
+
+    std::vector<cv::Point> tmpl_juncs(7);
+    tmpl_juncs[0] = cv::Point(64,58);
+    tmpl_juncs[1] = cv::Point(64,74);
+    tmpl_juncs[2] = cv::Point(64,97);
+    tmpl_juncs[3] = cv::Point(64,105);
+    tmpl_juncs[4] = cv::Point(64,155);
+    tmpl_juncs[5] = cv::Point(64,168);
+    tmpl_juncs[6] = cv::Point(64,185);
 
     GeneralHough general_hough(_plastron_img, plastron_template,
 			       reference_point,	angles, 20, 200, 1.0,
 			       0.3, 50, 100, 0.5, 0,
-			       &template_junctions_map);
+			       &tmpl_juncs);
+    std::time(&t1);
+    std::cout << difftime(t1,t0) <<std::endl;
 
-    for (auto junc : template_junctions_map) {
-	std::cout << junc.second << std::endl;
+    for (int ii = 0; ii < 7; ++ii) {
+	_l_juncs[ii] = _r_juncs[ii] = tmpl_juncs[ii];
     }
 
     cv::Mat result_img = general_hough.get_result_img();
@@ -183,4 +183,27 @@ void Tortoise::locate_plastron(const cv::Mat plastron_template,
    void AccuracyEvaluation(string strLoadDirectory);
    void kNNclassifier();
    void Classification();
+   *
+   *
+    //~ std::map<std::string, cv::Vec3b> colors;
+    //~ std::cout << colors.size() << std::endl;
+//~
+    //~ colors.insert(std::pair<std::string,
+    //~ cv::Vec3b>("a",cv::Vec3b(0,0,255)) );
+    //~ colors["red"] = cv::Vec3b(0,0,255);
+    //~ color["green"] = cv::Vec3b(0,255,0);
+    //~ color["blue"] = cv::Vec3b(255,0,0);
+    //~ color["white"] = cv::Vec3b(255,255,255);
+    //~ color["black"] = cv::Vec3b(0,0,0);
+    //~ color["yellow"] = cv::Vec3b(0,255,255);
+    //~ color["purple"] = cv::Vec3b(255,0,255);
+    //~ color["cyan"] = cv::Vec3b(255,255,0);
+
+    //~ color["j1Head"] = color["red"];
+    //~ color["j2GulToHum"] = color["green"];
+    //~ color["j3HumToPec"] = color["blue"];
+    //~ color["j4PecToAbd"] = color["white"];
+    //~ color["j5AbdToFem"] = color["yellow"];
+    //~ color["j6FemToAna"] = color["purple"];
+    //~ color["j7Tail"] = color["cyan"];
 */
