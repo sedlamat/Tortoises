@@ -2,10 +2,32 @@
     general_hough.hpp
 
     Implementation of the generalized Hough transform, using OpenCV
-    library.
+    library. Finds the best (one) instance of the searched object.
 
     Usage:
-    *
+
+    // GeneralHough object declaration and initialization
+    GeneralHough general_hough(source_img,	//non-optional param
+			       template_img,	//non-optional param
+			       reference_point,	//non-optional param
+			       angles,		//non-optional param
+			       20,	//number of scales
+			       200,	//max source img size
+			       1.0, 	//max template/source scale
+			       0.3, 	//min template/source scale
+			       50, 	//canny lower threshold
+			       100, 	//canny higher threshold
+			       0.5, 	//sigma of gaussinan blur
+			       0,	//if accumulator shall be shown
+			       tmpl_interest_pts); //points to be found
+    // -> the detection takes place in the constructor of the object
+
+    //recoved detected data using public getters
+    cv::Mat result_img = general_hough.get_result_img();
+    double best_accum_value = general_hough.get_best_accum_val();
+    double best_angle = general_hough.get_best_angle();
+    double best_scale = get_best_scale();
+    cv::Point best_reference_point = general_hough.get_best_ref_pt();
 
     @author Matej Sedlacek
     @version 0.0
@@ -107,7 +129,6 @@ class GeneralHough {
     cv::Point _best_ref_pt;
 
 public: /** GeneralHough public member functions */
-
     GeneralHough(
 	    const cv::Mat &src_img,
 	    const cv::Mat &tmpl_img,
@@ -124,7 +145,7 @@ public: /** GeneralHough public member functions */
 	    const std::map<std::string, cv::Point> &tmpl_interest_pts
 				= std::map<std::string, cv::Point>());
     virtual ~GeneralHough() {}
-    void detect();
+
     cv::Mat get_result_img() const;
     double get_best_accum_val() const { return _best_accum_val; }
     double get_best_angle() const { return _best_angle; }
@@ -132,7 +153,7 @@ public: /** GeneralHough public member functions */
     cv::Point get_best_ref_pt() const { return _best_ref_pt; }
 
 private: /** GeneralHough private member functions */
-
+    void detect();
     HoughTable get_hough_table(const cv::Mat &img,
 			       const cv::Mat &img_edges) const;
     HoughTable get_rotated_r_table(const int angle) const;
@@ -380,6 +401,8 @@ GeneralHough::GeneralHough(
     gauss_size = (gauss_size % 2) ? gauss_size : gauss_size + 1;
     _gauss = cv::getGaussianKernel(gauss_size, gauss_sigma, CV_32F);
     _gauss = _gauss * _gauss.t();
+
+    this->detect();
 }
 
 /**
