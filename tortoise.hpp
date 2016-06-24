@@ -80,6 +80,7 @@ void Tortoise::locate_plastron()
     std::time(&t0);
 
     cv::Mat plastron_template = cv::imread("plastron_template.bmp", 0);
+
     if (plastron_template.empty()) {
 	std::cout << "Error: plastron_template.bmp image is not" \
 	" inside the directory of the executable file."
