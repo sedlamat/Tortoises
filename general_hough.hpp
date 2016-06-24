@@ -461,7 +461,7 @@ cv::Mat GeneralHough::get_gradient_direction(const cv::Mat& src) const
 GeneralHough::HoughTable GeneralHough::get_rotated_r_table(
 						const int angle) const
 {
-    HoughTable rotated_r_table = _r_table;
+    HoughTable rotated_r_table(_r_table);
 
     rotated_r_table.shift(angle);
     rotated_r_table.rotate_points(angle);
@@ -666,7 +666,8 @@ void GeneralHough::detect()
     if (!_display_accum) {
 	std::vector<std::thread> threads;
 	for (auto angle : _angles) {
-	    threads.push_back(std::thread(&GeneralHough::accumulate,this,angle));
+	    threads.push_back(std::thread(&GeneralHough::accumulate,
+							this, angle));
 	}
 	for (auto &t : threads) {
 	    t.join();
