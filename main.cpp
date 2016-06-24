@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
 
 	cv::Point reference_point(65,125);
 
+	Tortoise tg(plastron_img, plastron_template, reference_point);
+
 	//std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
 	std::vector<int> angles = {-5,0,5};
 	//std::vector<int> angles = {85,90,95};

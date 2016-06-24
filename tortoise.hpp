@@ -37,11 +37,11 @@
 
 class Tortoise {
 
-    cv::Mat img; // image of the tortoise
+    const cv::Mat _plastron_img; // image of the tortoise plastron
 
     struct Junctions { // plastron junctions
 	cv::Point j1Head, j2GulToHum, j3HumToPec, j4PecToAbd,
-				      j5AbdToFem, j6FemToAna, j7Tail;
+		  j5AbdToFem, j6FemToAna, j7Tail;
     };
 
     Junctions l_juncs, r_juncs; // left and right junctions
@@ -69,12 +69,56 @@ class Tortoise {
     //~ color["j7Tail"] = color["cyan"];
 
 public:
-    Tortoise(cv::Mat &plastron_image): img(plastron_image) {}
-    ~Tortoise(){}
+    Tortoise(const cv::Mat &plastron_image,
+	     const cv::Mat &template_image,
+	     const cv::Point &template_reference_point);
+    virtual ~Tortoise(){}
     void measure(); // locate and measure features
 
 private:
-    void locate_plastron();
+    void locate_plastron(const cv::Mat template_image,
+			 const cv::Point reference_point);
+};
+
+Tortoise::Tortoise(const cv::Mat &plastron_image,
+		   const cv::Mat &template_image,
+		   const cv::Point &template_reference_point)
+		   : _plastron_img(plastron_image)
+{
+    this->locate_plastron(template_image, template_reference_point);
+}
+
+void Tortoise::locate_plastron(const cv::Mat plastron_template,
+			       const cv::Point reference_point)
+{
+    std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
+
+    std::map<std::string, cv::Point> template_junctions_map;
+    template_junctions_map["j1Head"] = cv::Point(64,58);
+    template_junctions_map["j2GulToHum"] = cv::Point(64,74);
+    template_junctions_map["j3HumToPec"] = cv::Point(64,97);
+    template_junctions_map["j4PecToAbd"] = cv::Point(64,105);
+    template_junctions_map["j5AbdToFem"] = cv::Point(64,155);
+    template_junctions_map["j6FemToAna"] = cv::Point(64,168);
+    template_junctions_map["j7Tail"] = cv::Point(64,185);
+
+    GeneralHough general_hough(_plastron_img, plastron_template,
+			       reference_point,	angles, 20, 200, 1.0,
+			       0.3, 50, 100, 0.5, 0,
+			       &template_junctions_map);
+
+    for (auto junc : template_junctions_map) {
+	std::cout << junc.second << std::endl;
+    }
+
+    cv::Mat result_img = general_hough.get_result_img();
+    sedlamat::display(result_img);
+    double best_accum_value = general_hough.get_best_accum_val();
+    double best_angle = general_hough.get_best_angle();
+    double best_scale = general_hough.get_best_scale();
+    cv::Point best_reference_point = general_hough.get_best_ref_pt();
+}
+
 /*
     string            m_strLoadDirectory;
     string            m_strSaveDirectory;
@@ -134,7 +178,7 @@ private:
    void Recognition();
    void Classification();
    * */
- };
+ //};
 /*
    void AccuracyEvaluation(string strLoadDirectory);
    void kNNclassifier();

@@ -19,7 +19,7 @@
 			       100, 	//canny higher threshold
 			       0.5, 	//sigma of gaussinan blur
 			       0,	//if accumulator shall be shown
-			       tmpl_interest_pts); //points to be found
+			       ptr_interest_pts); //points to be found
     // -> the detection takes place in the constructor of the object
 
     //recoved detected data using public getters
@@ -117,7 +117,7 @@ class GeneralHough {
     const bool _display_accum;
 
     // interest point to be located after GeneralHough detection
-    std::map<std::string, cv::Point> _tmpl_interest_pts;
+    std::map<std::string, cv::Point> *_ptr_interest_pts;
 
     // object for safe mutual execution of threads over parts of code
     std::mutex _mutualexec;
@@ -142,8 +142,8 @@ public: /** GeneralHough public member functions */
 	    const int canny_high_thresh = 100,
 	    const double blur_sigma = 0.5,
 	    const bool display_accum = 0,
-	    const std::map<std::string, cv::Point> &tmpl_interest_pts
-				= std::map<std::string, cv::Point>());
+	    std::map<std::string, cv::Point> *ptr_interest_pts
+				= nullptr);
     virtual ~GeneralHough() {}
 
     cv::Mat get_result_img() const;
@@ -261,7 +261,7 @@ GeneralHough::GeneralHough(
 	const int canny_high_thresh,
 	const double blur_sigma,
 	const bool display_accum,
-	const std::map<std::string, cv::Point> &tmpl_interest_pts)
+	std::map<std::string, cv::Point> *ptr_interest_pts)
 	:
 	_src_img(src_img),
 	_src_hough_table(),
@@ -273,7 +273,7 @@ GeneralHough::GeneralHough(
 	_resize_coeff(0.0),
 	_resized_src_img_rect(),
 	_display_accum(display_accum),
-	_tmpl_interest_pts(tmpl_interest_pts),
+	_ptr_interest_pts(ptr_interest_pts),
 	_mutualexec(),
 	_best_accum_val(-1.0),
 	_best_scale(-1.0),
@@ -707,12 +707,12 @@ void GeneralHough::detect()
     _best_ref_pt *= inv_resize_coeff;
 
     // computes template interest points
-    if (!_tmpl_interest_pts.empty()) {
+    if (!_ptr_interest_pts->empty()) {
 	const double cs = std::cos(_best_angle * M_PI / 180.0);
 	const double sn = std::sin(_best_angle * M_PI / 180.0);
 
-	auto it = _tmpl_interest_pts.begin();
-	auto it_end = _tmpl_interest_pts.end();
+	auto it = _ptr_interest_pts->begin();
+	const auto it_end = _ptr_interest_pts->end();
 	while (it != it_end) {
 	    it->second -= _ref_pt;
 	    int x = it->second.x;
@@ -767,9 +767,9 @@ cv::Mat GeneralHough::get_result_img() const
     }
 
     // draws the position of the template interest points
-    if (!_tmpl_interest_pts.empty()) {
-	auto it = _tmpl_interest_pts.cbegin();
-	auto it_end = _tmpl_interest_pts.cend();
+    if (!_ptr_interest_pts->empty()) {
+	auto it = _ptr_interest_pts->cbegin();
+	const auto it_end = _ptr_interest_pts->cend();
 	while (it != it_end) {
 	    if (src_img_orig_rect.contains(it->second)) {
 		cv::rectangle(dst,
