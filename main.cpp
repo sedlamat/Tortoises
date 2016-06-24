@@ -16,7 +16,6 @@
 /* FIRST PARTY LIBRARIES */
 #include "tortoise.hpp"
 
-
 int main(int argc, char *argv[])
 {
     try {

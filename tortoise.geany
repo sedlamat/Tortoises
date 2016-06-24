@@ -26,7 +26,7 @@ long_line_column=72
 current_page=2
 FILE_NAME_0=10021;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
 FILE_NAME_1=2951;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
-FILE_NAME_2=1391;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
+FILE_NAME_2=424;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
 FILE_NAME_3=55859;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fimgproc%2Fimgproc.hpp;0;4
 FILE_NAME_4=60646;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fcore.hpp;0;4
 FILE_NAME_5=937;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fhighgui%2Fhighgui.hpp;0;4
@@ -52,7 +52,7 @@ C++FT_02_CM=g++ -Wall -go "%e" "%f" `pkg-config --cflags --libs opencv`
 C++FT_02_WD=
 
 [VTE]
-last_dir=/home/matej/Files/Projects/Tortoises
+last_dir=/home/matej
 
 [debugger]
 target=/home/matej/Files/Projects/Tortoises/tortoise
@@ -62,3 +62,8 @@ envvar_count=0
 watches_count=1
 watch_0=t0
 breaks_count=0
+
+[editor]
+line_wrapping=false
+line_break_column=72
+auto_continue_multiline=true

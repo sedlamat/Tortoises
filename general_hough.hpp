@@ -42,7 +42,7 @@ class GeneralHough {
     /* deque with negative indexing and rotation of elements */
     template <typename T> struct DequeNegIdx: public std::deque<T> {
 	DequeNegIdx(): std::deque<T>() {}
-	DequeNegIdx(size_t size): std::deque<T>(size) {}
+	DequeNegIdx(std::size_t size): std::deque<T>(size) {}
 	virtual ~DequeNegIdx() {};
 
 	T & operator[](int idx);
@@ -57,7 +57,7 @@ class GeneralHough {
     */
     struct HoughTable: public DequeNegIdx<std::vector<cv::Point>> {
 	HoughTable(): DequeNegIdx<std::vector<cv::Point>>() {}
-	HoughTable(size_t size):
+	HoughTable(std::size_t size):
 			    DequeNegIdx<std::vector<cv::Point>>(size){}
 	virtual ~HoughTable() {};
 
@@ -243,10 +243,17 @@ GeneralHough::GeneralHough(
 	const std::map<std::string, cv::Point> &tmpl_interest_pts)
 	:
 	_src_img(src_img),
+	_src_hough_table(),
+	_r_table(),
 	_ref_pt(ref_pt),
 	_angles(angles),
+	_scales(),
+	_gauss(),
+	_resize_coeff(0.0),
+	_resized_src_img_rect(),
 	_display_accum(display_accum),
 	_tmpl_interest_pts(tmpl_interest_pts),
+	_mutualexec(),
 	_best_accum_val(-1.0),
 	_best_scale(-1.0),
 	_best_angle(-1),
