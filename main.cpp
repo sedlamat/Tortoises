@@ -1,4 +1,5 @@
-﻿/* STANDARD C++ LIBRARIES */
+﻿
+/* STANDARD C++ LIBRARIES */
 #include <iostream>
 #include <string>
 #include <limits>
@@ -23,11 +24,11 @@ int main(int argc, char *argv[])
 	std::time(&t0);
 	passwd *pw = getpwuid(getuid());
 	std::string path(pw->pw_dir);
-	std::string file_name = R"(Tg00301.jpg)";
+	std::string file_name = R"(Tg30000.jpg)";
 	std::string imgs_path = path + R"(/Images/Tortoises/)";
 	std::string img_path = imgs_path + file_name;
 
-	//~ std::string img_path = argv[1];
+	//std::string img_path = argv[1];
 
 	cv::Mat plastron_img = cv::imread(img_path,1);
 

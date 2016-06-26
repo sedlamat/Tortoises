@@ -55,35 +55,31 @@
 */
 class GeneralHough {
 
+    typedef std::deque<std::vector<cv::Point>> TableType;
     /**
-	Class DequeNegIdx - For easier implementation of the Hough
-	 		    R-table.
-			  - Double ended queue with negative indexing.
-			  - Inheriting deque from standard library.
+	Class HoughTable - double-ended queue of vectors of points
     */
-    /* deque with negative indexing and rotation of elements */
-    template <typename T> struct DequeNegIdx: public std::deque<T> {
-	DequeNegIdx(): std::deque<T>() {}
-	DequeNegIdx(std::size_t size): std::deque<T>(size) {}
-	virtual ~DequeNegIdx() {};
+    class HoughTable {
+	TableType _table;
+    public:
+	HoughTable() : _table() {}
+	HoughTable(std::size_t size) : _table(size) {}
+	~HoughTable() {};
 
-	T & operator[](int idx);
+	HoughTable &operator=(const HoughTable &) = default;
+	HoughTable(const HoughTable &) = default;
+
+	std::vector<cv::Point> &operator[](int idx);
 	void operator++();
 	void operator--();
 	void shift(int num_shifts);
-
-    };
-
-    /**
-	Class HoughTable - DequeNegIdx (deque) of vectors of points
-    */
-    struct HoughTable: public DequeNegIdx<std::vector<cv::Point>> {
-	HoughTable(): DequeNegIdx<std::vector<cv::Point>>() {}
-	HoughTable(std::size_t size):
-			    DequeNegIdx<std::vector<cv::Point>>(size){}
-	virtual ~HoughTable() {};
-
 	void rotate_points(const int angle);
+	TableType::iterator begin() { return _table.begin(); }
+	TableType::iterator end() { return _table.end(); }
+	TableType::const_iterator begin() const {
+					    return _table.cbegin(); }
+	TableType::const_iterator end() const { return _table.cend(); }
+	std::size_t get_size() const { return _table.size(); }
     };
 
     /** GeneralHough data members **/
@@ -144,7 +140,11 @@ public: /** GeneralHough public member functions */
 	    const bool display_accum = 0,
 	    std::vector<cv::Point> *ptr_interest_pts
 				= nullptr);
-    virtual ~GeneralHough() {}
+    ~GeneralHough() {} // virtual only if the class is to be used
+		       // as a base class and polymorfic (with other
+		       // virtual functions
+    GeneralHough(const GeneralHough &) = delete;
+    GeneralHough &operator=(const GeneralHough &) = delete;
 
     cv::Mat get_result_img() const;
     double get_best_accum_val() const { return _best_accum_val; }
@@ -173,48 +173,44 @@ private: /** GeneralHough private member functions */
     Allowing negative indexing. E.g., index -1 equals index
     size-1 of the deque.
 */
-template <typename T>
-T &GeneralHough::DequeNegIdx<T>::operator[](int idx)
+std::vector<cv::Point> &GeneralHough::HoughTable::operator[](int idx)
 {
-    size_t size = this->size();
+    std::size_t size = _table.size();
     idx = idx % size;
     if (idx < 0) idx += size;
-    return this->at(idx);
+    return _table.at(idx);
 }
 
 /**
     Rotating the elements of the deque to the right.
 */
-template <typename T>
-void GeneralHough::DequeNegIdx<T>::operator++()
+void GeneralHough::HoughTable::operator++()
 {
-    this->push_front(this->back());
-    this->pop_back();
+    _table.push_front(_table.back());
+    _table.pop_back();
 }
 /**
     Rotating the elements of the deque to the left.
 */
-template <typename T>
-void GeneralHough::DequeNegIdx<T>::operator--()
+void GeneralHough::HoughTable::operator--()
 {
-    this->push_back(this->front());
-    this->pop_front();
+    _table.push_back(_table.front());
+    _table.pop_front();
 }
 
 /**
     Rotating the elements of the deque by num_shifts, to the
     left or to the right depending on the sign of num_shifts.
 */
-template <typename T>
-void GeneralHough::DequeNegIdx<T>::shift(int num_shifts)
+void GeneralHough::HoughTable::shift(int num_shifts)
 {
     if (num_shifts < 0) {
 	for (; num_shifts < 0; ++num_shifts) {
-	    operator--();
+	    --(*this);
 	}
     } else {
 	for (; num_shifts > 0; --num_shifts) {
-	    operator++();
+	    ++(*this);
 	}
     }
 }
@@ -226,13 +222,14 @@ void GeneralHough::DequeNegIdx<T>::shift(int num_shifts)
 */
 void GeneralHough::HoughTable::rotate_points(const int angle)
 {
-    double cs = std::cos(angle * M_PI / 180.0);
-    double sn = std::sin(angle * M_PI / 180.0);
+    const double cs = std::cos(angle * M_PI / 180.0);
+    const double sn = std::sin(angle * M_PI / 180.0);
 
-    const auto it_start = this->begin(), it_end = this->end();
-    for (auto it = it_start; it != it_end; ++it) {
+    auto it = _table.begin();
+    const auto it_end = _table.end();
+    for (; it != it_end; ++it) {
 	for(auto &pt : *it) {
-	    int x = pt.x;
+	    const int x = pt.x;
 	    pt.x = cs*pt.x - sn*pt.y;
 	    pt.y = sn*x + cs*pt.y;
 	}
@@ -520,7 +517,7 @@ void GeneralHough::accumulate(const int angle)
 								angle);
 
     // fills the accumulator for all quants and scales
-    const int num_quant = quanted_src_hough_table.size();
+    const int num_quant = quanted_src_hough_table.get_size();
 
     for (auto &s : _scales) {
 	cv::Mat accum = cv::Mat(accum_size, CV_32F,
@@ -750,17 +747,18 @@ cv::Mat GeneralHough::get_result_img() const
     cv::Point shift_pt(inv_resize_coeff,inv_resize_coeff);
 
     // draws the template
-    for(auto table_quant : _r_table) {
-	for(auto pt : table_quant) {
-	    int x = pt.x;
-	    pt.x = cs*pt.x - sn*pt.y;
-	    pt.y = sn*x + cs*pt.y;
-	    pt = pt * _best_scale;
-	    pt = pt + _best_ref_pt;
-	    if (src_img_orig_rect.contains(pt)) {
+    for(const auto &table_quant : _r_table) {
+	for(const auto &pt : table_quant) {
+	    std::cout << pt << " ";
+	    cv::Point pt_rot( cs*pt.x - sn*pt.y, sn*pt.x + cs*pt.y );
+	    std::cout << pt_rot << " ";
+	    pt_rot *= _best_scale;
+	    pt_rot += _best_ref_pt;
+	    std::cout << pt_rot << std::endl;
+	    if (src_img_orig_rect.contains(pt_rot)) {
 		cv::rectangle(dst,
-			      pt-shift_pt,
-			      pt+shift_pt,
+			      pt_rot-shift_pt,
+			      pt_rot+shift_pt,
 			      cv::Scalar(0,0,255), CV_FILLED);
 	    }
 	}

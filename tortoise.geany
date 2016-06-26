@@ -23,14 +23,14 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=2
+current_page=1
 FILE_NAME_0=10021;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
-FILE_NAME_1=2951;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
-FILE_NAME_2=424;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
-FILE_NAME_3=55859;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fimgproc%2Fimgproc.hpp;0;4
-FILE_NAME_4=60646;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fcore.hpp;0;4
-FILE_NAME_5=937;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fhighgui%2Fhighgui.hpp;0;4
-FILE_NAME_6=3666;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
+FILE_NAME_1=1859;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
+FILE_NAME_2=725;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
+FILE_NAME_3=21473;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
+FILE_NAME_4=55859;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fimgproc%2Fimgproc.hpp;0;4
+FILE_NAME_5=60646;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fcore.hpp;0;4
+FILE_NAME_6=937;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fhighgui%2Fhighgui.hpp;0;4
 FILE_NAME_7=12642;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.cpp;0;4
 FILE_NAME_8=4992;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fbits%2Fstl_numeric.h;0;4
 FILE_NAME_9=2197;C++;0;EUTF-8;2;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F4.8%2Fbits%2Frange_access.h;0;4
