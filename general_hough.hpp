@@ -20,11 +20,13 @@
 			       0.5, 	//sigma of gaussinan blur
 			       0,	//if accumulator shall be shown
 			       ptr_interest_pts); //points to be found
-    // -> the detection takes place in the constructor of the object
 
-    //recoved detected data using public getters
+    // Detection takes place in the constructor of the object
+
+    // User interface - recoved detected data using public getters
+    //                |
+    //                V
     cv::Mat result_img = general_hough.get_result_img();
-    double best_accum_value = general_hough.get_best_accum_val();
     double best_angle = general_hough.get_best_angle();
     double best_scale = get_best_scale();
     cv::Point best_reference_point = general_hough.get_best_ref_pt();
@@ -143,16 +145,17 @@ public: /** GeneralHough public member functions */
     ~GeneralHough() {} // virtual only if the class is to be used
 		       // as a base class and polymorfic (with other
 		       // virtual functions
-    GeneralHough(const GeneralHough &) = delete;
-    GeneralHough &operator=(const GeneralHough &) = delete;
 
+    /** user interface */
     cv::Mat get_result_img() const;
-    double get_best_accum_val() const { return _best_accum_val; }
     double get_best_angle() const { return _best_angle; }
     double get_best_scale() const { return _best_scale; }
     cv::Point get_best_ref_pt() const { return _best_ref_pt; }
 
 private: /** GeneralHough private member functions */
+    GeneralHough(const GeneralHough &) = delete;
+    GeneralHough &operator=(const GeneralHough &) = delete;
+
     void detect();
     HoughTable get_hough_table(const cv::Mat &img,
 			       const cv::Mat &img_edges) const;
@@ -749,12 +752,9 @@ cv::Mat GeneralHough::get_result_img() const
     // draws the template
     for(const auto &table_quant : _r_table) {
 	for(const auto &pt : table_quant) {
-	    std::cout << pt << " ";
 	    cv::Point pt_rot( cs*pt.x - sn*pt.y, sn*pt.x + cs*pt.y );
-	    std::cout << pt_rot << " ";
 	    pt_rot *= _best_scale;
 	    pt_rot += _best_ref_pt;
-	    std::cout << pt_rot << std::endl;
 	    if (src_img_orig_rect.contains(pt_rot)) {
 		cv::rectangle(dst,
 			      pt_rot-shift_pt,

@@ -114,7 +114,6 @@ void Tortoise::locate_plastron()
 
     cv::Mat result_img = general_hough.get_result_img();
     sedlamat::display(result_img);
-    double best_accum_value = general_hough.get_best_accum_val();
     double best_angle = general_hough.get_best_angle();
     double best_scale = general_hough.get_best_scale();
     cv::Point best_reference_point = general_hough.get_best_ref_pt();
