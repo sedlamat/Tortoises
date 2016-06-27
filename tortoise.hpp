@@ -24,6 +24,8 @@
 #include "my_img_proc.hpp"
 #include "general_hough.hpp"
 
+std::istream &operator>>(std::istream &stream, cv::Point &pt);
+
 /**************** class definition *********************************/
 
 class Tortoise {
@@ -58,7 +60,7 @@ private:
     void print_juncs() const;
 };
 
-/************* member functions definitions ********************/
+/************* member functions definitions ************************/
 
 Tortoise::Tortoise(const cv::Mat &plastron_image,
 		   const std::string &tortoise_name)
@@ -86,39 +88,74 @@ Tortoise::Tortoise(const cv::Mat &plastron_image,
     if (_plastron_found && !_junctions_found) {
 	this->locate_junctions();
 	//_junctions_found = 1; enable only if localization is complete
-	this->write_info();
+	//this->write_info();
     }
+}
+
+std::istream &operator>>(std::istream &stream, cv::Point &pt)
+{
+    int a = 0;
+    while (!std::isdigit(a = stream.peek()) && a != '-') stream.get();
+    stream >> pt.x;
+    while (!std::isdigit(a = stream.peek()) && a != '-') stream.get();
+    stream >> pt.y;
+    while (stream.get() != ' ') ;
+    return stream;
 }
 
 void Tortoise::read_info()
 {
-    std::fstream info(_info_file_name, std::fstream::in |
-				       std::fstream::out);
+    std::ifstream info(_info_file_name);
     if (info.good()) {
 	info >> _plastron_found;
 	info >> _junctions_found;
 	info >> _angle;
+	info >> _center;
+	info >> _left_side;
+	info >> _right_side;
+	for (auto &junc : _l_juncs) {
+	    info >> junc;
+	}
+	for (auto &junc : _r_juncs) {
+	    info >> junc;
+	}
 	std::cout << _plastron_found << '\n';
 	std::cout << _junctions_found << '\n';
 	std::cout << _angle << '\n';
+	std::cout << _center << '\n';
+	std::cout << _left_side << '\n';
+	std::cout << _right_side << '\n';
+
+	this->print_juncs();
+
+	if (!info.good()) { // error when reading -> recompute data
+	    _plastron_found = 0;
+	    _junctions_found = 0;
+	}
     } else {
-	info.close();
-	std::cout << "Error when opening/reading Tg#####_info.txt";
-	std::cout << " file."<< std::endl;
-	std::exit(1);
+	std::cout << "File Tg#####_info.txt does not exists. It will";
+	std::cout << " be created." << std::endl;
     }
+
+    info.close();
 }
 
 void Tortoise::write_info() const
 {
     std::ofstream info(_info_file_name, std::fstream::out);
     if (info.good()) {
-	info << _plastron_found << '\n';
-	info << _junctions_found << '\n';
-	info << _angle << '\n';
-	std::cout << _plastron_found << '\n';
-	std::cout << _junctions_found << '\n';
-	std::cout << _angle << '\n';
+	info << _plastron_found << " ";
+	info << _junctions_found << " ";
+	info << _angle << " ";
+	info << _center << " ";
+	info << _left_side << " ";
+	info << _right_side << " ";
+	for (const auto &junc : _l_juncs) {
+	    info << junc  << " ";
+	}
+	for (const auto &junc : _r_juncs) {
+	    info << junc << " ";
+	}
 
 	info.close();
     } else {
@@ -192,7 +229,7 @@ void Tortoise::locate_plastron()
 
 void Tortoise::locate_junctions()
 {
-
+ std::cout << "locate_junctions entered" << std::endl;
 }
 
 #endif /* _TORTOISE_HPP_ */

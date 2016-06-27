@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iomanip>
 #include <ctime>
+#include <cctype>
 
 /* THIRD PARTY LIBRARIES */
 #include <pwd.h>
