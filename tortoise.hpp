@@ -85,18 +85,22 @@ Tortoise::Tortoise(const cv::Mat &plastron_image,
 
     if (_plastron_found && !_junctions_found) {
 	this->locate_junctions();
-	_junctions_found = 1;
+	//_junctions_found = 1; enable only if localization is complete
 	this->write_info();
     }
 }
 
 void Tortoise::read_info()
 {
-    std::fstream info(_info_file_name, std::fstream::out);
+    std::fstream info(_info_file_name, std::fstream::in |
+				       std::fstream::out);
     if (info.good()) {
-	if (info.peek() == std::fstream::traits_type::eof()) {
-	}
-
+	info >> _plastron_found;
+	info >> _junctions_found;
+	info >> _angle;
+	std::cout << _plastron_found << '\n';
+	std::cout << _junctions_found << '\n';
+	std::cout << _angle << '\n';
     } else {
 	info.close();
 	std::cout << "Error when opening/reading Tg#####_info.txt";
@@ -107,7 +111,22 @@ void Tortoise::read_info()
 
 void Tortoise::write_info() const
 {
-    std::cout << "writing info" << std::endl;
+    std::ofstream info(_info_file_name, std::fstream::out);
+    if (info.good()) {
+	info << _plastron_found << '\n';
+	info << _junctions_found << '\n';
+	info << _angle << '\n';
+	std::cout << _plastron_found << '\n';
+	std::cout << _junctions_found << '\n';
+	std::cout << _angle << '\n';
+
+	info.close();
+    } else {
+	info.close();
+	std::cout << "Error when opening/reading Tg#####_info.txt";
+	std::cout << " file."<< std::endl;
+	std::exit(1);
+    }
 }
 
 
@@ -161,11 +180,11 @@ void Tortoise::locate_plastron()
     for (int ii = 0; ii < 7; ++ii) {
 	_l_juncs[ii] = _r_juncs[ii] = interest_pts[ii];
     }
+    _left_side = interest_pts[7];
+    _right_side = interest_pts[8];
+    _center = interest_pts[9];
 
     _angle = general_hough.get_best_angle();
-    _center = interest_pts[interest_pts.size()-1];
-    _left_side =
-    _right_side =
 
     cv::Mat result_img = general_hough.get_result_img();
     sedlamat::display(result_img);
