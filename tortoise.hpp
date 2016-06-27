@@ -30,11 +30,11 @@ class Tortoise {
     // image of the tortoise plastron
     const cv::Mat _plastron_img;
 
+    // file name into which info data is saved
+    const std::string _tortoise_name, _info_file_name;
+
     // rotation angle of the plastron
     int _angle;
-
-    // file name into which info data is saved
-    const std::string _info_file_name;
 
     // left and right junctions, 0 - 6, from head to tail,
     // Head, GulToHum, HumToPec, PecToAbd, AbdToFem, FemToAna, Tail
@@ -64,8 +64,9 @@ Tortoise::Tortoise(const cv::Mat &plastron_image,
 		   const std::string &tortoise_name)
 	    :
 	    _plastron_img(plastron_image),
-	    _angle(0),
+	    _tortoise_name(tortoise_name),
 	    _info_file_name(tortoise_name.substr(0,7) + "_info.txt"),
+	    _angle(0),
 	    _l_juncs(std::vector<cv::Point>(7)),
 	    _r_juncs(std::vector<cv::Point>(7)),
 	    _center(),
@@ -84,7 +85,7 @@ Tortoise::Tortoise(const cv::Mat &plastron_image,
 
     if (_plastron_found && !_junctions_found) {
 	this->locate_junctions();
-
+	_junctions_found = 1;
 	this->write_info();
     }
 }
@@ -125,13 +126,8 @@ void Tortoise::print_juncs() const
 
 void Tortoise::locate_plastron()
 {
-    time_t t0, t1;
-    std::time(&t0);
-
     const cv::Mat plastron_template
 			    = cv::imread("plastron_template.bmp", 0);
-
-    //ssedlamat::display(plastron_template);
 
     if (plastron_template.empty()) {
 	std::cout << "Error: plastron_template.bmp image is not" \
@@ -160,24 +156,19 @@ void Tortoise::locate_plastron()
 			       reference_point,	angles, 20, 200, 1.0,
 			       0.3, 50, 100, 0.5, 0,
 			       &interest_pts);
-
-    for (std::size_t ii = 0; ii < interest_pts.size(); ++ii) {
-	std::cout << interest_pts[ii] << std::endl;
-    }
-    std::time(&t1);
-    std::cout << difftime(t1,t0) <<std::endl;
+    // assigns interest points
 
     for (int ii = 0; ii < 7; ++ii) {
 	_l_juncs[ii] = _r_juncs[ii] = interest_pts[ii];
     }
 
+    _angle = general_hough.get_best_angle();
+    _center = interest_pts[interest_pts.size()-1];
+    _left_side =
+    _right_side =
 
-    this->print_juncs();
     cv::Mat result_img = general_hough.get_result_img();
     sedlamat::display(result_img);
-    double best_angle = general_hough.get_best_angle();
-    double best_scale = general_hough.get_best_scale();
-    cv::Point best_reference_point = general_hough.get_best_ref_pt();
 }
 
 void Tortoise::locate_junctions()
