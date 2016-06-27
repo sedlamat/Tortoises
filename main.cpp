@@ -21,22 +21,24 @@ int main(int argc, char *argv[])
     try {
 	time_t t0, t1;
 	std::time(&t0);
-	passwd *pw = getpwuid(getuid());
-	std::string path(pw->pw_dir);
-	std::string file_name = R"(Tg30000.jpg)";
-	std::string imgs_path = path + R"(/Images/Tortoises/)";
-	std::string img_path = imgs_path + file_name;
 
-	//std::string img_path = argv[1];
+	const passwd * const pw = getpwuid(getuid());
+	const std::string path(pw->pw_dir);
+	const std::string file_name = R"(Tg30000.jpg)";
+	const std::string imgs_path = path + R"(/Images/Tortoises/)";
+	const std::string img_path = imgs_path + file_name;
 
-	cv::Mat plastron_img = cv::imread(img_path,1);
+	//const std::string img_path = argv[1];
 
-	Tortoise tg(plastron_img);
+	const cv::Mat plastron_img = cv::imread(img_path,1);
+
+	Tortoise tg(plastron_img, file_name);
 
 	//cv::imwrite(argv[2],general_hough.get_result_img());
 
 	std::time(&t1);
 	std::cout << difftime(t1,t0) <<std::endl;
+
     } catch (const char *e) {
 	std::cout << e << std::endl;
 	exit(1);

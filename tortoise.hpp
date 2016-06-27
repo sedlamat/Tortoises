@@ -1,57 +1,114 @@
-﻿
+﻿/**
+    tortoise.hpp
+
+    Implementation of the Tortoise class for tortoise plastron
+    locatization and feature extraction.
+
+    @author Matej Sedlacek
+    @version 0.0
+*/
+
+#ifndef _TORTOISE_HPP_
+#define _TORTOISE_HPP_
+
 /* STANDARD C++ LIBRARIES */
-#include <map>
+#include <vector>
 #include <string>
+#include <fstream>
+#include <iostream>
 
 /* THIRD PARTY LIBRARIES */
 #include <opencv2/core/core.hpp>
-
-//~ // using several standard libraries
-//~ #include <iostream>
-//~ #include <time.h>
-//~ #include <cmath>
-//~ #include <iomanip>
-//~ #include <stdio.h>
-//~ #include <fstream>
-//~ #include <sstream>
-//~ #include <string>
-//~ //#include <io.h>
-//~ //#include <direct.h>
-//~ #include <float.h>
-//~ //#include <cassert>
-//~
-//~ // using libraries for image recognition (CImg and OpenCV)
-//~ //#include "CImg.h"
-//~ #include <opencv2/opencv.hpp>
-
-//~ #include <opencv2/highgui/highgui.hpp>
-//~ #include <opencv2/imgproc/imgproc.hpp>
-//~ #include <opencv2/ml/ml.hpp>
-//include <opencv2\legacy\legacy.hpp>
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
 #include "general_hough.hpp"
 
-
+/**************** class definition *********************************/
 
 class Tortoise {
     // image of the tortoise plastron
     const cv::Mat _plastron_img;
 
+    // rotation angle of the plastron
+    int _angle;
+
+    // file name into which info data is saved
+    const std::string _info_file_name;
+
     // left and right junctions, 0 - 6, from head to tail,
     // Head, GulToHum, HumToPec, PecToAbd, AbdToFem, FemToAna, Tail
     std::vector<cv::Point> _l_juncs, _r_juncs;
 
+    // plastron points
+    cv::Point _center, _left_side, _right_side;
+
+    bool _plastron_found, _junctions_found;
+
 public:
-    Tortoise(const cv::Mat &plastron_image);
-    virtual ~Tortoise(){}
-    void measure(); // locate and measure features
-    void print_juncs() const;
+    Tortoise(const cv::Mat &plastron_image,
+	     const std::string &tortoise_name);
+    ~Tortoise(){}
 
 private:
     void locate_plastron();
+    void locate_junctions();
+    void read_info();
+    void write_info() const;
+    void print_juncs() const;
 };
+
+/************* member functions definitions ********************/
+
+Tortoise::Tortoise(const cv::Mat &plastron_image,
+		   const std::string &tortoise_name)
+	    :
+	    _plastron_img(plastron_image),
+	    _angle(0),
+	    _info_file_name(tortoise_name.substr(0,7) + "_info.txt"),
+	    _l_juncs(std::vector<cv::Point>(7)),
+	    _r_juncs(std::vector<cv::Point>(7)),
+	    _center(),
+	    _left_side(),
+	    _right_side(),
+	    _plastron_found(0),
+	    _junctions_found(0)
+{
+    this->read_info();
+
+    if (!_plastron_found) {
+	this->locate_plastron();
+	_plastron_found = 1;
+	this->write_info();
+    }
+
+    if (_plastron_found && !_junctions_found) {
+	this->locate_junctions();
+
+	this->write_info();
+    }
+}
+
+void Tortoise::read_info()
+{
+    std::fstream info(_info_file_name, std::fstream::out);
+    if (info.good()) {
+	if (info.peek() == std::fstream::traits_type::eof()) {
+	}
+
+    } else {
+	info.close();
+	std::cout << "Error when opening/reading Tg#####_info.txt";
+	std::cout << " file."<< std::endl;
+	std::exit(1);
+    }
+}
+
+void Tortoise::write_info() const
+{
+    std::cout << "writing info" << std::endl;
+}
+
 
 void Tortoise::print_juncs() const
 {
@@ -66,20 +123,15 @@ void Tortoise::print_juncs() const
     }
 }
 
-Tortoise::Tortoise(const cv::Mat &plastron_image)
-		   : _plastron_img(plastron_image),
-		     _l_juncs(std::vector<cv::Point>(7)),
-		     _r_juncs(std::vector<cv::Point>(7))
-{
-    this->locate_plastron();
-}
-
 void Tortoise::locate_plastron()
 {
     time_t t0, t1;
     std::time(&t0);
 
-    cv::Mat plastron_template = cv::imread("plastron_template.bmp", 0);
+    const cv::Mat plastron_template
+			    = cv::imread("plastron_template.bmp", 0);
+
+    //ssedlamat::display(plastron_template);
 
     if (plastron_template.empty()) {
 	std::cout << "Error: plastron_template.bmp image is not" \
@@ -88,36 +140,52 @@ void Tortoise::locate_plastron()
 	exit(1);
     }
 
-    std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
+    const std::vector<int> angles = {-5,0,5,-85,-90,-95,180,85,90,95};
 
-    cv::Point reference_point(65,125);
+    const cv::Point reference_point(65,125);
 
-    std::vector<cv::Point> tmpl_juncs(7);
-    tmpl_juncs[0] = cv::Point(64,58);
-    tmpl_juncs[1] = cv::Point(64,74);
-    tmpl_juncs[2] = cv::Point(64,97);
-    tmpl_juncs[3] = cv::Point(64,105);
-    tmpl_juncs[4] = cv::Point(64,155);
-    tmpl_juncs[5] = cv::Point(64,168);
-    tmpl_juncs[6] = cv::Point(64,185);
+    std::vector<cv::Point> interest_pts;
+    interest_pts.push_back(cv::Point(64,58)); 	// junction 0 - Head
+    interest_pts.push_back(cv::Point(64,74));
+    interest_pts.push_back(cv::Point(64,97));
+    interest_pts.push_back(cv::Point(64,105));
+    interest_pts.push_back(cv::Point(64,155));
+    interest_pts.push_back(cv::Point(64,168));
+    interest_pts.push_back(cv::Point(64,185)); 	// junction 6 - Tail
+    interest_pts.push_back(cv::Point(7,131));  	// left side border
+    interest_pts.push_back(cv::Point(123,131)); // right side border
+    interest_pts.push_back(cv::Point(65,125));  // plastron center
 
     GeneralHough general_hough(_plastron_img, plastron_template,
 			       reference_point,	angles, 20, 200, 1.0,
 			       0.3, 50, 100, 0.5, 0,
-			       &tmpl_juncs);
+			       &interest_pts);
+
+    for (std::size_t ii = 0; ii < interest_pts.size(); ++ii) {
+	std::cout << interest_pts[ii] << std::endl;
+    }
     std::time(&t1);
     std::cout << difftime(t1,t0) <<std::endl;
 
     for (int ii = 0; ii < 7; ++ii) {
-	_l_juncs[ii] = _r_juncs[ii] = tmpl_juncs[ii];
+	_l_juncs[ii] = _r_juncs[ii] = interest_pts[ii];
     }
 
+
+    this->print_juncs();
     cv::Mat result_img = general_hough.get_result_img();
     sedlamat::display(result_img);
     double best_angle = general_hough.get_best_angle();
     double best_scale = general_hough.get_best_scale();
     cv::Point best_reference_point = general_hough.get_best_ref_pt();
 }
+
+void Tortoise::locate_junctions()
+{
+
+}
+
+#endif /* _TORTOISE_HPP_ */
 
 /*
     string            m_strLoadDirectory;
@@ -207,3 +275,27 @@ void Tortoise::locate_plastron()
     //~ color["j6FemToAna"] = color["purple"];
     //~ color["j7Tail"] = color["cyan"];
 */
+
+
+//~ // using several standard libraries
+//~ #include <iostream>
+//~ #include <time.h>
+//~ #include <cmath>
+//~ #include <iomanip>
+//~ #include <stdio.h>
+//~ #include <fstream>
+//~ #include <sstream>
+//~ #include <string>
+//~ //#include <io.h>
+//~ //#include <direct.h>
+//~ #include <float.h>
+//~ //#include <cassert>
+//~
+//~ // using libraries for image recognition (CImg and OpenCV)
+//~ //#include "CImg.h"
+//~ #include <opencv2/opencv.hpp>
+
+//~ #include <opencv2/highgui/highgui.hpp>
+//~ #include <opencv2/imgproc/imgproc.hpp>
+//~ #include <opencv2/ml/ml.hpp>
+//include <opencv2\legacy\legacy.hpp>
