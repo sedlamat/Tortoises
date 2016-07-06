@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
 	//const std::string img_path = argv[1];
 
 	const cv::Mat plastron_img = cv::imread(img_path,1);
-
 	Tortoise tg(plastron_img, file_name);
 
 	//cv::imwrite(argv[2],general_hough.get_result_img());

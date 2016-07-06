@@ -6,6 +6,6 @@ DEPS = my_img_proc.hpp general_hough.hpp tortoise.hpp
 
 
 $(TARGET) : $(SRC) $(DEPS)
-	g++ -Wall -g -std=c++11 $(SRC) -o $(TARGET) $(CFLAGS)
+	g++ -Wall -g -std=c++11 $(SRC) -o $(TARGET) $(CFLAGS) -lX11
 
 
