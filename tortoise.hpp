@@ -19,6 +19,8 @@
 
 /* THIRD PARTY LIBRARIES */
 #include <opencv2/core/core.hpp>
+//#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 /* FIRST PARTY LIBRARIES */
 #include "my_img_proc.hpp"
@@ -60,6 +62,16 @@ class Tortoise {
 	const cv::Vec3b cyan = cv::Vec3b(255,255,0);
     } const _color;
 
+    struct JunctionIndices {
+	const int j0Head = 0;
+	const int j1GulHum = 1;
+	const int j2HumPec = 2;
+	const int j3PecAbd = 3;
+	const int j4AbdFem = 4;
+	const int j5FemAna = 5;
+	const int j6Tail = 6;
+    } _idx;
+
 public:
     Tortoise(const cv::Mat &plastron_image,
 	     const std::string &tortoise_name);
@@ -80,7 +92,7 @@ private:
     void rotate_img_and_pts(const int angle);
     void rotate_pt(cv::Point &pt, const cv::Point &center,
 		   const int angle);
-    void locate_Abd_juncs();
+    void locate_central_seam();
 };
 
 /************* member functions definitions ************************/
@@ -99,7 +111,8 @@ Tortoise::Tortoise(const cv::Mat &plastron_image,
 	    _right_side(),
 	    _plastron_found(0),
 	    _junctions_found(0),
-	    _color()
+	    _color(),
+	    _idx()
 {
     this->read_info();
 
@@ -355,22 +368,138 @@ void Tortoise::locate_junctions()
 {
     std::cout << "locate_junctions entered" << std::endl;
     this->rotate_img_and_pts(_angle);
+    this->locate_central_seam();
     this->display_points_on_plastron();
-    this->locate_Abd_juncs();
+
 }
 
 
-void Tortoise::locate_Abd_juncs()
+void Tortoise::locate_central_seam()
 {
-//~ //using edges on a wider central-seam stripe
-//~ const int nAbdSeamLength = sJunctions.s5AbdToFem.yCoor - sJunctions.s4PecToAbd.yCoor;
-//~ CImg<int> imgPlastron(imgRotatedOriginal.get_crop(
-  //~ min(m_imgRotatedOriginal.width()-1,max(sPlastronCentreOnRotatedImg.xCoor-nAbdSeamLength,0)),sJunctions.s1Head.yCoor,
-  //~ min(m_imgRotatedOriginal.width()-1,max(sPlastronCentreOnRotatedImg.xCoor+nAbdSeamLength,0)),sJunctions.s7Tail.yCoor));
-//~ imgPlastron = GetUniformlyResizedImg(imgPlastron,500);
-//~ int nCentreYCoor = (sPlastronCentreOnRotatedImg.yCoor - sJunctions.s1Head.yCoor)*imgPlastron.height()/(sJunctions.s7Tail.yCoor-sJunctions.s1Head.yCoor);
-//~ CImg<int> imgEdges(GetEdgeImg(imgPlastron,0,0,0));
-//~ //imgEdges.display();
+    std::cout << "Abdominal junctions localization" << std::endl;
+
+    // calculates the to-be half width of the central seam stripe
+    const int abd_seam_length = _l_juncs[_idx.j4AbdFem].y -
+				_l_juncs[_idx.j3PecAbd].y;
+
+    // prepares the area rectangle of the central seam stripe
+    cv::Rect stripe_rect(
+		cv::Point(_l_juncs[_idx.j0Head].x - abd_seam_length/2,
+		          _l_juncs[_idx.j0Head].y ),
+		cv::Point(_l_juncs[_idx.j6Tail].x + abd_seam_length/2,
+		          _l_juncs[_idx.j6Tail].y ));
+
+    // gets the area of the central seam stripe
+    cv::Mat stripe_img = _plastron_img(stripe_rect).clone();
+
+
+    // resizes the area
+    int stripe_w = stripe_img.cols;
+    int stripe_h = stripe_img.rows;
+    const double resize_coeff = 800.0 / std::max(stripe_w,stripe_h);
+    cv::resize(stripe_img, stripe_img, cv::Size(0,0), resize_coeff,
+						resize_coeff);
+    stripe_w = stripe_img.cols;
+    stripe_h = stripe_img.rows;
+
+    // gets the edge image of the area
+    cv::Mat stripe_edges;
+    cv::Canny(stripe_img, stripe_edges, 0, 0);
+    stripe_edges.convertTo(stripe_edges, CV_32F);
+    stripe_edges /= 255;
+
+
+    cv::Mat stripe_values(stripe_edges.size(), CV_32F,
+						    cv::Scalar(10000));
+
+    // prepares distance mask 5rows x 7columns
+    cv::Mat dist_mask(5, 7, CV_32F, cv::Scalar(0));
+
+    /* fills the rows of dist_mask as follows
+     * [ 4, 3, 2, 1, 2, 3, 4;
+     *   7, 6, 5, 4, 5, 6, 7;
+     *  12,11,10, 9,10,11,12;
+     *  19,18,17,16,17,18,19;
+     *  28,27,26,25,26,27,28 ]
+    **/
+
+    for (int x = 0; x < 7; ++x)  {
+	for (int y = 0; y < 5; ++y) {
+	    dist_mask.at<float>(y,x) = pow((y+1),2.0);
+	}
+    }
+    for (int y = 0; y < 5; ++y) {
+      dist_mask.at<float>(y,0) += 3;
+      dist_mask.at<float>(y,6) += 3;
+      dist_mask.at<float>(y,1) += 2;
+      dist_mask.at<float>(y,5) += 2;
+      dist_mask.at<float>(y,2) += 1;
+      dist_mask.at<float>(y,4) += 1;
+    }
+
+    cv::Rect mask_rect(cv::Point(0,0), cv::Size(7,5));
+    std::cout << mask_rect << std::endl;
+    //~ cv::flip(dist_mask, dist_mask, 0);
+
+    const int low_line_y = stripe_h*1/6;
+    const int mid_line_y = stripe_h*3/6;
+    const int high_line_y = stripe_h*5/6;
+
+    const cv::Rect low_line_rect(cv::Point(0,low_line_y),
+				 cv::Point(stripe_w-1,low_line_y+1));
+    const cv::Rect mid_line_rect(cv::Point(0,mid_line_y),
+				 cv::Point(stripe_w-1,mid_line_y+1));
+    const cv::Rect high_line_rect(cv::Point(0,high_line_y),
+				 cv::Point(stripe_w-1,high_line_y+1));
+
+    stripe_edges(low_line_rect) = 1.0;
+    stripe_edges(mid_line_rect) = 1.0;
+    stripe_edges(high_line_rect) = 1.0;
+
+    // locates the central seam at the low_line position
+
+    stripe_values(mid_line_rect) = 1.0;
+
+    for (int y = mid_line_y-1; y >= 6 ; --y) {
+	for (int x = 3; x < stripe_w - 3; ++x) {
+	    if (stripe_edges.at<int>(y,x)) {
+		double min;
+		mask_rect.x = x-3;
+		mask_rect.y = y+1;
+		//~ std::cout << x << std::endl;
+		//~ std::cout << y << std::endl;
+		//~ std::cout << mask_rect << std::endl;
+		//~ sedlamat::display(stripe_values(mask_rect));
+		//~ sedlamat::display(stripe_edges(mask_rect));
+		//~ sedlamat::display(dist_mask);
+		//~ sedlamat::display((stripe_edges(mask_rect).mul(dist_mask) +
+			      //~ stripe_values(mask_rect)));
+		cv::minMaxLoc(stripe_edges(mask_rect).mul(dist_mask) +
+			      stripe_values(mask_rect), &min);
+		stripe_values.at<float>(y,x) = min;
+	    }
+	}
+    }
+    cv::Mat high_values;
+    cv::Mat(stripe_values < 9000).convertTo(high_values, CV_32F);
+    sedlamat::display(stripe_values.mul(high_values));
+    //~ cv::Mat non_zero_coordinates;
+    //~ findNonZero(img, nonZeroCoordinates);
+    //~ for (int i = 0; i < nonZeroCoordinates.total(); i++ ) {
+        //~ cout << "Zero#" << i << ": " << nonZeroCoordinates.at<Point>(i).x << ", " << nonZeroCoordinates.at<Point>(i).y << endl;
+    //~ }
+    //~ return 0;
+    //~ stripe_values
+    //~ abd_values(cv::Range(search_start_y_idx,abd_edges.size().height), cv::Range(0,3)) -= 10000;
+    //~ abd_values(cv::Range(search_start_y_idx,abd_edges.size().height), cv::Range(abd_edges.size().width - 3,abd_edges.size().width)) -= 10000;
+    //~ abd_values(cv::Range(0,search_start_y_idx-1), cv::Range::all()) -= 10000;
+    //~ abd_values(cv::Range(search_start_y_idx-1,abd_edges.size().height), cv::Range::all()) = abd_values(cv::Range(search_start_y_idx-1,abd_edges.size().height), cv::Range::all()).mul(abd_edges(cv::Range(search_start_y_idx-1,abd_edges.size().height), cv::Range::all()));
+    //abd_values = abd_values.mul(abd_edges);
+    //std::cout << dist_mask << std::endl;
+    //~ sedlamat::display(abd_values);
+    //sedlamat::display(abd_edges);
+      //~ //distance
+
       //~ const int nImgEdgesWidth = imgEdges.width();
       //~ const int nImgEdgesHeight = imgEdges.height();
 
@@ -591,6 +720,167 @@ void Tortoise::locate_Abd_juncs()
 //~ m_sJunctions.s4PecToAbd.yCoor = yCoorOfTheJunctions(nPositionOfPecToAbdInTheJunctions);
 //~ m_sJunctions.s5AbdToFem.yCoor = yCoorOfTheJunctions(nPositionOfAbdToFemInTheJunctions);
 //~ m_sPlastronCentreOnRotatedImg.yCoor = (m_sJunctions.s5AbdToFem.yCoor + m_sJunctions.s4PecToAbd.yCoor)/2;
+
+
+cv::Mat Tortoise::get_skeletonized_min_dist(const cv::Mat &edge_img)
+{
+    cv::Mat edges = edge_img.clone();
+    this->eliminate_one_pix_edges(edges);
+    this->eliminate_two_pix_edges(edges);
+	CImg<int> res(imgEdges);//,edgesWrapping(getEdgesWrapping(imgToDoItOn)), edgesWrappingInverse;
+	int width = res.width();
+	int height = res.height();
+//sets value 0 for edges in resulting image
+	res = (res-1).abs();
+//sets value 0 for the area it works
+  //edgesWrapping.display();
+	//edgesWrappingInverse = (edgesWrapping-1).abs();
+  //edgesWrappingInverse.display();
+//adds edgesWrapping, so 0s are only in the working area where there is no edge
+  //imgToDoItOn.display();
+	//imgToDoItOn = imgToDoItOn + edgesWrappingInverse;
+  //imgToDoItOn.display();
+
+//
+	for(int y = 0; y < height-1; y++)
+	{
+		for(int x = 0; x < width-1; x++)
+		{
+			if(imgEdges(x,y) == 0)
+			{
+				int minDist = 1;
+				bool doIncreaseDistance = 1;
+				while(doIncreaseDistance && x-minDist>=0 && y-minDist>=0 && x+minDist<width && y+minDist<height)
+				{
+					if(imgEdges.get_crop(x-minDist,y-minDist,x+minDist,y+minDist).sum() > 0 || minDist >= 3)
+					{
+						doIncreaseDistance = 0;
+					}
+					else minDist++;
+				}
+				res(x,y) = minDist;
+			}
+		}
+	}
+//	res = res.get_mul(edgesWrapping);
+//eliminates pixs, first those close to edges (cycle 1->3)
+	int maxLevel = 3;
+	for(int cycle = 1; cycle <= maxLevel; cycle++)
+	{
+//in each cycle it eliminates also all newly-suitable pixs on lower levels (level 1...cycle)
+		for(int level = 1; level <= cycle; level++)
+		{
+//eliminates until no elimination has occured in previous go-through of the image
+			bool change = 1;
+			while(change)
+			{
+				change = 0;
+				for(int y = 1; y < height - 1; y++)
+				{
+					for(int x = 1; x < width-1; x++)
+					{
+						if(res(x,y) == level)
+						{
+// eliminate from rigth down corner
+							if( res(x-1,y-1)> 0 && res(x,y-1)> 0 && res(x+1,y-1)>=0  &&
+								res(x-1,y)  > 0 &&				    res(x+1,y)  ==0  &&
+								res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0     ) { res(x,y) = 0; change = 1; }
+// eliminate from left down corner
+							else if( res(x-1,y-1)>=0 && res(x,y-1)> 0 && res(x+1,y-1)> 0 &&
+									 res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
+									 res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0  ) { res(x,y) = 0; change = 1; }
+// eliminate from left up corner
+							else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
+									 res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
+									 res(x-1,y+1)>=0 && res(x,y+1)> 0 && res(x+1,y+1)> 0   ) { res(x,y) = 0; change = 1; }
+// eliminate from right up corner
+							else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
+									 res(x-1,y)  > 0 &&					res(x+1,y)  ==0 &&
+									 res(x-1,y+1)> 0 && res(x,y+1)> 0 && res(x+1,y+1)>=0   ) { res(x,y) = 0; change = 1; }
+// eliminate from right side
+							else if( res(x-1,y-1)>0 &&  (res(x+1,y-1)==0||res(x+1,y+1)==0) &&
+									 res(x-1,y)  >0 &&				 res(x+1,y)  ==0 &&
+									 res(x-1,y+1)>0   ) { res(x,y) = 0; change = 1; }
+// eliminate from left side
+							else if( (res(x-1,y-1)==0||res(x-1,y+1)==0) && res(x+1,y-1)>0 &&
+									  res(x-1,y)  ==0 &&					                res(x+1,y) >0 &&
+								      res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
+// eliminate from up side
+							else if( (res(x-1,y-1)==0 || res(x+1,y-1)==0) && res(x,y-1)==0 &&
+									 (res(x-1,y)  >0 ||					 res(x+1,y)  >0) &&
+									  res(x-1,y+1)>0 && res(x,y+1)>0 && res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
+// eliminate from down side
+							else if( res(x-1,y-1)>0 && res(x,y-1)>0 && res(x+1,y-1)>0 &&
+									(res(x-1,y)  >0 ||					 res(x+1,y)>0) &&
+									(res(x-1,y+1)==0 || res(x+1,y+1)==0) && res(x,y+1)==0   ) { res(x,y) = 0; change = 1; }
+							else
+							{
+
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+  //res.display();
+	return res.threshold(1);
+}
+
+void Tortoise::eliminate_one_pix_edges(cv::Mat &edges)
+{
+    int edges_w = edges.size().width;
+    int edges_h = edges.size().height;
+    for (int y = 1; y < edges_h-1; ++y) {
+	for (int x = 1; x < edges_w-1; ++x) {
+	    if(edges.at<int>(y,x)) {
+		if(!edges.at<int>(y,x-1) &&
+		   !edges.at<int>(y-1,x-1) &&
+		   !edges.at<int>(y+1,x-1) &&
+		   !edges.at<int>(y-1,x) &&
+		   !edges.at<int>(y,x+1) &&
+		   !edges.at<int>(y-1,x+1) &&
+		   !edges.at<int>(y+1,x+1) &&
+		   !edges.at<int>(y+1,x)) {
+
+		    edges.at<int>(y,x) = 0;
+		}
+	    }
+	}
+    }
+}
+
+void Tortoise::eliminate_two_pix_edges(cv::Mat &imgToDoItOn)
+{
+      int width = imgToDoItOn.width();
+      int height = imgToDoItOn.height();
+imgToDoItOn.threshold(1);
+      for(int y = 2; y < height - 2; y++)
+      {
+	      for(int x = 2; x < width-2; x++)
+	      {
+		      if(imgToDoItOn(x,y) == 1)
+		      {
+			      CImg<unsigned char> imgCrop(imgToDoItOn.get_crop(x-1,y-1,x+1,y+1));
+			      if(imgCrop.sum() <= 2)
+			      {
+				      imgCrop(1,1)=0;
+				      int X = static_cast<int>(imgCrop.get_stats()(8))-1 + x;
+				      int Y = static_cast<int>(imgCrop.get_stats()(9))-1 + y;
+				      if(imgToDoItOn.get_crop(X-1,Y-1,X+1,Y+1).sum() <=2)
+				      {
+					      imgToDoItOn(x,y) = 0;
+					      imgToDoItOn(X,Y) = 0;
+				      }
+
+			      }
+		      }
+	      }
+      }
+      return imgToDoItOn;
+}
+
+
 }
 
 #endif /* _TORTOISE_HPP_ */

@@ -25,11 +25,12 @@ long_line_column=72
 [files]
 current_page=2
 FILE_NAME_0=8190;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
-FILE_NAME_1=1898;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
-FILE_NAME_2=404;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
-FILE_NAME_3=21473;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
+FILE_NAME_1=3303;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
+FILE_NAME_2=775;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
+FILE_NAME_3=21575;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
 FILE_NAME_4=12614;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.cpp;0;4
 FILE_NAME_5=220;Make;0;EUTF-8;1;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmakefile;0;4
+FILE_NAME_6=2665;C++;0;EUTF-8;2;1;0;%2Fusr%2Flocal%2Finclude%2Fopencv2%2Fcore%2Fmat.hpp;0;4
 
 [build-menu]
 EX_00_LB=_Execute
