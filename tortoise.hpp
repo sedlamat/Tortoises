@@ -93,6 +93,9 @@ private:
     void rotate_pt(cv::Point &pt, const cv::Point &center,
 		   const int angle);
     void locate_central_seam();
+    void eliminate_one_pix_edges(cv::Mat &edges);
+    void eliminate_two_pix_edges(cv::Mat &edges);
+
 };
 
 /************* member functions definitions ************************/
@@ -408,6 +411,7 @@ void Tortoise::locate_central_seam()
     stripe_edges.convertTo(stripe_edges, CV_32F);
     stripe_edges /= 255;
 
+    this->eliminate_two_pix_edges(stripe_edges);
 
     cv::Mat stripe_values(stripe_edges.size(), CV_32F,
 						    cv::Scalar(10000));
@@ -483,6 +487,7 @@ void Tortoise::locate_central_seam()
     cv::Mat high_values;
     cv::Mat(stripe_values < 9000).convertTo(high_values, CV_32F);
     sedlamat::display(stripe_values.mul(high_values));
+}
     //~ cv::Mat non_zero_coordinates;
     //~ findNonZero(img, nonZeroCoordinates);
     //~ for (int i = 0; i < nonZeroCoordinates.total(); i++ ) {
@@ -722,165 +727,163 @@ void Tortoise::locate_central_seam()
 //~ m_sPlastronCentreOnRotatedImg.yCoor = (m_sJunctions.s5AbdToFem.yCoor + m_sJunctions.s4PecToAbd.yCoor)/2;
 
 
-cv::Mat Tortoise::get_skeletonized_min_dist(const cv::Mat &edge_img)
-{
-    cv::Mat edges = edge_img.clone();
-    this->eliminate_one_pix_edges(edges);
-    this->eliminate_two_pix_edges(edges);
-	CImg<int> res(imgEdges);//,edgesWrapping(getEdgesWrapping(imgToDoItOn)), edgesWrappingInverse;
-	int width = res.width();
-	int height = res.height();
-//sets value 0 for edges in resulting image
-	res = (res-1).abs();
-//sets value 0 for the area it works
-  //edgesWrapping.display();
-	//edgesWrappingInverse = (edgesWrapping-1).abs();
-  //edgesWrappingInverse.display();
-//adds edgesWrapping, so 0s are only in the working area where there is no edge
-  //imgToDoItOn.display();
-	//imgToDoItOn = imgToDoItOn + edgesWrappingInverse;
-  //imgToDoItOn.display();
+//~ cv::Mat Tortoise::get_skeletonized_min_dist(const cv::Mat &edge_img)
+//~ {
+    //~ cv::Mat edges = edge_img.clone();
+    //~ this->eliminate_one_pix_edges(edges);
+    //~ this->eliminate_two_pix_edges(edges);
+	//~ CImg<int> res(imgEdges);//,edgesWrapping(getEdgesWrapping(imgToDoItOn)), edgesWrappingInverse;
+	//~ int width = res.width();
+	//~ int height = res.height();
+//~ //sets value 0 for edges in resulting image
+	//~ res = (res-1).abs();
+//~ //sets value 0 for the area it works
+  //~ //edgesWrapping.display();
+	//~ //edgesWrappingInverse = (edgesWrapping-1).abs();
+  //~ //edgesWrappingInverse.display();
+//~ //adds edgesWrapping, so 0s are only in the working area where there is no edge
+  //~ //imgToDoItOn.display();
+	//~ //imgToDoItOn = imgToDoItOn + edgesWrappingInverse;
+  //~ //imgToDoItOn.display();
 
-//
-	for(int y = 0; y < height-1; y++)
-	{
-		for(int x = 0; x < width-1; x++)
-		{
-			if(imgEdges(x,y) == 0)
-			{
-				int minDist = 1;
-				bool doIncreaseDistance = 1;
-				while(doIncreaseDistance && x-minDist>=0 && y-minDist>=0 && x+minDist<width && y+minDist<height)
-				{
-					if(imgEdges.get_crop(x-minDist,y-minDist,x+minDist,y+minDist).sum() > 0 || minDist >= 3)
-					{
-						doIncreaseDistance = 0;
-					}
-					else minDist++;
-				}
-				res(x,y) = minDist;
-			}
-		}
-	}
-//	res = res.get_mul(edgesWrapping);
-//eliminates pixs, first those close to edges (cycle 1->3)
-	int maxLevel = 3;
-	for(int cycle = 1; cycle <= maxLevel; cycle++)
-	{
-//in each cycle it eliminates also all newly-suitable pixs on lower levels (level 1...cycle)
-		for(int level = 1; level <= cycle; level++)
-		{
-//eliminates until no elimination has occured in previous go-through of the image
-			bool change = 1;
-			while(change)
-			{
-				change = 0;
-				for(int y = 1; y < height - 1; y++)
-				{
-					for(int x = 1; x < width-1; x++)
-					{
-						if(res(x,y) == level)
-						{
-// eliminate from rigth down corner
-							if( res(x-1,y-1)> 0 && res(x,y-1)> 0 && res(x+1,y-1)>=0  &&
-								res(x-1,y)  > 0 &&				    res(x+1,y)  ==0  &&
-								res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0     ) { res(x,y) = 0; change = 1; }
-// eliminate from left down corner
-							else if( res(x-1,y-1)>=0 && res(x,y-1)> 0 && res(x+1,y-1)> 0 &&
-									 res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
-									 res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0  ) { res(x,y) = 0; change = 1; }
-// eliminate from left up corner
-							else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
-									 res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
-									 res(x-1,y+1)>=0 && res(x,y+1)> 0 && res(x+1,y+1)> 0   ) { res(x,y) = 0; change = 1; }
-// eliminate from right up corner
-							else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
-									 res(x-1,y)  > 0 &&					res(x+1,y)  ==0 &&
-									 res(x-1,y+1)> 0 && res(x,y+1)> 0 && res(x+1,y+1)>=0   ) { res(x,y) = 0; change = 1; }
-// eliminate from right side
-							else if( res(x-1,y-1)>0 &&  (res(x+1,y-1)==0||res(x+1,y+1)==0) &&
-									 res(x-1,y)  >0 &&				 res(x+1,y)  ==0 &&
-									 res(x-1,y+1)>0   ) { res(x,y) = 0; change = 1; }
-// eliminate from left side
-							else if( (res(x-1,y-1)==0||res(x-1,y+1)==0) && res(x+1,y-1)>0 &&
-									  res(x-1,y)  ==0 &&					                res(x+1,y) >0 &&
-								      res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
-// eliminate from up side
-							else if( (res(x-1,y-1)==0 || res(x+1,y-1)==0) && res(x,y-1)==0 &&
-									 (res(x-1,y)  >0 ||					 res(x+1,y)  >0) &&
-									  res(x-1,y+1)>0 && res(x,y+1)>0 && res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
-// eliminate from down side
-							else if( res(x-1,y-1)>0 && res(x,y-1)>0 && res(x+1,y-1)>0 &&
-									(res(x-1,y)  >0 ||					 res(x+1,y)>0) &&
-									(res(x-1,y+1)==0 || res(x+1,y+1)==0) && res(x,y+1)==0   ) { res(x,y) = 0; change = 1; }
-							else
-							{
+//~ //
+	//~ for(int y = 0; y < height-1; y++)
+	//~ {
+		//~ for(int x = 0; x < width-1; x++)
+		//~ {
+			//~ if(imgEdges(x,y) == 0)
+			//~ {
+				//~ int minDist = 1;
+				//~ bool doIncreaseDistance = 1;
+				//~ while(doIncreaseDistance && x-minDist>=0 && y-minDist>=0 && x+minDist<width && y+minDist<height)
+				//~ {
+					//~ if(imgEdges.get_crop(x-minDist,y-minDist,x+minDist,y+minDist).sum() > 0 || minDist >= 3)
+					//~ {
+						//~ doIncreaseDistance = 0;
+					//~ }
+					//~ else minDist++;
+				//~ }
+				//~ res(x,y) = minDist;
+			//~ }
+		//~ }
+	//~ }
+//~ //	res = res.get_mul(edgesWrapping);
+//~ //eliminates pixs, first those close to edges (cycle 1->3)
+	//~ int maxLevel = 3;
+	//~ for(int cycle = 1; cycle <= maxLevel; cycle++)
+	//~ {
+//~ //in each cycle it eliminates also all newly-suitable pixs on lower levels (level 1...cycle)
+		//~ for(int level = 1; level <= cycle; level++)
+		//~ {
+//~ //eliminates until no elimination has occured in previous go-through of the image
+			//~ bool change = 1;
+			//~ while(change)
+			//~ {
+				//~ change = 0;
+				//~ for(int y = 1; y < height - 1; y++)
+				//~ {
+					//~ for(int x = 1; x < width-1; x++)
+					//~ {
+						//~ if(res(x,y) == level)
+						//~ {
+//~ // eliminate from rigth down corner
+							//~ if( res(x-1,y-1)> 0 && res(x,y-1)> 0 && res(x+1,y-1)>=0  &&
+								//~ res(x-1,y)  > 0 &&				    res(x+1,y)  ==0  &&
+								//~ res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0     ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from left down corner
+							//~ else if( res(x-1,y-1)>=0 && res(x,y-1)> 0 && res(x+1,y-1)> 0 &&
+									 //~ res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
+									 //~ res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0  ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from left up corner
+							//~ else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
+									 //~ res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
+									 //~ res(x-1,y+1)>=0 && res(x,y+1)> 0 && res(x+1,y+1)> 0   ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from right up corner
+							//~ else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
+									 //~ res(x-1,y)  > 0 &&					res(x+1,y)  ==0 &&
+									 //~ res(x-1,y+1)> 0 && res(x,y+1)> 0 && res(x+1,y+1)>=0   ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from right side
+							//~ else if( res(x-1,y-1)>0 &&  (res(x+1,y-1)==0||res(x+1,y+1)==0) &&
+									 //~ res(x-1,y)  >0 &&				 res(x+1,y)  ==0 &&
+									 //~ res(x-1,y+1)>0   ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from left side
+							//~ else if( (res(x-1,y-1)==0||res(x-1,y+1)==0) && res(x+1,y-1)>0 &&
+									  //~ res(x-1,y)  ==0 &&					                res(x+1,y) >0 &&
+								      //~ res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from up side
+							//~ else if( (res(x-1,y-1)==0 || res(x+1,y-1)==0) && res(x,y-1)==0 &&
+									 //~ (res(x-1,y)  >0 ||					 res(x+1,y)  >0) &&
+									  //~ res(x-1,y+1)>0 && res(x,y+1)>0 && res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
+//~ // eliminate from down side
+							//~ else if( res(x-1,y-1)>0 && res(x,y-1)>0 && res(x+1,y-1)>0 &&
+									//~ (res(x-1,y)  >0 ||					 res(x+1,y)>0) &&
+									//~ (res(x-1,y+1)==0 || res(x+1,y+1)==0) && res(x,y+1)==0   ) { res(x,y) = 0; change = 1; }
+							//~ else
+							//~ {
 
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-  //res.display();
-	return res.threshold(1);
-}
+							//~ }
+						//~ }
+					//~ }
+				//~ }
+			//~ }
+		//~ }
+	//~ }
+  //~ //res.display();
+	//~ return res.threshold(1);
+//~ }
 
-void Tortoise::eliminate_one_pix_edges(cv::Mat &edges)
+void Tortoise::eliminate_one_pix_edges(cv::Mat &edges) // edges has to be 0/1 float type
 {
     int edges_w = edges.size().width;
     int edges_h = edges.size().height;
-    for (int y = 1; y < edges_h-1; ++y) {
-	for (int x = 1; x < edges_w-1; ++x) {
-	    if(edges.at<int>(y,x)) {
-		if(!edges.at<int>(y,x-1) &&
-		   !edges.at<int>(y-1,x-1) &&
-		   !edges.at<int>(y+1,x-1) &&
-		   !edges.at<int>(y-1,x) &&
-		   !edges.at<int>(y,x+1) &&
-		   !edges.at<int>(y-1,x+1) &&
-		   !edges.at<int>(y+1,x+1) &&
-		   !edges.at<int>(y+1,x)) {
 
-		    edges.at<int>(y,x) = 0;
+    for (int y = 1; y < edges_h - 1; ++y) {
+	for (int x = 1; x < edges_w - 1; ++x) {
+	    if(edges.at<float>(y,x)) {
+		if(cv::countNonZero(edges(cv::Range(y-1,y+2),
+					  cv::Range(x-1,x+2))) == 1) {
+		    edges.at<float>(y,x) = 0;
 		}
 	    }
 	}
     }
 }
 
-void Tortoise::eliminate_two_pix_edges(cv::Mat &imgToDoItOn)
+void Tortoise::eliminate_two_pix_edges(cv::Mat &edges) // edges has to 0/1 float type
 {
-      int width = imgToDoItOn.width();
-      int height = imgToDoItOn.height();
-imgToDoItOn.threshold(1);
-      for(int y = 2; y < height - 2; y++)
-      {
-	      for(int x = 2; x < width-2; x++)
-	      {
-		      if(imgToDoItOn(x,y) == 1)
-		      {
-			      CImg<unsigned char> imgCrop(imgToDoItOn.get_crop(x-1,y-1,x+1,y+1));
-			      if(imgCrop.sum() <= 2)
-			      {
-				      imgCrop(1,1)=0;
-				      int X = static_cast<int>(imgCrop.get_stats()(8))-1 + x;
-				      int Y = static_cast<int>(imgCrop.get_stats()(9))-1 + y;
-				      if(imgToDoItOn.get_crop(X-1,Y-1,X+1,Y+1).sum() <=2)
-				      {
-					      imgToDoItOn(x,y) = 0;
-					      imgToDoItOn(X,Y) = 0;
-				      }
+    int edges_w = edges.size().width;
+    int edges_h = edges.size().height;
 
-			      }
-		      }
-	      }
-      }
-      return imgToDoItOn;
+    cv::Mat pairs(edges.size(), CV_8U, cv::Scalar(0));
+
+    for (int y = 2; y < edges_h - 2; ++y) {
+	for (int x = 2; x < edges_w - 2; ++x) {
+	    if(edges.at<float>(y,x)) {
+		if(cv::countNonZero(edges(cv::Range(y-1,y+2),
+					  cv::Range(x-1,x+2))) == 2) {
+		    //~ sedlamat::display(edges(cv::Range(y-1,y+2),
+					  //~ cv::Range(x-1,x+2)));
+		    pairs.at<uint8_t>(y,x) = 255;
+		    //sedlamat::display(pairs);
+		}
+	    }
+	}
+    }
+
+    sedlamat::display(pairs);
+    for (int y = 2; y < edges_h - 2; ++y) {
+	for (int x = 2; x < edges_w - 2; ++x) {
+	    if(pairs.at<uint8_t>(y,x)) {
+		if(cv::countNonZero(pairs(cv::Range(y-1,y+2),
+					  cv::Range(x-1,x+2))) == 2) {
+		    edges.at<float>(y,x) = 0;
+		}
+	    }
+	}
+    }
+   // std::cout << edges << std::endl;
+        sedlamat::display(edges);
 }
 
-
-}
 
 #endif /* _TORTOISE_HPP_ */
