@@ -100,12 +100,7 @@ namespace sedlamat
     {
 	CV_Assert(src.channels() == 1 || src.channels() == 3);
 	cv::Mat dst;
-	// check if src is CV_8U, if not make it
-	if (src.type() != CV_8UC1 && src.type() != CV_8UC3) {
-	    dst = sedlamat::get_scaled_CV_U8(src);
-	} else {
-	    dst = src;
-	}
+	dst = sedlamat::get_scaled_CV_U8(src);
 	cv::namedWindow(window_name, cv::WINDOW_NORMAL);
 	int k = 1;
 	while (k != 27) {

@@ -23,10 +23,10 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=2
+current_page=1
 FILE_NAME_0=8190;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
-FILE_NAME_1=3303;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
-FILE_NAME_2=775;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
+FILE_NAME_1=28959;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
+FILE_NAME_2=787;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
 FILE_NAME_3=21575;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
 FILE_NAME_4=12614;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.cpp;0;4
 FILE_NAME_5=220;Make;0;EUTF-8;1;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmakefile;0;4
@@ -65,4 +65,9 @@ arguments=
 envvar_count=0
 watches_count=1
 watch_0=t0
-breaks_count=0
+breaks_count=1
+break_0_file=/home/matej/Files/Projects/Tortoises/tortoise.hpp
+break_0_line=757
+break_0_condition=
+break_0_hits_count=0
+break_0_enabled=true

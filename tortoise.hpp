@@ -400,24 +400,36 @@ void Tortoise::locate_central_seam()
     // resizes the area
     int stripe_w = stripe_img.cols;
     int stripe_h = stripe_img.rows;
-    const double resize_coeff = 800.0 / std::max(stripe_w,stripe_h);
+    const double resize_coeff = 200.0 / std::max(stripe_w,stripe_h);
     cv::resize(stripe_img, stripe_img, cv::Size(0,0), resize_coeff,
 						resize_coeff);
     stripe_w = stripe_img.cols;
     stripe_h = stripe_img.rows;
 
     // gets the edge image of the area
-    cv::Mat stripe_edges;
-    cv::Canny(stripe_img, stripe_edges, 0, 0);
-
+    cv::Mat stripe_edges, edges_skeleton;
+    cv::Mat stripe_gray;
+    cv::cvtColor(stripe_img, stripe_gray, CV_BGR2GRAY);
+    //sedlamat::display(255/stripe_gray);
+    //sedlamat::display(stripe_gray);
+    stripe_gray.convertTo(edges_skeleton, CV_32F);
+    //sedlamat::display(255.0/stripe_gray);
+    cv::Canny(stripe_gray, stripe_edges, 0, 0);
+    sedlamat::display(stripe_edges);
     this->eliminate_one_pix_edges(stripe_edges);
     this->eliminate_two_pix_edges(stripe_edges);
 
-    cv::Mat stripe_values(stripe_edges.size(), CV_32F,
+    edges_skeleton = stripe_edges.clone();
+    this->skeletonize_min_dist(edges_skeleton);
+
+    sedlamat::display(stripe_img);
+
+
+    cv::Mat stripe_values(edges_skeleton.size(), CV_32F,
 						    cv::Scalar(10000));
 
-    stripe_edges.convertTo(stripe_edges, CV_32F);
-    stripe_edges /= 255;
+    edges_skeleton.convertTo(edges_skeleton, CV_32F);
+    edges_skeleton /= 255;
 
     // prepares distance mask 5rows x 7columns
     cv::Mat dist_mask(5, 7, CV_32F, cv::Scalar(0));
@@ -469,27 +481,30 @@ void Tortoise::locate_central_seam()
 
     for (int y = mid_line_y-1; y >= 6 ; --y) {
 	for (int x = 3; x < stripe_w - 3; ++x) {
-	    if (stripe_edges.at<int>(y,x)) {
+	    if (edges_skeleton.at<float>(y,x)) {
 		double min;
 		mask_rect.x = x-3;
 		mask_rect.y = y+1;
-		//~ std::cout << x << std::endl;
-		//~ std::cout << y << std::endl;
-		//~ std::cout << mask_rect << std::endl;
-		//~ sedlamat::display(stripe_values(mask_rect));
-		//~ sedlamat::display(stripe_edges(mask_rect));
-		//~ sedlamat::display(dist_mask);
-		//~ sedlamat::display((stripe_edges(mask_rect).mul(dist_mask) +
-			      //~ stripe_values(mask_rect)));
-		cv::minMaxLoc(stripe_edges(mask_rect).mul(dist_mask) +
+		cv::minMaxLoc(edges_skeleton(mask_rect).mul(dist_mask) +
 			      stripe_values(mask_rect), &min);
 		stripe_values.at<float>(y,x) = min;
 	    }
 	}
     }
+
+    double low_min, low_max;
+    cv::Point low_min_pt;
+    cv::minMaxLoc(stripe_values(low_line_rect), &low_min, &low_max,
+							&low_min_pt);
+
+
+    std::cout << low_min_pt.x << std::endl;
+    std::cout << low_min_pt.x << std::endl;
     cv::Mat high_values;
     cv::Mat(stripe_values < 9000).convertTo(high_values, CV_32F);
     sedlamat::display(stripe_values.mul(high_values));
+
+    sedlamat::display(stripe_edges);
 }
     //~ cv::Mat non_zero_coordinates;
     //~ findNonZero(img, nonZeroCoordinates);
@@ -739,83 +754,114 @@ void Tortoise::skeletonize_min_dist(cv::Mat &edge_img)
 
     for (int y = 3; y < img_h - 3; ++y) {
 	for (int x = 3; x < img_w - 3; ++x) {
-	    if (!edge_img.at<uint8_t>(y,x)) {
+	    if (!edge_img.at<uchar>(y,x)) {
 		int min_dist = 1;
-		bool can_increase_dist = 1;
-		while (can_increase_dist) {
-		    if (cv::couimgEdges.get_crop(x-minDist,y-minDist,x+minDist,y+minDist).sum() > 0 || minDist >= 3)
-		    {
-			    doIncreaseDistance = 0;
-		    }
-		    else minDist++;
+		while (!cv::countNonZero(edge_img(
+			    cv::Range(y-min_dist,y+min_dist+1),
+			    cv::Range(x-min_dist,x+min_dist+1)))
+			    && min_dist < 3) {
+			++min_dist;
 		}
-		res(x,y) = minDist;
+		skeleton.at<uchar>(y,x) = min_dist;
 	    }
 	}
     }
-//	res = res.get_mul(edgesWrapping);
-//eliminates pixs, first those close to edges (cycle 1->3)
-	int maxLevel = 3;
-	for(int cycle = 1; cycle <= maxLevel; cycle++)
-	{
-//in each cycle it eliminates also all newly-suitable pixs on lower levels (level 1...cycle)
-		for(int level = 1; level <= cycle; level++)
-		{
-//eliminates until no elimination has occured in previous go-through of the image
-			bool change = 1;
-			while(change)
-			{
-				change = 0;
-				for(int y = 1; y < height - 1; y++)
-				{
-					for(int x = 1; x < width-1; x++)
-					{
-						if(res(x,y) == level)
-						{
-// eliminate from rigth down corner
-							if( res(x-1,y-1)> 0 && res(x,y-1)> 0 && res(x+1,y-1)>=0  &&
-								res(x-1,y)  > 0 &&				    res(x+1,y)  ==0  &&
-								res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0     ) { res(x,y) = 0; change = 1; }
-// eliminate from left down corner
-							else if( res(x-1,y-1)>=0 && res(x,y-1)> 0 && res(x+1,y-1)> 0 &&
-									 res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
-									 res(x-1,y+1)>=0 && res(x,y+1)==0 && res(x+1,y+1)>=0  ) { res(x,y) = 0; change = 1; }
-// eliminate from left up corner
-							else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
-									 res(x-1,y)  ==0 &&				    res(x+1,y)  > 0 &&
-									 res(x-1,y+1)>=0 && res(x,y+1)> 0 && res(x+1,y+1)> 0   ) { res(x,y) = 0; change = 1; }
-// eliminate from right up corner
-							else if( res(x-1,y-1)>=0 && res(x,y-1)==0 && res(x+1,y-1)>=0 &&
-									 res(x-1,y)  > 0 &&					res(x+1,y)  ==0 &&
-									 res(x-1,y+1)> 0 && res(x,y+1)> 0 && res(x+1,y+1)>=0   ) { res(x,y) = 0; change = 1; }
-// eliminate from right side
-							else if( res(x-1,y-1)>0 &&  (res(x+1,y-1)==0||res(x+1,y+1)==0) &&
-									 res(x-1,y)  >0 &&				 res(x+1,y)  ==0 &&
-									 res(x-1,y+1)>0   ) { res(x,y) = 0; change = 1; }
-// eliminate from left side
-							else if( (res(x-1,y-1)==0||res(x-1,y+1)==0) && res(x+1,y-1)>0 &&
-									  res(x-1,y)  ==0 &&					                res(x+1,y) >0 &&
-								      res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
-// eliminate from up side
-							else if( (res(x-1,y-1)==0 || res(x+1,y-1)==0) && res(x,y-1)==0 &&
-									 (res(x-1,y)  >0 ||					 res(x+1,y)  >0) &&
-									  res(x-1,y+1)>0 && res(x,y+1)>0 && res(x+1,y+1)>0  ) { res(x,y) = 0; change = 1; }
-// eliminate from down side
-							else if( res(x-1,y-1)>0 && res(x,y-1)>0 && res(x+1,y-1)>0 &&
-									(res(x-1,y)  >0 ||					 res(x+1,y)>0) &&
-									(res(x-1,y+1)==0 || res(x+1,y+1)==0) && res(x,y+1)==0   ) { res(x,y) = 0; change = 1; }
-							else
-							{
 
-							}
-						}
-					}
-				}
+    //eliminates pixs, first those close to edges (cycle 1->3)
+    const int max_level = 3;
+
+    for (int cycle = 1; cycle <= max_level; ++cycle) {
+    /* in each cycle it eliminates also all newly-suitable pixs on
+       lower levels (level 1...cycle) */
+	for (int level = 1; level <= cycle; ++level) {
+	    /* eliminates until no elimination has occured in
+	       previous go-through of the image */
+	    bool changed = 1;
+	    while (changed) {
+		changed = 0;
+		for (int y = 3; y < img_h - 3; ++y) {
+		    for (int x = 3; x < img_w - 3; ++x) {
+			if (skeleton.at<uchar>(y,x) == level) {
+			    if (
+				 (
+				  // eliminates from rigth down corner
+				  skeleton.at<uchar>(y-1,x-1) &&
+				  skeleton.at<uchar>(y-1,x) &&
+				  skeleton.at<uchar>(y,x-1) &&
+				  !skeleton.at<uchar>(y,x+1) &&
+				  !skeleton.at<uchar>(y+1,x)
+				 ) || (
+				  // eliminates from left down corner
+				  skeleton.at<uchar>(y-1,x) &&
+			          skeleton.at<uchar>(y-1,x+1) &&
+			          skeleton.at<uchar>(y,x+1) &&
+			          !skeleton.at<uchar>(y,x-1) &&
+			          !skeleton.at<uchar>(y+1,x)
+				 ) || (
+				  // eliminates from left up corner
+				  !skeleton.at<uchar>(y-1,x) &&
+				  !skeleton.at<uchar>(y,x-1) &&
+				  skeleton.at<uchar>(y,x+1) &&
+				  skeleton.at<uchar>(y+1,x) &&
+			          skeleton.at<uchar>(y+1,x+1)
+				 ) || (
+				  // eliminates from right up corner
+				  !skeleton.at<uchar>(y-1,x) &&
+				  skeleton.at<uchar>(y,x-1) &&
+				  !skeleton.at<uchar>(y,x+1) &&
+				  skeleton.at<uchar>(y+1,x-1) &&
+			          skeleton.at<uchar>(y+1,x)
+				 ) || (
+				  // eliminates from right side
+				  skeleton.at<uchar>(y-1,x-1) &&
+				  (!skeleton.at<uchar>(y-1,x+1) ||
+				   !skeleton.at<uchar>(y+1,x+1)) &&
+				  skeleton.at<uchar>(y,x-1) &&
+			          !skeleton.at<uchar>(y,x+1) &&
+			          skeleton.at<uchar>(y+1,x-1)
+				 ) || (
+				  // eliminates from left side
+				  skeleton.at<uchar>(y-1,x+1) &&
+				  (!skeleton.at<uchar>(y-1,x-1) ||
+				   !skeleton.at<uchar>(y+1,x-1)) &&
+				  !skeleton.at<uchar>(y,x-1) &&
+			          skeleton.at<uchar>(y,x+1) &&
+			          skeleton.at<uchar>(y+1,x+1)
+				 ) || (
+				  // eliminate from up side
+				  !skeleton.at<uchar>(y-1,x) &&
+				  (!skeleton.at<uchar>(y-1,x-1) ||
+				   !skeleton.at<uchar>(y-1,x+1)) &&
+				  (skeleton.at<uchar>(y,x-1) ||
+			           skeleton.at<uchar>(y,x+1)) &&
+			          skeleton.at<uchar>(y+1,x-1) &&
+			          skeleton.at<uchar>(y+1,x) &&
+			          skeleton.at<uchar>(y+1,x+1)
+				 ) || (
+				  // eliminate from down side
+				  !skeleton.at<uchar>(y+1,x) &&
+				  (!skeleton.at<uchar>(y+1,x-1) ||
+				   !skeleton.at<uchar>(y+1,x+1)) &&
+				  (skeleton.at<uchar>(y,x-1) ||
+			           skeleton.at<uchar>(y,x+1)) &&
+			          skeleton.at<uchar>(y-1,x-1) &&
+			          skeleton.at<uchar>(y-1,x) &&
+			          skeleton.at<uchar>(y-1,x+1)
+				 )
+			        )
+			    {
+				skeleton.at<uchar>(y,x) = 0;
+				changed = 1;
+			    }
 			}
+		    }
 		}
+	    }
 	}
-  //res.display();
-	return res.threshold(1);
+    }
+    cv::threshold(skeleton, skeleton, 0.5, 255, CV_THRESH_BINARY);
+    edge_img = skeleton;
+
 }
 
 void Tortoise::eliminate_one_pix_edges(cv::Mat &edges) // edges has to be 0/1 float type
@@ -825,10 +871,10 @@ void Tortoise::eliminate_one_pix_edges(cv::Mat &edges) // edges has to be 0/1 fl
 
     for (int y = 1; y < edges_h - 1; ++y) {
 	for (int x = 1; x < edges_w - 1; ++x) {
-	    if(edges.at<uint8_t>(y,x)) {
+	    if(edges.at<uchar>(y,x)) {
 		if(cv::countNonZero(edges(cv::Range(y-1,y+2),
 					  cv::Range(x-1,x+2))) == 1) {
-		    edges.at<uint8_t>(y,x) = 0;
+		    edges.at<uchar>(y,x) = 0;
 		}
 	    }
 	}
@@ -844,10 +890,10 @@ void Tortoise::eliminate_two_pix_edges(cv::Mat &edges) // edges has to 0/1 float
 
     for (int y = 1; y < edges_h - 1; ++y) {
 	for (int x = 1; x < edges_w - 1; ++x) {
-	    if(edges.at<uint8_t>(y,x)) {
-		if(cv::countNonZero(edges(cv::Range(y-1,y+2),
-					  cv::Range(x-1,x+2))) == 2) {
-		    pairs.at<uint8_t>(y,x) = 255;
+	    if (edges.at<uchar>(y,x)) {
+		if (cv::countNonZero(edges(cv::Range(y-1,y+2),
+					   cv::Range(x-1,x+2))) == 2) {
+		    pairs.at<uchar>(y,x) = 255;
 		}
 	    }
 	}
@@ -855,10 +901,10 @@ void Tortoise::eliminate_two_pix_edges(cv::Mat &edges) // edges has to 0/1 float
 
     for (int y = 1; y < edges_h - 1; ++y) {
 	for (int x = 1; x < edges_w - 1; ++x) {
-	    if(pairs.at<uint8_t>(y,x)) {
-		if(cv::countNonZero(pairs(cv::Range(y-1,y+2),
-					  cv::Range(x-1,x+2))) == 2) {
-		    edges.at<uint8_t>(y,x) = 0;
+	    if (pairs.at<uchar>(y,x)) {
+		if (cv::countNonZero(pairs(cv::Range(y-1,y+2),
+					   cv::Range(x-1,x+2))) == 2) {
+		    edges.at<uchar>(y,x) = 0;
 		}
 	    }
 	}
