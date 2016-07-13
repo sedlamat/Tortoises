@@ -180,7 +180,7 @@ void Tortoise::read_info()
 	    _junctions_found = 0;
 	}
     } else {
-	std::cout << "File Tg#####_info.txt does not exists. It will";
+	std::cout << "File Tg#####_info.txt does not exist. It will";
 	std::cout << " be created." << std::endl;
     }
 
@@ -396,11 +396,67 @@ void Tortoise::locate_central_seam()
     // gets the area of the central seam stripe
     cv::Mat stripe_img = _plastron_img(stripe_rect).clone();
 
-
     // resizes the area
     int stripe_w = stripe_img.cols;
     int stripe_h = stripe_img.rows;
-    const double resize_coeff = 200.0 / std::max(stripe_w,stripe_h);
+
+    int new_size = 400;
+    int sigma = 10;
+    int on_off_edges = 1;
+    int on_off_skelet = 1;
+
+
+    cv::namedWindow("image",CV_WINDOW_NORMAL);
+
+    cv::createTrackbar("size","image",&new_size,4000);
+    cv::createTrackbar("sigma","image",&sigma,100);
+    cv::createTrackbar("on/off edges","image",&on_off_edges,1);
+    cv::createTrackbar("on/off skelet","image",&on_off_skelet,1);
+
+    while (1) {
+	cv::Mat resized;
+	if(new_size > 10 && sigma > 0) {
+	    const double resize_coeff = new_size * 1.0 / std::max(stripe_w,stripe_h);
+	    cv::resize(stripe_img, resized, cv::Size(0,0), resize_coeff,
+						    resize_coeff);
+	    cv::Mat blured;
+	    cv::GaussianBlur(resized, blured, cv::Size(0,0), sigma/10.0);
+	    std::vector<cv::Mat> channels;
+
+	    //cv::cvtColor(resized, resized, CV_BGR2GRAY);
+	    cv::Canny(blured, blured, 0, 0);
+
+	    if (on_off_skelet) {
+		this->eliminate_one_pix_edges(blured);
+		this->eliminate_two_pix_edges(blured);
+		this->skeletonize_min_dist(blured);
+	    }
+
+	    channels.push_back(blured);
+	    channels.push_back(blured);
+	    channels.push_back(blured);
+	    merge(channels, blured);
+	    if (on_off_edges) {
+		cv::imshow("image",resized + blured);
+	    } else {
+		cv::imshow("image",resized);
+	    }
+	}
+	int k = cv::waitKey(1);
+	if (k == 27) {
+	    break;
+	}
+
+	new_size = cv::getTrackbarPos("size","image");
+	sigma = cv::getTrackbarPos("sigma","image");
+	on_off_edges = cv::getTrackbarPos("on/off edges","image");
+	on_off_skelet = cv::getTrackbarPos("on/off skelet","image");
+
+
+    }
+    cv::destroyAllWindows();
+    exit(0);
+    const double resize_coeff = new_size * 1.0 / std::max(stripe_w,stripe_h);
     cv::resize(stripe_img, stripe_img, cv::Size(0,0), resize_coeff,
 						resize_coeff);
     stripe_w = stripe_img.cols;

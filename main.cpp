@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 
 	const passwd * const pw = getpwuid(getuid());
 	const std::string path(pw->pw_dir);
-	const std::string file_name = R"(Tg00301.jpg)";
+	const std::string file_name = R"(Tg30000.jpg)";
 	const std::string imgs_path = path + R"(/Images/Tortoises/)";
 	const std::string img_path = imgs_path + file_name;
 
