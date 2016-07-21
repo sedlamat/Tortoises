@@ -400,92 +400,92 @@ void Tortoise::locate_central_seam()
     int stripe_w = stripe_img.cols;
     int stripe_h = stripe_img.rows;
 
-    int new_size = 400;
-    int sigma = 10;
-    int on_off_edges = 1;
-    int on_off_skelet = 1;
+    //~ int new_size = 400;
+    //~ int sigma = 10;
+    //~ int on_off_edges = 1;
+    //~ int on_off_skelet = 1;
 
 
-    cv::namedWindow("image",CV_WINDOW_NORMAL);
+    //~ cv::namedWindow("image",CV_WINDOW_NORMAL);
 
-    cv::createTrackbar("size","image",&new_size,4000);
-    cv::createTrackbar("sigma","image",&sigma,100);
-    cv::createTrackbar("on/off edges","image",&on_off_edges,1);
-    cv::createTrackbar("on/off skelet","image",&on_off_skelet,1);
+    //~ cv::createTrackbar("size","image",&new_size,4000);
+    //~ cv::createTrackbar("sigma","image",&sigma,100);
+    //~ cv::createTrackbar("on/off edges","image",&on_off_edges,1);
+    //~ cv::createTrackbar("on/off skelet","image",&on_off_skelet,1);
 
-    while (1) {
-	cv::Mat resized;
-	if(new_size > 10 && sigma > 0) {
-	    const double resize_coeff = new_size * 1.0 / std::max(stripe_w,stripe_h);
-	    cv::resize(stripe_img, resized, cv::Size(0,0), resize_coeff,
-						    resize_coeff);
-	    cv::Mat blured;
-	    cv::GaussianBlur(resized, blured, cv::Size(0,0), sigma/10.0);
-	    std::vector<cv::Mat> channels;
+    //~ while (1) {
+	//~ cv::Mat resized;
+	//~ if(new_size > 10 && sigma > 0) {
+	    //~ const double resize_coeff = new_size * 1.0 / std::max(stripe_w,stripe_h);
+	    //~ cv::resize(stripe_img, resized, cv::Size(0,0), resize_coeff,
+						    //~ resize_coeff);
+	    //~ cv::Mat blured;
+	    //~ cv::GaussianBlur(resized, blured, cv::Size(0,0), sigma/10.0);
+	    //~ std::vector<cv::Mat> channels;
 
-	    //cv::cvtColor(resized, resized, CV_BGR2GRAY);
-	    cv::Canny(blured, blured, 0, 0);
+	    //~ //cv::cvtColor(resized, resized, CV_BGR2GRAY);
+	    //~ cv::Canny(blured, blured, 0, 0);
 
-	    if (on_off_skelet) {
-		this->eliminate_one_pix_edges(blured);
-		this->eliminate_two_pix_edges(blured);
-		this->skeletonize_min_dist(blured);
-	    }
+	    //~ if (on_off_skelet) {
+		//~ this->eliminate_one_pix_edges(blured);
+		//~ this->eliminate_two_pix_edges(blured);
+		//~ this->skeletonize_min_dist(blured);
+	    //~ }
 
-	    channels.push_back(blured);
-	    channels.push_back(blured);
-	    channels.push_back(blured);
-	    merge(channels, blured);
-	    if (on_off_edges) {
-		cv::imshow("image",resized + blured);
-	    } else {
-		cv::imshow("image",resized);
-	    }
-	}
-	int k = cv::waitKey(1);
-	if (k == 27) {
-	    break;
-	}
+	    //~ channels.push_back(blured);
+	    //~ channels.push_back(blured);
+	    //~ channels.push_back(blured);
+	    //~ merge(channels, blured);
+	    //~ if (on_off_edges) {
+		//~ cv::imshow("image",resized + blured);
+	    //~ } else {
+		//~ cv::imshow("image",resized);
+	    //~ }
+	//~ }
+	//~ int k = cv::waitKey(1);
+	//~ if (k == 27) {
+	    //~ break;
+	//~ }
 
-	new_size = cv::getTrackbarPos("size","image");
-	sigma = cv::getTrackbarPos("sigma","image");
-	on_off_edges = cv::getTrackbarPos("on/off edges","image");
-	on_off_skelet = cv::getTrackbarPos("on/off skelet","image");
+	//~ new_size = cv::getTrackbarPos("size","image");
+	//~ sigma = cv::getTrackbarPos("sigma","image");
+	//~ on_off_edges = cv::getTrackbarPos("on/off edges","image");
+	//~ on_off_skelet = cv::getTrackbarPos("on/off skelet","image");
 
 
-    }
-    cv::destroyAllWindows();
-    exit(0);
-    const double resize_coeff = new_size * 1.0 / std::max(stripe_w,stripe_h);
+    //~ }
+    //~ cv::destroyAllWindows();
+    //~ exit(0);
+
+    const int new_size = 400;
+    const double sigma = 1.0;
+
+
+    const double resize_coeff = new_size * 1.0 / std::max(stripe_w,
+							  stripe_h);
     cv::resize(stripe_img, stripe_img, cv::Size(0,0), resize_coeff,
-						resize_coeff);
+						      resize_coeff);
+    cv::GaussianBlur(stripe_img, stripe_img, cv::Size(0,0), sigma);
+
     stripe_w = stripe_img.cols;
     stripe_h = stripe_img.rows;
 
     // gets the edge image of the area
-    cv::Mat stripe_edges, edges_skeleton;
-    cv::Mat stripe_gray;
+    cv::Mat stripe_edges, stripe_gray;
     cv::cvtColor(stripe_img, stripe_gray, CV_BGR2GRAY);
-    //sedlamat::display(255/stripe_gray);
-    //sedlamat::display(stripe_gray);
-    stripe_gray.convertTo(edges_skeleton, CV_32F);
-    //sedlamat::display(255.0/stripe_gray);
     cv::Canny(stripe_gray, stripe_edges, 0, 0);
-    sedlamat::display(stripe_edges);
-    this->eliminate_one_pix_edges(stripe_edges);
-    this->eliminate_two_pix_edges(stripe_edges);
-
-    edges_skeleton = stripe_edges.clone();
-    this->skeletonize_min_dist(edges_skeleton);
+    stripe_edges.convertTo(stripe_edges, CV_32F);
+    stripe_edges /= 255;
 
     sedlamat::display(stripe_img);
+    sedlamat::display(stripe_edges);
+
+    const float supreme_value = 10000;
+
+    cv::Mat stripe_values(stripe_edges.size(), CV_32F,
+					    cv::Scalar(supreme_value));
 
 
-    cv::Mat stripe_values(edges_skeleton.size(), CV_32F,
-						    cv::Scalar(10000));
-
-    edges_skeleton.convertTo(edges_skeleton, CV_32F);
-    edges_skeleton /= 255;
 
     // prepares distance mask 5rows x 7columns
     cv::Mat dist_mask(5, 7, CV_32F, cv::Scalar(0));
@@ -535,13 +535,13 @@ void Tortoise::locate_central_seam()
 
     stripe_values(mid_line_rect) = 1.0;
 
-    for (int y = mid_line_y-1; y >= 6 ; --y) {
+    for (int y = mid_line_y-1; y >= 6; --y) {
 	for (int x = 3; x < stripe_w - 3; ++x) {
-	    if (edges_skeleton.at<float>(y,x)) {
+	    if (stripe_edges.at<float>(y,x)) {
 		double min;
 		mask_rect.x = x-3;
 		mask_rect.y = y+1;
-		cv::minMaxLoc(edges_skeleton(mask_rect).mul(dist_mask) +
+		cv::minMaxLoc(stripe_edges(mask_rect).mul(dist_mask) +
 			      stripe_values(mask_rect), &min);
 		stripe_values.at<float>(y,x) = min;
 	    }
@@ -557,7 +557,7 @@ void Tortoise::locate_central_seam()
     std::cout << low_min_pt.x << std::endl;
     std::cout << low_min_pt.x << std::endl;
     cv::Mat high_values;
-    cv::Mat(stripe_values < 9000).convertTo(high_values, CV_32F);
+    cv::Mat(stripe_values < supreme_value).convertTo(high_values, CV_32F);
     sedlamat::display(stripe_values.mul(high_values));
 
     sedlamat::display(stripe_edges);
