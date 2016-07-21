@@ -516,9 +516,9 @@ void Tortoise::locate_central_seam()
     std::cout << mask_rect << std::endl;
     //~ cv::flip(dist_mask, dist_mask, 0);
 
-    const int low_line_y = stripe_h*1/6;
+    const int low_line_y = stripe_h*1/8;
     const int mid_line_y = stripe_h*3/6;
-    const int high_line_y = stripe_h*5/6;
+    const int high_line_y = stripe_h*7/8;
 
     const cv::Rect low_line_rect(cv::Point(0,low_line_y),
 				 cv::Point(stripe_w-1,low_line_y+1));
@@ -533,9 +533,9 @@ void Tortoise::locate_central_seam()
 
     // locates the central seam at the low_line position
 
-    stripe_values(mid_line_rect) = 1.0;
+    stripe_values(high_line_rect) = 1.0;
 
-    for (int y = mid_line_y-1; y >= 6; --y) {
+    for (int y = high_line_y-1; y >= 6; --y) {
 	for (int x = 3; x < stripe_w - 3; ++x) {
 	    if (stripe_edges.at<float>(y,x)) {
 		double min;
@@ -553,14 +553,29 @@ void Tortoise::locate_central_seam()
     cv::minMaxLoc(stripe_values(low_line_rect), &low_min, &low_max,
 							&low_min_pt);
 
+    std::vector<cv::Point> central_seam;
+    // locates central seam
+    int y = low_line_y;
+    int x = low_min_pt.x;
 
-    std::cout << low_min_pt.x << std::endl;
-    std::cout << low_min_pt.x << std::endl;
-    cv::Mat high_values;
-    cv::Mat(stripe_values < supreme_value).convertTo(high_values, CV_32F);
-    sedlamat::display(stripe_values.mul(high_values));
+    while (y != high_line_y) {
+	double loc_min, loc_max;
+	cv::Point loc_min_pt;
+	mask_rect.x = x-3;
+	mask_rect.y = y+1;
+	cv::minMaxLoc(dist_mask + stripe_values(mask_rect), &loc_min,
+						&loc_max, &loc_min_pt);
+	central_seam.push_back(cv::Point(x,y));
+	x += loc_min_pt.x - 3;
+	y += loc_min_pt.y + 1;
+    }
 
-    sedlamat::display(stripe_edges);
+    for (auto &pt : central_seam) {
+	stripe_img.at<cv::Vec3b>(pt) = _color.red;
+    }
+
+
+    sedlamat::display(stripe_img);
 }
     //~ cv::Mat non_zero_coordinates;
     //~ findNonZero(img, nonZeroCoordinates);
