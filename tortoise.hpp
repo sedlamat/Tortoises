@@ -512,6 +512,7 @@ void Tortoise::locate_central_seam()
       dist_mask.at<float>(y,4) += 1;
     }
 
+    std::cout << dist_mask << std::endl;
     cv::Rect mask_rect(cv::Point(0,0), cv::Size(7,5));
     std::cout << mask_rect << std::endl;
     //~ cv::flip(dist_mask, dist_mask, 0);
