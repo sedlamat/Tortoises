@@ -93,9 +93,7 @@ private:
     void rotate_pt(cv::Point &pt, const cv::Point &center,
 		   const int angle);
     void locate_central_seam();
-    void eliminate_one_pix_edges(cv::Mat &edges);
-    void eliminate_two_pix_edges(cv::Mat &edges);
-    void skeletonize_min_dist(cv::Mat &edge_img);
+    std::vector<cv::Point> get_best_path(const cv::Mat &edges);
 
 };
 
@@ -373,16 +371,15 @@ void Tortoise::locate_junctions()
     std::cout << "locate_junctions entered" << std::endl;
     this->rotate_img_and_pts(_angle);
     this->locate_central_seam();
-    this->display_points_on_plastron();
-
+    //~ this->display_points_on_plastron();
 }
 
 
 void Tortoise::locate_central_seam()
 {
-    std::cout << "Abdominal junctions localization" << std::endl;
+    // central seam localization
 
-    // calculates the to-be half width of the central seam stripe
+    // measures the to-be half width of the central seam stripe
     const int abd_seam_length = _l_juncs[_idx.j4AbdFem].y -
 				_l_juncs[_idx.j3PecAbd].y;
 
@@ -400,72 +397,12 @@ void Tortoise::locate_central_seam()
     int stripe_w = stripe_img.cols;
     int stripe_h = stripe_img.rows;
 
-    //~ int new_size = 400;
-    //~ int sigma = 10;
-    //~ int on_off_edges = 1;
-    //~ int on_off_skelet = 1;
-
-
-    //~ cv::namedWindow("image",CV_WINDOW_NORMAL);
-
-    //~ cv::createTrackbar("size","image",&new_size,4000);
-    //~ cv::createTrackbar("sigma","image",&sigma,100);
-    //~ cv::createTrackbar("on/off edges","image",&on_off_edges,1);
-    //~ cv::createTrackbar("on/off skelet","image",&on_off_skelet,1);
-
-    //~ while (1) {
-	//~ cv::Mat resized;
-	//~ if(new_size > 10 && sigma > 0) {
-	    //~ const double resize_coeff = new_size * 1.0 / std::max(stripe_w,stripe_h);
-	    //~ cv::resize(stripe_img, resized, cv::Size(0,0), resize_coeff,
-						    //~ resize_coeff);
-	    //~ cv::Mat blured;
-	    //~ cv::GaussianBlur(resized, blured, cv::Size(0,0), sigma/10.0);
-	    //~ std::vector<cv::Mat> channels;
-
-	    //~ //cv::cvtColor(resized, resized, CV_BGR2GRAY);
-	    //~ cv::Canny(blured, blured, 0, 0);
-
-	    //~ if (on_off_skelet) {
-		//~ this->eliminate_one_pix_edges(blured);
-		//~ this->eliminate_two_pix_edges(blured);
-		//~ this->skeletonize_min_dist(blured);
-	    //~ }
-
-	    //~ channels.push_back(blured);
-	    //~ channels.push_back(blured);
-	    //~ channels.push_back(blured);
-	    //~ merge(channels, blured);
-	    //~ if (on_off_edges) {
-		//~ cv::imshow("image",resized + blured);
-	    //~ } else {
-		//~ cv::imshow("image",resized);
-	    //~ }
-	//~ }
-	//~ int k = cv::waitKey(1);
-	//~ if (k == 27) {
-	    //~ break;
-	//~ }
-
-	//~ new_size = cv::getTrackbarPos("size","image");
-	//~ sigma = cv::getTrackbarPos("sigma","image");
-	//~ on_off_edges = cv::getTrackbarPos("on/off edges","image");
-	//~ on_off_skelet = cv::getTrackbarPos("on/off skelet","image");
-
-
-    //~ }
-    //~ cv::destroyAllWindows();
-    //~ exit(0);
-
-    const int new_size = 400;
-    const double sigma = 1.0;
-
+    const int new_size = 800;
 
     const double resize_coeff = new_size * 1.0 / std::max(stripe_w,
 							  stripe_h);
     cv::resize(stripe_img, stripe_img, cv::Size(0,0), resize_coeff,
 						      resize_coeff);
-    cv::GaussianBlur(stripe_img, stripe_img, cv::Size(0,0), sigma);
 
     stripe_w = stripe_img.cols;
     stripe_h = stripe_img.rows;
@@ -477,84 +414,106 @@ void Tortoise::locate_central_seam()
     stripe_edges.convertTo(stripe_edges, CV_32F);
     stripe_edges /= 255;
 
-    sedlamat::display(stripe_img);
+    cv::Mat stripe_edges_orig = stripe_edges.clone();
+
     sedlamat::display(stripe_edges);
+
+    std::vector<cv::Point> central_seam;
+
+    central_seam = get_best_path(stripe_edges);
+
+    for (auto &pt : central_seam) {
+	stripe_img.at<cv::Vec3b>(pt) = _color.red;
+    }
+
+    // locates side seams
+
+    stripe_edges = stripe_edges_orig.t();
+
+    std::vector<cv::Point> side_seam;
+
+    side_seam = get_best_path(stripe_edges);
+
+    stripe_img = stripe_img.t();
+
+    for (auto &pt : side_seam) {
+	stripe_img.at<cv::Vec3b>(pt) = _color.red;
+    }
+    stripe_img = stripe_img.t();
+
+    sedlamat::display(stripe_img);
+}
+
+
+std::vector<cv::Point> Tortoise::get_best_path(const cv::Mat &edges)
+{
+    // edges in 0/1 float matrix
+
+    int edges_w = edges.cols;
+    int edges_h = edges.rows;
 
     const float supreme_value = 10000;
 
-    cv::Mat stripe_values(stripe_edges.size(), CV_32F,
-					    cv::Scalar(supreme_value));
-
-
+    cv::Mat values(edges.size(), CV_32F, cv::Scalar(supreme_value));
 
     // prepares distance mask 5rows x 7columns
     cv::Mat dist_mask(5, 7, CV_32F, cv::Scalar(0));
 
-    /* fills the rows of dist_mask as follows
-     * [ 4, 3, 2, 1, 2, 3, 4;
-     *   7, 6, 5, 4, 5, 6, 7;
-     *  12,11,10, 9,10,11,12;
-     *  19,18,17,16,17,18,19;
-     *  28,27,26,25,26,27,28 ]
-    **/
-
+    // fills the dist_mask
     for (int x = 0; x < 7; ++x)  {
-	for (int y = 0; y < 5; ++y) {
-	    dist_mask.at<float>(y,x) = pow((y+1),2.0);
-	}
+	dist_mask.at<float>(0,x) = 1.0;
+	dist_mask.at<float>(1,x) = 3.0;
+	dist_mask.at<float>(2,x) = 7.0;
+	dist_mask.at<float>(3,x) = 12.0;
+	dist_mask.at<float>(4,x) = 18.0;
     }
+
     for (int y = 0; y < 5; ++y) {
-      dist_mask.at<float>(y,0) += 3;
-      dist_mask.at<float>(y,6) += 3;
-      dist_mask.at<float>(y,1) += 2;
-      dist_mask.at<float>(y,5) += 2;
-      dist_mask.at<float>(y,2) += 1;
-      dist_mask.at<float>(y,4) += 1;
+	dist_mask.at<float>(y,0) += 3;
+	dist_mask.at<float>(y,6) += 3;
+	dist_mask.at<float>(y,1) += 2;
+	dist_mask.at<float>(y,5) += 2;
+	dist_mask.at<float>(y,2) += 1;
+	dist_mask.at<float>(y,4) += 1;
     }
 
-    std::cout << dist_mask << std::endl;
     cv::Rect mask_rect(cv::Point(0,0), cv::Size(7,5));
-    std::cout << mask_rect << std::endl;
-    //~ cv::flip(dist_mask, dist_mask, 0);
 
-    const int low_line_y = stripe_h*1/8;
-    const int mid_line_y = stripe_h*3/6;
-    const int high_line_y = stripe_h*7/8;
+    const int low_line_y = edges_h*1/8;
+    const int high_line_y = edges_h*7/8;
 
     const cv::Rect low_line_rect(cv::Point(0,low_line_y),
-				 cv::Point(stripe_w-1,low_line_y+1));
-    const cv::Rect mid_line_rect(cv::Point(0,mid_line_y),
-				 cv::Point(stripe_w-1,mid_line_y+1));
+				 cv::Point(edges_w-1,low_line_y+1));
     const cv::Rect high_line_rect(cv::Point(0,high_line_y),
-				 cv::Point(stripe_w-1,high_line_y+1));
+				  cv::Point(edges_w-1,high_line_y+1));
 
-    stripe_edges(low_line_rect) = 1.0;
-    stripe_edges(mid_line_rect) = 1.0;
-    stripe_edges(high_line_rect) = 1.0;
+    edges(low_line_rect) = 1.0;
+    edges(high_line_rect) = 1.0;
 
     // locates the central seam at the low_line position
 
-    stripe_values(high_line_rect) = 1.0;
+    values(high_line_rect) = 1.0;
 
     for (int y = high_line_y-1; y >= 6; --y) {
-	for (int x = 3; x < stripe_w - 3; ++x) {
-	    if (stripe_edges.at<float>(y,x)) {
+	for (int x = 3; x < edges_w - 3; ++x) {
+	    if (edges.at<float>(y,x)) {
 		double min;
 		mask_rect.x = x-3;
 		mask_rect.y = y+1;
-		cv::minMaxLoc(stripe_edges(mask_rect).mul(dist_mask) +
-			      stripe_values(mask_rect), &min);
-		stripe_values.at<float>(y,x) = min;
+		cv::minMaxLoc(edges(mask_rect).mul(dist_mask) +
+			      values(mask_rect), &min);
+		values.at<float>(y,x) = min;
 	    }
 	}
     }
 
     double low_min, low_max;
     cv::Point low_min_pt;
-    cv::minMaxLoc(stripe_values(low_line_rect), &low_min, &low_max,
+    cv::minMaxLoc(values(low_line_rect), &low_min, &low_max,
 							&low_min_pt);
 
-    std::vector<cv::Point> central_seam;
+    std::vector<cv::Point> best_path;
+
     // locates central seam
     int y = low_line_y;
     int x = low_min_pt.x;
@@ -564,424 +523,14 @@ void Tortoise::locate_central_seam()
 	cv::Point loc_min_pt;
 	mask_rect.x = x-3;
 	mask_rect.y = y+1;
-	cv::minMaxLoc(dist_mask + stripe_values(mask_rect), &loc_min,
+	cv::minMaxLoc(dist_mask + values(mask_rect), &loc_min,
 						&loc_max, &loc_min_pt);
-	central_seam.push_back(cv::Point(x,y));
+	best_path.push_back(cv::Point(x,y));
 	x += loc_min_pt.x - 3;
 	y += loc_min_pt.y + 1;
     }
 
-    for (auto &pt : central_seam) {
-	stripe_img.at<cv::Vec3b>(pt) = _color.red;
-    }
-
-
-    sedlamat::display(stripe_img);
+    return best_path;
 }
-    //~ cv::Mat non_zero_coordinates;
-    //~ findNonZero(img, nonZeroCoordinates);
-    //~ for (int i = 0; i < nonZeroCoordinates.total(); i++ ) {
-        //~ cout << "Zero#" << i << ": " << nonZeroCoordinates.at<Point>(i).x << ", " << nonZeroCoordinates.at<Point>(i).y << endl;
-    //~ }
-    //~ return 0;
-    //~ stripe_values
-    //~ abd_values(cv::Range(search_start_y_idx,abd_edges.size().height), cv::Range(0,3)) -= 10000;
-    //~ abd_values(cv::Range(search_start_y_idx,abd_edges.size().height), cv::Range(abd_edges.size().width - 3,abd_edges.size().width)) -= 10000;
-    //~ abd_values(cv::Range(0,search_start_y_idx-1), cv::Range::all()) -= 10000;
-    //~ abd_values(cv::Range(search_start_y_idx-1,abd_edges.size().height), cv::Range::all()) = abd_values(cv::Range(search_start_y_idx-1,abd_edges.size().height), cv::Range::all()).mul(abd_edges(cv::Range(search_start_y_idx-1,abd_edges.size().height), cv::Range::all()));
-    //abd_values = abd_values.mul(abd_edges);
-    //std::cout << dist_mask << std::endl;
-    //~ sedlamat::display(abd_values);
-    //sedlamat::display(abd_edges);
-      //~ //distance
-
-      //~ const int nImgEdgesWidth = imgEdges.width();
-      //~ const int nImgEdgesHeight = imgEdges.height();
-
-//~ //every edge pix is part of a some path - all edge pixs are assigned an index of the path they belong to
-      //~ CImg<int> sidePathsIndexes(imgEdges.get_fill(0));
-//~ //pixs on the cetral path have 2-column index array, beacause there meet paths from left and right side  - they meet in the middle: x = nImgEdgesWidth/2
-      //~ CImg<int> indexesOnTheCentralPath(2,nImgEdgesHeight,1,1, 0);
-//~ //prefilling - side paths to the value 10000, for future easier processing
-//~ const int nMaxPathValue = 10000;
-      //~ CImg<int> sidePathsFromLeft(imgEdges.get_fill(nMaxPathValue)), sidePathsFromRight(sidePathsFromLeft);
-
-//~ for(int y = 0; y < nImgEdgesHeight; ++y)
-      //~ {
-  //~ if(imgEdges(nImgEdgesWidth/2,y)==0) imgEdges(nImgEdgesWidth/2,y) = 1;
-  //~ if(imgEdges(4,y)==0) imgEdges(4,y) = 1;
-  //~ if(imgEdges(nImgEdgesWidth-5,y)==0) imgEdges(nImgEdgesWidth-5,y) = 1;
-      //~ }
-//~ //prefilling - the sides (5 the most left columns) of sidePathsFromLeft and sidePathsIndexes
-      //~ int nPathIndex = 2;
-//~ for(int y = 0; y < nImgEdgesHeight; ++y)
-      //~ {
-	      //~ int x = 4;
-	      //~ {
-//~ //prefilling - for all edge pixs in the area
-		      //~ if(imgEdges(x,y))
-		      //~ {
-//~ //prefilling - initial value (distance) of sidePathsFromLeft is set to 2
-			      //~ sidePathsFromLeft(x,y) = 2;
-//~ //prefilling - edge pixs in the area are all assigned an index in sidePathsIndexes, which they will pass on to pixs that will be in the same path
-			      //~ sidePathsIndexes(x,y) = nPathIndex;
-		      //~ }
-	      //~ }
-	      //~ nPathIndex++;
-      //~ }
-//~ //prefilling - the sides (5 the most right columns) of sidePathsFromRight and sidePathsIndexes
-      //~ nPathIndex += 1000;
-      //~ for(int y = 0; y < nImgEdgesHeight; ++y)
-      //~ {
-  //~ int x = nImgEdgesWidth-5;
-	      //~ {
-		      //~ if(imgEdges(x,y))
-		      //~ {
-//~ //prefilling - initial value (distance) of sidePathsFromRight is set to 2
-			      //~ sidePathsFromRight(x,y) = 2;
-//~ //prefilling - edge pixs in the area are all assigned an index in sidePathsIndexes, which they will pass on to pixs that will be in the same path
-			      //~ sidePathsIndexes(x,y) = nPathIndex;
-		      //~ }
-	      //~ }
-  //~ nPathIndex++;
-      //~ }
-//~ //(sidePathsIndexes,sidePathsFromLeft,sidePathsFromRight).display();
-//~ //prefilling - distanceMask is used to determined the distance to a pix from pixs near it (3 pix up and down and 5 pixs backwards, i.e. 7x5)
-      //~ CImg<int> distanceMask(7,5,1,1, 0);
-//~ //prefilling - the rows of distanceMask are as follows [4,1,1,1,1,1,4 ; 7,4,4,4,4,4,7 ; 12,9,9,9,9,9,12 ; 19,16,16,16,16,16,19 ; 28,25,25,25,25,25,28]
-      //~ for(int x = 0; x < 7; x++) for(int y = 0; y < 5; y++) distanceMask(x,y) = static_cast<int>(pow((y+1),2.0));
-      //~ for(int y = 0; y < 5; y++)
-//~ {
-  //~ distanceMask(0,y) += 3;
-  //~ distanceMask(6,y) += 3;
-  //~ distanceMask(1,y) += 2;
-  //~ distanceMask(5,y) += 2;
-  //~ distanceMask(2,y) += 1;
-  //~ distanceMask(4,y) += 1;
-//~ }
-      //~ //distanceMask.display();
-//~ //filling left side paths - rotating distanceMask
-      //~ distanceMask.rotate(90);
-//~ //distanceMask.display();
-//~ //filling left side paths - going though all img pixs (rows only those where the central path is)
-//~ for(int x = 5; x < nImgEdgesWidth; x++)
-      //~ {
-  //~ for(int y = 5; y < nImgEdgesHeight-5; ++y)
-	      //~ {
-//~ //filling left side paths - evaluating only edge pixs on the left of the central path
-    //~ if(imgEdges(x,y) && x<=nImgEdgesWidth/2)
-		      //~ {
-//~ //filling left side paths - for an edge pixs an area next to it is cropped and distance is added so cropAreaDistances contains total distances from the side to the current pix though nearby pixs
-			      //~ CImg<int> cropAreaDistances(sidePathsFromLeft.get_crop(x-1,y-3,x-5,y+3) + distanceMask);
-//~ //filling left side paths - minimum distance is saved
-			      //~ int min = cropAreaDistances.min();
-//~ //filling left side paths - if in the area there is any edge pixs then min < 10000, and we will change the distance to the current pix from 10000 to min
-      //~ if(min<nMaxPathValue)
-			      //~ {
-//~ //filling left side paths - minimum distance is saved in the current pix
-				      //~ sidePathsFromLeft(x,y) = min;
-//~ //filling left side paths - index of the pix with minimum distace is passed on to the current pix
-				//~ sidePathsIndexes(x,y) = sidePathsIndexes(x-5+static_cast<int>(cropAreaDistances.get_stats()(4)),y-3+static_cast<int>(cropAreaDistances.get_stats()(5)));
-//~ //filling left side paths - if the pix is on the central path, the index is saved in indexesOnTheBestCentralPath
-	//~ if(x==nImgEdgesWidth/2) indexesOnTheCentralPath(0,y) = sidePathsIndexes(x,y);
-			      //~ }
-		      //~ }
-	      //~ }
-      //~ }
-//~ //  (sidePathsFromLeft,sidePathsIndexes).display();
-//~ //filling right side paths - rotating distanceMask
-     //~ distanceMask.rotate(180);
-//~ //filling right side paths - the same as is in the left side
-//~ for(int x = nImgEdgesWidth-6; x >= 0; --x)
-      //~ {
-  //~ for(int y = 5; y < nImgEdgesHeight-5; ++y)
-	      //~ {
-    //~ if(imgEdges(x,y) && x >= nImgEdgesWidth/2)
-		      //~ {
-			      //~ CImg<int> cropAreaDistances(sidePathsFromRight.get_crop(x+1,y-3,x+5,y+3) + distanceMask );
-			      //~ int min = cropAreaDistances.min();
-      //~ if(min<nMaxPathValue)
-			      //~ {
-				      //~ sidePathsFromRight(x,y) = min;
-				      //~ sidePathsIndexes(x,y) = sidePathsIndexes(x+1+static_cast<int>(cropAreaDistances.get_stats()(4)),y-3+static_cast<int>(cropAreaDistances.get_stats()(5)));
-	//~ if(x==nImgEdgesWidth/2) indexesOnTheCentralPath(1,y) = sidePathsIndexes(x,y);
-			      //~ }
-		      //~ }
-	      //~ }
-      //~ }
-      //~ //(sidePathsFromLeft,sidePathsFromRight).display();
-//~ //postprocessing - set values 10000 to 0 in sidePathsFromLeft and sidePathsFromRight
-//~ for(int y = 0; y < nImgEdgesHeight; y++)
-      //~ {
-  //~ for(int x = 0; x < nImgEdgesWidth; x++)
-	      //~ {
-    //~ if(sidePathsFromLeft(x,y)  == nMaxPathValue) sidePathsFromLeft(x,y) = 0;
-    //~ if(sidePathsFromRight(x,y) == nMaxPathValue) sidePathsFromRight(x,y) = 0;
-	      //~ }
-      //~ }
-     //~ //(sidePathsFromLeft+sidePathsFromRight).display("sidePaths");
-//~ //postprocessing - CentralSideCrosses will contain sum of 2x values of distances of pixs on the central seam of the left and right paths
-//~ CImg<int> CentralSideCrosses(1,nImgEdgesHeight,1,1, nMaxPathValue);
-//~ //postprocessing - for all central path pixs near the tortoise center
-//~ for(int y = 6; y < nImgEdgesHeight-6; ++y)
-      //~ {
-  //~ int x = nImgEdgesWidth/2;
-//~ //postprocessing - if there are paths from left and right that end in the central-path pix
-	      //~ if(sidePathsFromLeft(x,y)>0 && sidePathsFromRight(x,y)>0)
-	      //~ {
-//~ //postprocessing - the values are added to CentralSideCrosses
-		      //~ CentralSideCrosses(y) = sidePathsFromLeft(x,y) + sidePathsFromRight(x,y);
-	      //~ }
-//~ //postprocessing - else, left and right indexes of the central-path pix are set to 0
-	      //~ else
-	      //~ {
-		      //~ indexesOnTheCentralPath(0,y) = 0;
-		      //~ indexesOnTheCentralPath(1,y) = 0;
-	      //~ }
-      //~ }
-//~ // (CentralSideCrosses,indexesOnTheCentralPath,(sidePathsFromLeft+sidePathsFromRight)).display();
-//~ //finding best side paths - setting number of pixs that are to be discarded, being next (based on index) to a pix where we will find the local minimum (of distances in CentralSideCrosses)
-//~ //                        - with 3000pixs height img time constant 0.025 (based on real images) so that we get ~ 70pixs
-//~ //                        - (it has to be so much that we eliminate all neighbouring paths with similar distances, but so that we do not eliminate other correct side paths)
-//~ int halfIntervalOfIndexes = static_cast<int>(nImgEdgesHeight*0.1);
-//~ //finding best side paths - countOfCrossing counts side paths and is used to index the paths
-      //~ int countOfCrossing = 0;
-//~ //finding best side paths - we want no more than 9 paths (5-side paths, 2-end and beggining of the plastron, 2-ends of tail and head/ends of the shell)
-      //~ const int permittedNumberOfPaths = 9;
-      //~ CImg<int> yCoorOfTheJunctions(1,permittedNumberOfPaths,1,1, 0);
-//~ bool bEnd = 0;
-//~ int nNumOfUpJunctions = 0;
-//~ int nNumOfDownJunctions = 0;
-//~ //finding best side paths - going though CentralSideCrosses until there is no pix with smaller distance than upperSupremum or the is permittedNumberOfPaths reached
-//~ // (CentralSideCrosses,indexesOnTheCentralPath,yCoorOfTheJunctions,valuesOfTheJunctions).display();
-      //~ while(CentralSideCrosses.min()<nMaxPathValue && countOfCrossing < permittedNumberOfPaths && !bEnd)
-      //~ {
-//~ //finding best side paths - finding the current minimum in CentralSideCrosses (distances of left and right paths)
-	      //~ int yMin = static_cast<int>(CentralSideCrosses.get_stats()(5));
-  //~ int currentMin =  CentralSideCrosses.min();
-  //~ if(yMin<nCentreYCoor) nNumOfUpJunctions++;
-  //~ else nNumOfDownJunctions++;
-  //~ if(nNumOfUpJunctions==2 && nNumOfDownJunctions==2) bEnd=1;
-  //~ if((nNumOfUpJunctions<=2&&yMin<nCentreYCoor) || (nNumOfDownJunctions<=2&&yMin>nCentreYCoor)) // spatne neco jinak || &&
-  //~ {
-		//~ yCoorOfTheJunctions(countOfCrossing) = yMin;
-  //~ }
-//~ //finding best side paths - getting left index of the pix with the minimum and its y coordinate
-		//~ int leftIndexOfMinPix = indexesOnTheCentralPath(0,yMin);
-//~ //finding best side paths - getting right index of the pix with the minimum and its y coordinate
-		//~ int rightIndexOfMinPix = indexesOnTheCentralPath(1,yMin);
-//~ //finding best side paths - deleting indexes close to index of the pix with the current min value
-    //~ for(int y = 0; y < nImgEdgesHeight; y++)
-		//~ {
-      //~ if( (indexesOnTheCentralPath(0,y) <= leftIndexOfMinPix + halfIntervalOfIndexes) &&
-				//~ (indexesOnTheCentralPath(0,y) >= max(1,leftIndexOfMinPix - halfIntervalOfIndexes)))
-			//~ {
-//~ //finding best side paths - index to be deleted from indexesOnTheBestCentralPath
-				//~ indexesOnTheCentralPath(0,y) = 0;
-	//~ indexesOnTheCentralPath(1,y) = 0;
-//~ //finding best side paths - coresponding distances in CentralSideCrosses set to upperSupremum (cannot become minimum in the future)
-	//~ CentralSideCrosses(y) = nMaxPathValue;
-			//~ }
-//~ //finding best side paths - the same for the right side indexes
-      //~ else if( indexesOnTheCentralPath(1,y) <= rightIndexOfMinPix + halfIntervalOfIndexes &&
-				     //~ indexesOnTheCentralPath(1,y) >= max(1,rightIndexOfMinPix - halfIntervalOfIndexes) )
-			//~ {
-	//~ indexesOnTheCentralPath(0,y) = 0;
-				//~ indexesOnTheCentralPath(1,y) = 0;
-				//~ CentralSideCrosses(y) = nMaxPathValue;
-			//~ }
-		//~ }
-//~ //finding best side paths - numbering side paths
-		//~ CentralSideCrosses(yMin) = nMaxPathValue + currentMin + 1;
-
-//~ //finding best side paths - rising the count of side paths
-    //~ //(CentralSideCrosses,indexesOnTheCentralPath).display();
-   //~ //(CentralSideCrosses,indexesOnTheCentralPath,(sidePathsFromLeft+sidePathsFromRight)).display();
-  //~ countOfCrossing++;
-      //~ }
-     //~ //(sidePathsFromLeft+sidePathsFromRight).display("sidePaths");
-
-//~ //  (CentralSideCrosses,indexesOnTheCentralPath,(sidePathsFromLeft+sidePathsFromRight),yCoorOfTheJunctions).display();
-//~ for(int ii = 0; ii < permittedNumberOfPaths; ++ii)
-//~ {
-  //~ if(yCoorOfTheJunctions(ii)>0)
-  //~ {
-    //~ yCoorOfTheJunctions(ii) = sJunctions.s1Head.yCoor + yCoorOfTheJunctions(ii)
-      //~ *(sJunctions.s7Tail.yCoor - sJunctions.s1Head.yCoor)/nImgEdgesHeight;
-  //~ }
-//~ }
-//~ const int nPositionOfPecToAbdInTheJunctions = static_cast<int>( (yCoorOfTheJunctions.get_mul((-yCoorOfTheJunctions).get_threshold(-sPlastronCentreOnRotatedImg.yCoor))-sPlastronCentreOnRotatedImg.yCoor).abs().get_stats()(5) );
-//~ const int nPositionOfAbdToFemInTheJunctions = static_cast<int>( (yCoorOfTheJunctions.get_mul((yCoorOfTheJunctions).get_threshold(sPlastronCentreOnRotatedImg.yCoor))-sPlastronCentreOnRotatedImg.yCoor).abs().get_stats()(5) );
-//~ m_sJunctions.s4PecToAbd.yCoor = yCoorOfTheJunctions(nPositionOfPecToAbdInTheJunctions);
-//~ m_sJunctions.s5AbdToFem.yCoor = yCoorOfTheJunctions(nPositionOfAbdToFemInTheJunctions);
-//~ m_sPlastronCentreOnRotatedImg.yCoor = (m_sJunctions.s5AbdToFem.yCoor + m_sJunctions.s4PecToAbd.yCoor)/2;
-
-
-void Tortoise::skeletonize_min_dist(cv::Mat &edge_img)
-{
-    cv::Mat skeleton(edge_img.size(), CV_8U, cv::Scalar(0));
-
-    const int img_w = edge_img.size().width;
-    const int img_h = edge_img.size().height;
-
-    for (int y = 3; y < img_h - 3; ++y) {
-	for (int x = 3; x < img_w - 3; ++x) {
-	    if (!edge_img.at<uchar>(y,x)) {
-		int min_dist = 1;
-		while (!cv::countNonZero(edge_img(
-			    cv::Range(y-min_dist,y+min_dist+1),
-			    cv::Range(x-min_dist,x+min_dist+1)))
-			    && min_dist < 3) {
-			++min_dist;
-		}
-		skeleton.at<uchar>(y,x) = min_dist;
-	    }
-	}
-    }
-
-    //eliminates pixs, first those close to edges (cycle 1->3)
-    const int max_level = 3;
-
-    for (int cycle = 1; cycle <= max_level; ++cycle) {
-    /* in each cycle it eliminates also all newly-suitable pixs on
-       lower levels (level 1...cycle) */
-	for (int level = 1; level <= cycle; ++level) {
-	    /* eliminates until no elimination has occured in
-	       previous go-through of the image */
-	    bool changed = 1;
-	    while (changed) {
-		changed = 0;
-		for (int y = 3; y < img_h - 3; ++y) {
-		    for (int x = 3; x < img_w - 3; ++x) {
-			if (skeleton.at<uchar>(y,x) == level) {
-			    if (
-				 (
-				  // eliminates from rigth down corner
-				  skeleton.at<uchar>(y-1,x-1) &&
-				  skeleton.at<uchar>(y-1,x) &&
-				  skeleton.at<uchar>(y,x-1) &&
-				  !skeleton.at<uchar>(y,x+1) &&
-				  !skeleton.at<uchar>(y+1,x)
-				 ) || (
-				  // eliminates from left down corner
-				  skeleton.at<uchar>(y-1,x) &&
-			          skeleton.at<uchar>(y-1,x+1) &&
-			          skeleton.at<uchar>(y,x+1) &&
-			          !skeleton.at<uchar>(y,x-1) &&
-			          !skeleton.at<uchar>(y+1,x)
-				 ) || (
-				  // eliminates from left up corner
-				  !skeleton.at<uchar>(y-1,x) &&
-				  !skeleton.at<uchar>(y,x-1) &&
-				  skeleton.at<uchar>(y,x+1) &&
-				  skeleton.at<uchar>(y+1,x) &&
-			          skeleton.at<uchar>(y+1,x+1)
-				 ) || (
-				  // eliminates from right up corner
-				  !skeleton.at<uchar>(y-1,x) &&
-				  skeleton.at<uchar>(y,x-1) &&
-				  !skeleton.at<uchar>(y,x+1) &&
-				  skeleton.at<uchar>(y+1,x-1) &&
-			          skeleton.at<uchar>(y+1,x)
-				 ) || (
-				  // eliminates from right side
-				  skeleton.at<uchar>(y-1,x-1) &&
-				  (!skeleton.at<uchar>(y-1,x+1) ||
-				   !skeleton.at<uchar>(y+1,x+1)) &&
-				  skeleton.at<uchar>(y,x-1) &&
-			          !skeleton.at<uchar>(y,x+1) &&
-			          skeleton.at<uchar>(y+1,x-1)
-				 ) || (
-				  // eliminates from left side
-				  skeleton.at<uchar>(y-1,x+1) &&
-				  (!skeleton.at<uchar>(y-1,x-1) ||
-				   !skeleton.at<uchar>(y+1,x-1)) &&
-				  !skeleton.at<uchar>(y,x-1) &&
-			          skeleton.at<uchar>(y,x+1) &&
-			          skeleton.at<uchar>(y+1,x+1)
-				 ) || (
-				  // eliminate from up side
-				  !skeleton.at<uchar>(y-1,x) &&
-				  (!skeleton.at<uchar>(y-1,x-1) ||
-				   !skeleton.at<uchar>(y-1,x+1)) &&
-				  (skeleton.at<uchar>(y,x-1) ||
-			           skeleton.at<uchar>(y,x+1)) &&
-			          skeleton.at<uchar>(y+1,x-1) &&
-			          skeleton.at<uchar>(y+1,x) &&
-			          skeleton.at<uchar>(y+1,x+1)
-				 ) || (
-				  // eliminate from down side
-				  !skeleton.at<uchar>(y+1,x) &&
-				  (!skeleton.at<uchar>(y+1,x-1) ||
-				   !skeleton.at<uchar>(y+1,x+1)) &&
-				  (skeleton.at<uchar>(y,x-1) ||
-			           skeleton.at<uchar>(y,x+1)) &&
-			          skeleton.at<uchar>(y-1,x-1) &&
-			          skeleton.at<uchar>(y-1,x) &&
-			          skeleton.at<uchar>(y-1,x+1)
-				 )
-			        )
-			    {
-				skeleton.at<uchar>(y,x) = 0;
-				changed = 1;
-			    }
-			}
-		    }
-		}
-	    }
-	}
-    }
-    cv::threshold(skeleton, skeleton, 0.5, 255, CV_THRESH_BINARY);
-    edge_img = skeleton;
-
-}
-
-void Tortoise::eliminate_one_pix_edges(cv::Mat &edges) // edges has to be 0/1 float type
-{
-    int edges_w = edges.size().width;
-    int edges_h = edges.size().height;
-
-    for (int y = 1; y < edges_h - 1; ++y) {
-	for (int x = 1; x < edges_w - 1; ++x) {
-	    if(edges.at<uchar>(y,x)) {
-		if(cv::countNonZero(edges(cv::Range(y-1,y+2),
-					  cv::Range(x-1,x+2))) == 1) {
-		    edges.at<uchar>(y,x) = 0;
-		}
-	    }
-	}
-    }
-}
-
-void Tortoise::eliminate_two_pix_edges(cv::Mat &edges) // edges has to 0/1 float type
-{
-    int edges_w = edges.size().width;
-    int edges_h = edges.size().height;
-
-    cv::Mat pairs(edges.size(), CV_8U, cv::Scalar(0));
-
-    for (int y = 1; y < edges_h - 1; ++y) {
-	for (int x = 1; x < edges_w - 1; ++x) {
-	    if (edges.at<uchar>(y,x)) {
-		if (cv::countNonZero(edges(cv::Range(y-1,y+2),
-					   cv::Range(x-1,x+2))) == 2) {
-		    pairs.at<uchar>(y,x) = 255;
-		}
-	    }
-	}
-    }
-
-    for (int y = 1; y < edges_h - 1; ++y) {
-	for (int x = 1; x < edges_w - 1; ++x) {
-	    if (pairs.at<uchar>(y,x)) {
-		if (cv::countNonZero(pairs(cv::Range(y-1,y+2),
-					   cv::Range(x-1,x+2))) == 2) {
-		    edges.at<uchar>(y,x) = 0;
-		}
-	    }
-	}
-    }
-}
-
 
 #endif /* _TORTOISE_HPP_ */
