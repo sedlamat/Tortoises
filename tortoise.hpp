@@ -407,6 +407,8 @@ void Tortoise::locate_central_seam()
     stripe_w = stripe_img.cols;
     stripe_h = stripe_img.rows;
 
+    cv::flip(stripe_img, stripe_img, 1);
+
     // gets the edge image of the area
     cv::Mat stripe_edges, stripe_gray;
     cv::cvtColor(stripe_img, stripe_gray, CV_BGR2GRAY);
@@ -430,18 +432,45 @@ void Tortoise::locate_central_seam()
 
     stripe_edges = stripe_edges_orig.t();
 
-    std::vector<cv::Point> side_seam;
+    stripe_edges.colRange(0, stripe_h/6).setTo(0);
+    stripe_edges.colRange(stripe_h*5/6, stripe_h).setTo(0);
 
-    side_seam = get_best_path(stripe_edges);
+    //~ sedlamat::display(stripe_edges);
 
-    stripe_img = stripe_img.t();
+    for (int ii = 0; ii < 4; ++ii) {
+	std::vector<cv::Point> side_seam;
 
-    for (auto &pt : side_seam) {
-	stripe_img.at<cv::Vec3b>(pt) = _color.red;
+	side_seam = get_best_path(stripe_edges);
+
+	int best_path_x_coor = 0;
+	for (auto &pt : side_seam) {
+	    best_path_x_coor += pt.x;
+	}
+	if (side_seam.size()) {
+	    best_path_x_coor /= side_seam.size();
+	} else {
+	    std::cout << "seam not found" << std::endl;
+	    break;
+	}
+
+	std::cout << best_path_x_coor << std::endl;
+
+	stripe_edges.colRange(best_path_x_coor-stripe_h*1/24,
+			      best_path_x_coor+stripe_h*1/24).setTo(0);
+
+	sedlamat::display(stripe_edges);
+
+	stripe_img = stripe_img.t();
+
+	for (auto &pt : side_seam) {
+	    stripe_img.at<cv::Vec3b>(pt) = _color.red;
+	}
+	stripe_img = stripe_img.t();
+
+	sedlamat::display(stripe_img);
     }
-    stripe_img = stripe_img.t();
 
-    sedlamat::display(stripe_img);
+    // TODO: first approximate localization of the seven junctions
 }
 
 
