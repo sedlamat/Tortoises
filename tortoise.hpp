@@ -94,11 +94,20 @@ private:
 		   const int angle);
     void locate_central_seam();
     std::vector<cv::Point> get_best_path(const cv::Mat &edges);
+    void locate_seams();
 
 };
 
 /************* member functions definitions ************************/
 
+
+/**
+    Constructor, where the feature detection is executed.
+
+    @param plastron_image - Reference to a cv::Mat plastron image.
+    @param tortoise_name - String with the toroise name/tag.
+    @return Void.
+*/
 Tortoise::Tortoise(const cv::Mat &plastron_image,
 		   const std::string &tortoise_name)
 	    :
@@ -131,6 +140,14 @@ Tortoise::Tortoise(const cv::Mat &plastron_image,
     }
 }
 
+
+/**
+    Overloading operator >> for reading cv::Point from a stream.
+
+    @param stream - Reference to a stream to read from.
+    @param pt - Reference to a point to write.
+    @return Returns the stream.
+*/
 std::istream &operator>>(std::istream &stream, cv::Point &pt)
 {
     // cv::Point is printed in format [pt.x, pt.y]
@@ -148,6 +165,13 @@ std::istream &operator>>(std::istream &stream, cv::Point &pt)
     return stream;
 }
 
+
+/**
+    Read already computed information from a file if it exists.
+
+    @param Void.
+    @return Void.
+*/
 void Tortoise::read_info()
 {
     std::ifstream info(_info_file_name);
@@ -185,6 +209,13 @@ void Tortoise::read_info()
     info.close();
 }
 
+
+/**
+    Write already computed information to a file.
+
+    @param Void.
+    @return Void.
+*/
 void Tortoise::write_info() const
 {
     std::ofstream info(_info_file_name, std::fstream::out);
@@ -212,6 +243,12 @@ void Tortoise::write_info() const
 }
 
 
+/**
+    Print values of junctions to standard output.
+
+    @param Void.
+    @return Void.
+*/
 void Tortoise::print_juncs() const
 {
     std::cout << "Left junctions:" << std::endl;
@@ -239,6 +276,14 @@ void Tortoise::put_point_on_img(cv::Mat &img,
     }
 }
 
+
+/**
+    Displays junction or feature points on the corresponding plastron
+    image.
+
+    @param Void.
+    @return Void.
+*/
 void Tortoise::display_points_on_plastron()
 {
     cv::Mat img;
@@ -268,6 +313,14 @@ void Tortoise::display_points_on_plastron()
     sedlamat::display(img);
 }
 
+/**
+    Rotates point (cv::Point) by an angle around a given center point.
+
+    @param pt - The point to be rotated.
+    @param center - The center of rotation.
+    @param angle - The angle of rotation.
+    @return Void.
+*/
 void Tortoise::rotate_pt(cv::Point &pt, const cv::Point &center,
 			 const int angle)
 {
@@ -284,6 +337,14 @@ void Tortoise::rotate_pt(cv::Point &pt, const cv::Point &center,
     pt += center;
 }
 
+
+/**
+    Rotates the plaston image and all interest points by an angle
+    around the center of the plastron.
+
+    @param angle - The angle of rotation.
+    @return Void.
+*/
 void Tortoise::rotate_img_and_pts(const int angle)
 {
 
@@ -322,6 +383,14 @@ void Tortoise::rotate_img_and_pts(const int angle)
 						_plastron_img.size());
 }
 
+
+/**
+    Locates the plastron position in the plastron image using
+    generalized Hough transform.
+
+    @param Void.
+    @return Void.
+*/
 void Tortoise::locate_plastron()
 {
     const cv::Mat plastron_template
@@ -366,13 +435,97 @@ void Tortoise::locate_plastron()
 }
 
 
+/**
+
+
+    @param Void.
+    @return Void.
+*/
 void Tortoise::locate_junctions()
 {
     std::cout << "locate_junctions entered" << std::endl;
     this->rotate_img_and_pts(_angle);
-    this->locate_central_seam();
+    //~ this->locate_central_seam();
     //~ this->display_points_on_plastron();
+    this->locate_seams();
 }
+
+
+/**
+
+
+    @param Void.
+    @return Void.
+*/
+void Tortoise::locate_seams()
+{
+    // measures the to-be half width of the central seam stripe
+    const int abd_seam_length = _l_juncs[_idx.j4AbdFem].y -
+				_l_juncs[_idx.j3PecAbd].y;
+
+    // prepares the area rectangle of the central seam stripe
+    cv::Rect stripe_rect(
+		cv::Point(_l_juncs[_idx.j0Head].x - abd_seam_length/2,
+		          _l_juncs[_idx.j0Head].y ),
+		cv::Point(_l_juncs[_idx.j6Tail].x + abd_seam_length/2,
+		          _l_juncs[_idx.j6Tail].y ));
+
+    // gets the area of the central seam stripe
+    cv::Mat stripe_img = _plastron_img(stripe_rect).clone();
+
+    // resizes the area
+    int stripe_w = stripe_img.cols;
+    int stripe_h = stripe_img.rows;
+
+    const int new_size = 1200;
+
+    const double resize_coeff = new_size * 1.0 / std::max(stripe_w,
+							  stripe_h);
+    cv::resize(stripe_img, stripe_img, cv::Size(0,0), resize_coeff,
+						      resize_coeff);
+
+    cv::cvtColor(stripe_img, stripe_img, CV_BGR2GRAY);
+
+    stripe_w = stripe_img.cols;
+    stripe_h = stripe_img.rows;
+
+    //~ sedlamat::display(stripe_img);
+
+    cv::Mat gauss_x1, gauss_x2, gauss_y, gauss, out;
+    int size_x = 50;
+    int size_y = 50;
+    const double sigma_x1 = 1.0;
+    const double sigma_x2 = 1.5;
+    const double sigma_y = 10.0;
+    size_x = (size_x % 2) ? size_x : size_x + 1;
+    size_y = (size_y % 2) ? size_y : size_y + 1;
+    gauss_x1 = cv::getGaussianKernel(size_x, sigma_x1, CV_32F);
+    gauss_x2 = cv::getGaussianKernel(size_x, sigma_x2, CV_32F);
+    gauss_y = cv::getGaussianKernel(size_y, sigma_y, CV_32F);
+    gauss = gauss_y * gauss_x1.t();
+    gauss -= gauss_y * gauss_x2.t();
+
+    gauss(cv::Range(size_y/2 + 1, size_y), cv::Range::all()) = cv::Scalar(0);
+
+    cv::Mat M = cv::getRotationMatrix2D(cv::Point(size_x/2, size_y/2), -90, 1);
+    cv::warpAffine(gauss, gauss, M, gauss.size());
+    //~ M = cv::getRotationMatrix2D(cv::Point(size_x/2, size_y/2), -283, 1);
+    //~ cv::warpAffine(gauss, gauss, M, gauss.size());
+    std::cout << gauss << std::endl;
+
+    // We need 4 times cv::Mat - Two maxima, Two minima images
+
+    sedlamat::display(gauss);
+
+    cv::filter2D(stripe_img, out, CV_32F, gauss);
+    std::cout << out.size() << std::endl;
+    std::cout << stripe_img.size() << std::endl;
+
+
+    sedlamat::display(out);
+    sedlamat::display(stripe_img);
+}
+
 
 
 void Tortoise::locate_central_seam()
@@ -397,7 +550,7 @@ void Tortoise::locate_central_seam()
     int stripe_w = stripe_img.cols;
     int stripe_h = stripe_img.rows;
 
-    const int new_size = 800;
+    const int new_size = 400;
 
     const double resize_coeff = new_size * 1.0 / std::max(stripe_w,
 							  stripe_h);
