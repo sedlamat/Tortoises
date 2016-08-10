@@ -1,32 +1,13 @@
 /**
     tortoise.cpp
 
-    Implementation of the Tortoise class for tortoise plastron
-    locatization and feature extraction.
+    Implementation of the Tortoise class member functions.
 
     @author Matej Sedlacek
     @version 0.0
 */
 
-/* STANDARD C++ LIBRARIES */
-#include <vector>
-#include <string>
-#include <fstream>
-#include <iostream>
-
-/* THIRD PARTY LIBRARIES */
-#include <opencv2/core/core.hpp>
-#include "opencv2/imgproc/imgproc.hpp"
-
-/* FIRST PARTY LIBRARIES */
 #include "tortoise.hpp"
-#include "my_img_proc.hpp"
-#include "general_hough.hpp"
-
-
-
-/******** Tortoise class member functions definitions **************/
-
 
 /**
     Constructor, where the feature detection is executed.

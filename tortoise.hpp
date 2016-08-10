@@ -27,9 +27,6 @@
 #include "general_hough.hpp"
 
 
-
-std::istream &operator>>(std::istream &stream, cv::Point &pt);
-
 /**************** class definition *********************************/
 
 class Tortoise {
@@ -97,5 +94,59 @@ private:
     void locate_seams();
 
 };
+
+
+/*************** Other useful functions *****************************/
+
+void displayImageWithPreprocessing(const cv::Mat &image,
+				   const std::string &windowName)
+{
+    CV_Assert(image.channels() == 1 || image.channels() == 3);
+
+    cv::Mat scaledImage = getScaledImage(image);
+
+    displayImageNoPreprocessing(scaledImage, windowName);
+}
+
+// the image is scaled into [0,...,255] and converted into CV_U8
+// to control how the image is displayed, all values are in [0,255]
+cv::Mat getConvertedScaledImage(const cv::Mat &image)
+{
+    // finds the image minimum and maximum value
+    cv::Mat scaledImage;
+    double minValue, maxValue;
+    cv::minMaxLoc(image, &minValue, &maxValue);
+
+    // calculates scaling coefficients
+    const double alphaCoeff = 255 / (maxValue - minValue);
+    const double betaCoeff = -minValue * alpha;
+
+    cv::Mat scaledImage;
+    image.convertTo(scaledImage, CV_8U, alphaCoef, betaCoef);
+
+    return scaledImage;
+}
+
+void displayImageNoPreprocessing(const cv::Mat &image,
+				 const std::string &windowName)
+{
+    CV_Assert(image.channels() == 1 || image.channels() == 3);
+
+    // creates a resizable(= flag cv::WINDOW_NORMAL) window for the image
+    cv::namedWindow(windowName, cv::WINDOW_NORMAL);
+
+    // shows the image until ESC key is pressed
+
+    const int ESC_KEY = 27;
+    int keyboardResponse = 0;
+
+    while (keyboardResponse != ESC_KEY) {
+	cv::imshow(windowName, image);
+	keyboardResponse = cv::waitKey(0);
+    }
+}
+
+
+std::istream &operator>>(std::istream &stream, cv::Point &pt);
 
 #endif /* _TORTOISE_HPP_ */
