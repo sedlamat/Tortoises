@@ -1,7 +1,7 @@
 
 CFLAGS = `pkg-config --cflags --libs opencv`
 TARGET = tortoise
-SRC = main.cpp
+SRC = *.cpp
 DEPS = my_img_proc.hpp general_hough.hpp tortoise.hpp
 
 
