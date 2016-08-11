@@ -1,5 +1,5 @@
 ﻿/**
-    tortoise.hpp
+    Tortoise.hpp
 
     Tortoise class for tortoise plastron locatization and feature
     extraction.
@@ -23,8 +23,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 /* FIRST PARTY LIBRARIES */
-#include "my_img_proc.hpp"
-#include "general_hough.hpp"
+#include "GeneralHough.hpp"
 
 
 /**************** class definition *********************************/
@@ -98,14 +97,16 @@ private:
 
 /*************** display functions *********************************/
 
-void displayImageWithPreprocessing(const cv::Mat &image,
-				   const std::string &windowName);
+std::istream &operator>>(std::istream &stream, cv::Point &pt);
 
-cv::Mat getConvertedScaledImage(const cv::Mat &image);
+
 
 void displayImageNoPreprocessing(const cv::Mat &image,
 				 const std::string &windowName);
 
-std::istream &operator>>(std::istream &stream, cv::Point &pt);
+cv::Mat getConvertedScaledImage(const cv::Mat &image);
+
+void displayImageWithPreprocessing(const cv::Mat &image,
+				   const std::string &windowName);
 
 #endif /* _TORTOISE_HPP_ */

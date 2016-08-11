@@ -13,7 +13,7 @@ detect_indent_width=false
 indent_mode=3
 
 [project]
-name=tortoise
+name=Tortoise
 base_path=/home/matej/Files/Projects/Tortoises/
 description=
 file_patterns=
@@ -23,17 +23,17 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=5
-FILE_NAME_0=936;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmy_img_proc.hpp;0;4
-FILE_NAME_1=556;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.hpp;0;4
-FILE_NAME_2=777;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Ftortoise.cpp;0;4
-FILE_NAME_3=348;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
-FILE_NAME_4=21870;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fgeneral_hough.hpp;0;4
-FILE_NAME_5=296;Make;0;EUTF-8;1;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmakefile;0;4
+current_page=1
+FILE_NAME_0=406;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmain.cpp;0;4
+FILE_NAME_1=157;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2FGeneralHough.cpp;0;4
+FILE_NAME_2=21;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2FGeneralHough.hpp;0;4
+FILE_NAME_3=344;Make;0;EUTF-8;1;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2Fmakefile;0;4
+FILE_NAME_4=17584;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2FTortoise.cpp;0;4
+FILE_NAME_5=1810;C++;0;EUTF-8;2;1;0;%2Fhome%2Fmatej%2FFiles%2FProjects%2FTortoises%2FTortoise.hpp;0;4
 
 [build-menu]
 EX_00_LB=_Execute
-EX_00_CM="./tortoise"
+EX_00_CM="./Tortoise"
 EX_00_WD=
 C++FT_00_LB=_Compile
 C++FT_00_CM=g++ -Wall -c "%f"

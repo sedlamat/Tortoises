@@ -1,5 +1,5 @@
 /**
-    tortoise.cpp
+    Tortoise.cpp
 
     Implementation of the Tortoise class member functions.
 
@@ -7,7 +7,7 @@
     @version 0.0
 */
 
-#include "tortoise.hpp"
+#include "Tortoise.hpp"
 
 /**
     Constructor, where the feature detection is executed.
@@ -218,7 +218,7 @@ void Tortoise::display_points_on_plastron()
     this->put_point_on_img(img, img_rect, _r_juncs[0], _color.red,
 								shift);
 
-    sedlamat::display(img);
+    displayImageWithPreprocessing(img,"Points on plastron");
 }
 
 /**
@@ -397,7 +397,7 @@ void Tortoise::locate_seams()
     stripe_w = stripe_img.cols;
     stripe_h = stripe_img.rows;
 
-    //~ sedlamat::display(stripe_img);
+    //~ displayImageWithPreprocessing(stripe_img);
 
     cv::Mat gauss_x1, gauss_x2, gauss_y, gauss, out;
     int size_x = 50;
@@ -423,15 +423,15 @@ void Tortoise::locate_seams()
 
     // We need 4 times cv::Mat - Two maxima, Two minima images
 
-    sedlamat::display(gauss);
+    displayImageWithPreprocessing(gauss, "Half gaussian mask");
 
     cv::filter2D(stripe_img, out, CV_32F, gauss);
     std::cout << out.size() << std::endl;
     std::cout << stripe_img.size() << std::endl;
 
 
-    sedlamat::display(out);
-    sedlamat::display(stripe_img);
+    displayImageWithPreprocessing(out, "Stripe image after gauss preprocessing");
+    displayImageWithPreprocessing(stripe_img, "Stripe image");
 }
 
 
@@ -479,7 +479,7 @@ void Tortoise::locate_central_seam()
 
     cv::Mat stripe_edges_orig = stripe_edges.clone();
 
-    sedlamat::display(stripe_edges);
+    displayImageWithPreprocessing(stripe_edges, "Stripe image edges");
 
     std::vector<cv::Point> central_seam;
 
@@ -496,7 +496,7 @@ void Tortoise::locate_central_seam()
     stripe_edges.colRange(0, stripe_h/6).setTo(0);
     stripe_edges.colRange(stripe_h*5/6, stripe_h).setTo(0);
 
-    //~ sedlamat::display(stripe_edges);
+    //~ displayImageWithPreprocessing(stripe_edges);
 
     for (int ii = 0; ii < 4; ++ii) {
 	std::vector<cv::Point> side_seam;
@@ -519,7 +519,7 @@ void Tortoise::locate_central_seam()
 	stripe_edges.colRange(best_path_x_coor-stripe_h*1/24,
 			      best_path_x_coor+stripe_h*1/24).setTo(0);
 
-	sedlamat::display(stripe_edges);
+	displayImageWithPreprocessing(stripe_edges, "Stripe image edges");
 
 	stripe_img = stripe_img.t();
 
@@ -528,7 +528,7 @@ void Tortoise::locate_central_seam()
 	}
 	stripe_img = stripe_img.t();
 
-	sedlamat::display(stripe_img);
+	displayImageWithPreprocessing(stripe_img, "Stripe image edges");
     }
 
     // TODO: first approximate localization of the seven junctions
@@ -626,33 +626,34 @@ std::vector<cv::Point> Tortoise::get_best_path(const cv::Mat &edges)
 
 /*************** display functions *********************************/
 
-void displayImageWithPreprocessing(const cv::Mat &image,
-				   const std::string &windowName)
-{
-    CV_Assert(image.channels() == 1 || image.channels() == 3);
 
-    cv::Mat scaledImage = getScaledImage(image);
-
-    displayImageNoPreprocessing(scaledImage, windowName);
-}
 
 // the image is scaled into [0,...,255] and converted into CV_U8
 // to control how the image is displayed, all values are in [0,255]
 cv::Mat getConvertedScaledImage(const cv::Mat &image)
 {
     // finds the image minimum and maximum value
-    cv::Mat scaledImage;
     double minValue, maxValue;
     cv::minMaxLoc(image, &minValue, &maxValue);
 
     // calculates scaling coefficients
     const double alphaCoeff = 255 / (maxValue - minValue);
-    const double betaCoeff = -minValue * alpha;
+    const double betaCoeff = -minValue * alphaCoeff;
 
-    cv::Mat scaledImage;
-    image.convertTo(scaledImage, CV_8U, alphaCoef, betaCoef);
+    cv::Mat convertedScaledImage;
+    image.convertTo(convertedScaledImage, CV_8U, alphaCoeff, betaCoeff);
 
-    return scaledImage;
+    return convertedScaledImage;
+}
+
+void displayImageWithPreprocessing(const cv::Mat &image,
+				   const std::string &windowName)
+{
+    CV_Assert(image.channels() == 1 || image.channels() == 3);
+
+    cv::Mat convertedScaledImage = getConvertedScaledImage(image);
+
+    displayImageNoPreprocessing(convertedScaledImage, windowName);
 }
 
 void displayImageNoPreprocessing(const cv::Mat &image,

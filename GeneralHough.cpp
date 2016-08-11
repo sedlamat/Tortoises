@@ -7,7 +7,7 @@
     @version 0.0
 */
 
-#include "GneralHough.hpp"
+#include "GeneralHough.hpp"
 
 /********* class DequeNegIdx members' declaration *******************/
 
